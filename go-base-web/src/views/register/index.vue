@@ -74,11 +74,6 @@
         </a-input-password>
       </a-form-item>
 
-      <!-- 图形验证码 -->
-      <a-form-item v-if="captchaConfig?.register_captcha_enabled" name="captcha">
-        <Captcha ref="captchaRef" v-model="formState.captcha" />
-      </a-form-item>
-
       <a-form-item>
         <a-button
           type="primary"
@@ -112,21 +107,17 @@ import {
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import { register, sendEmailCode, type RegisterParams } from '@/api/auth'
 import AuthLayout from '@/layouts/AuthLayout.vue'
-import Captcha from '@/components/Captcha.vue'
 import { getCaptchaConfig } from '@/api/captcha'
 
 interface CaptchaConfig {
   login_captcha_enabled: boolean
-  register_captcha_enabled: boolean
   register_email_verify: boolean
 }
 
 const router = useRouter()
 const formRef = ref<FormInstance>()
-const captchaRef = ref<InstanceType<typeof Captcha>>()
 const captchaConfig = ref<CaptchaConfig>({
   login_captcha_enabled: false,
-  register_captcha_enabled: false,
   register_email_verify: false,
 })
 
@@ -140,7 +131,6 @@ const formState = reactive({
   email_code: '',
   password: '',
   confirm_password: '',
-  captcha: '',
 })
 
 const validateConfirmPassword = async (_rule: Rule, value: string) => {
@@ -174,10 +164,6 @@ const rules = computed<Record<string, Rule[]>>(() => {
       { type: 'email', message: '请输入有效的邮箱地址' },
     ]
     baseRules.email_code = [{ required: true, message: '请输入邮箱验证码' }]
-  }
-
-  if (captchaConfig?.value?.register_captcha_enabled) {
-    baseRules.captcha = [{ required: true, message: '请输入验证码' }]
   }
 
   return baseRules
@@ -222,11 +208,6 @@ const handleRegister = async () => {
       registerData.email_code = formState.email_code
     }
 
-    if (captchaConfig?.value?.register_captcha_enabled && captchaRef.value) {
-      registerData.captcha_id = captchaRef.value.getCaptchaId()
-      registerData.captcha_code = formState.captcha
-    }
-
     await register(registerData)
     message.success('注册成功，请登录')
     router.push({
@@ -234,7 +215,7 @@ const handleRegister = async () => {
       query: { username: formState.username }
     })
   } catch (error: any) {
-    captchaRef.value?.refresh()
+    // 错误已由拦截器处理
   } finally {
     loading.value = false
   }
@@ -243,7 +224,6 @@ onMounted(async()=>{
    const captchaRes=await getCaptchaConfig()
    captchaConfig.value = {
       login_captcha_enabled: captchaRes.data?.login_captcha_enabled,
-      register_captcha_enabled: captchaRes.data?.register_captcha_enabled,
       register_email_verify: captchaRes.data?.register_email_verify,
     }
 })

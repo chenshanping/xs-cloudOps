@@ -2,6 +2,8 @@ package v1
 
 import (
 	"context"
+	"fmt"
+
 	"go-base-server/global"
 	"go-base-server/middleware"
 	"go-base-server/model"
@@ -25,15 +27,33 @@ func (a *AuthApi) Login(c *gin.Context) {
 		return
 	}
 
+	// 检查账户是否被锁定
+	if locked, minutes := service.Captcha.CheckLoginLock(req.Username); locked {
+		response.Fail(c, fmt.Sprintf("账户已被锁定，请%d分钟后重试", minutes))
+		return
+	}
+
 	// 检查是否需要验证码
 	if service.Captcha.IsLoginCaptchaEnabled() {
+		captchaType := service.Captcha.GetCaptchaType()
 		if req.CaptchaID == "" || req.Captcha == "" {
-			response.BadRequest(c, "请输入验证码")
+			response.BadRequest(c, "请完成验证")
 			return
 		}
-		if !service.Captcha.VerifyCaptcha(req.CaptchaID, req.Captcha) {
-			response.Fail(c, "验证码错误")
-			return
+		
+		// 滑动验证码在前端已验证，后端只验证captchaID是否有效
+		if captchaType == "slider" {
+			if req.Captcha != "slider_verified" {
+				response.Fail(c, "请先完成滑动验证")
+				return
+			}
+			// 滑动验证码已在前端验证通过，这里只需确认captchaID格式正确
+		} else {
+			// 普通图形验证码
+			if !service.Captcha.VerifyCaptcha(req.CaptchaID, req.Captcha) {
+				response.Fail(c, "验证码错误")
+				return
+			}
 		}
 	}
 
@@ -43,6 +63,18 @@ func (a *AuthApi) Login(c *gin.Context) {
 
 	user, err := service.User.Login(req.Username, req.Password)
 	if err != nil {
+		// 增加登录失败次数
+		retryCount, locked := service.Captcha.IncrLoginRetry(req.Username)
+		maxRetry := service.Captcha.GetLoginMaxRetry()
+		
+		errMsg := err.Error()
+		if locked {
+			lockTime := service.Captcha.GetLoginLockTime()
+			errMsg = fmt.Sprintf("登录失败次数过多，账户已锁定%d分钟", lockTime)
+		} else {
+			errMsg = fmt.Sprintf("%s，还剩%d次尝试机会", errMsg, maxRetry-retryCount)
+		}
+		
 		// 记录登录失败日志
 		service.Log.CreateLoginLog(&model.SysLoginLog{
 			Username: req.Username,
@@ -53,9 +85,12 @@ func (a *AuthApi) Login(c *gin.Context) {
 			Status:   0,
 			Msg:      err.Error(),
 		})
-		response.Fail(c, err.Error())
+		response.Fail(c, errMsg)
 		return
 	}
+	
+	// 登录成功，清除重试次数
+	service.Captcha.ClearLoginRetry(req.Username)
 
 	// 提取角色ID、编码列表
 	roleIDs := make([]uint, 0, len(user.Roles))

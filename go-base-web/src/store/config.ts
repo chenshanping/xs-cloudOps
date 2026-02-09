@@ -35,9 +35,12 @@ export const CONFIG_KEYS = [
   'email_from_name',
   // 安全配置
   'login_captcha_enabled',
-  'register_captcha_enabled',
+  'login_captcha_type',
+  'login_max_retry',
+  'login_lock_time',
   'register_email_verify',
   'frontend_url',
+  'slider_captcha_bg',
   // 前台模式配置
   'front_mode'  // 'full': 完整前台, 'profile': 仅个人中心(用于身份认证)
 ] as const
@@ -78,9 +81,12 @@ const DEFAULT_CONFIG: Record<string, string> = {
   email_from_name: '',
   // 安全配置
   login_captcha_enabled: '0',
-  register_captcha_enabled: '0',
+  login_captcha_type: 'digit',
+  login_max_retry: '5',
+  login_lock_time: '15',
   register_email_verify: '0',
   frontend_url: 'http://localhost:5173',
+  slider_captcha_bg: '',
   // 前台模式: 'full' = 完整前台, 'profile' = 仅个人中心
   front_mode: 'full'
 }

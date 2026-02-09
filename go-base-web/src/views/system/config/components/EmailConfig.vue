@@ -1,8 +1,8 @@
 <template>
   <div class="email-config">
     <a-form :label-col="{ span: 6 }" :wrapper-col="{ span: 16 }">
-      <!-- 安全配置 -->
-      <a-divider orientation="left">安全配置</a-divider>
+      <!-- 登录安全配置 -->
+      <a-divider orientation="left">登录安全</a-divider>
       
       <a-form-item label="登录验证码">
         <a-switch 
@@ -10,17 +10,56 @@
           checked-children="开" 
           un-checked-children="关"
         />
-        <span class="switch-tip">开启后登录需要输入图形验证码</span>
+        <span class="switch-tip">开启后登录需要输入验证码</span>
       </a-form-item>
-      
-      <a-form-item label="注册验证码">
-        <a-switch 
-          v-model:checked="registerCaptchaEnabled" 
-          checked-children="开" 
-          un-checked-children="关"
+
+      <a-form-item label="验证码类型">
+        <a-select 
+          v-model:value="formData.login_captcha_type" 
+          :disabled="!loginCaptchaEnabled"
+          style="width: 200px"
+        >
+          <a-select-option value="digit">数字验证码</a-select-option>
+          <a-select-option value="math">算术验证码</a-select-option>
+          <a-select-option value="string">字符串验证码</a-select-option>
+          <a-select-option value="slider">滑动验证码</a-select-option>
+        </a-select>
+        <div class="form-tip">仅开启验证码时可选</div>
+      </a-form-item>
+
+      <a-form-item label="滑动验证码背景" v-if="formData.login_captcha_type === 'slider'">
+        <ImageUpload 
+          v-model="formData.slider_captcha_bg" 
+          :width="280" 
+          :height="160" 
+          :max-size="2*1024*1024"
+          placeholder="上传背景图"
         />
-        <span class="switch-tip">开启后注册需要输入图形验证码</span>
+        <div class="form-tip">建议尺寸 280x160 像素，留空使用默认渐变背景</div>
       </a-form-item>
+
+      <a-form-item label="最大重试次数">
+        <a-input-number 
+          v-model:value="formData.login_max_retry" 
+          :min="1" 
+          :max="20" 
+          style="width: 200px"
+        />
+        <div class="form-tip">达到次数后账户将被临时锁定，0表示不限制</div>
+      </a-form-item>
+
+      <a-form-item label="锁定时间(分钟)">
+        <a-input-number 
+          v-model:value="formData.login_lock_time" 
+          :min="1" 
+          :max="1440" 
+          style="width: 200px"
+        />
+        <div class="form-tip">账户锁定后多久自动解锁</div>
+      </a-form-item>
+
+      <!-- 注册安全配置 -->
+      <a-divider orientation="left">注册安全</a-divider>
       
       <a-form-item label="邮箱验证">
         <a-switch 
@@ -93,6 +132,7 @@ import { message, Modal, Input } from 'ant-design-vue'
 import { MailOutlined, SettingOutlined } from '@ant-design/icons-vue'
 import { useConfigStore } from '@/store/config'
 import { sendTestEmail } from '@/api/config'
+import ImageUpload from '@/components/ImageUpload.vue'
 
 const configStore = useConfigStore()
 const saving = ref(false)
@@ -107,20 +147,18 @@ const formData = reactive({
   email_password: configStore.get('email_password'),
   email_from_name: configStore.get('email_from_name'),
   login_captcha_enabled: configStore.get('login_captcha_enabled') || '0',
-  register_captcha_enabled: configStore.get('register_captcha_enabled') || '0',
+  login_captcha_type: configStore.get('login_captcha_type') || 'digit',
+  login_max_retry: parseInt(configStore.get('login_max_retry')) || 5,
+  login_lock_time: parseInt(configStore.get('login_lock_time')) || 15,
   register_email_verify: configStore.get('register_email_verify') || '0',
-  frontend_url: configStore.get('frontend_url') || 'http://localhost:5173'
+  frontend_url: configStore.get('frontend_url') || 'http://localhost:5173',
+  slider_captcha_bg: configStore.get('slider_captcha_bg') || ''
 })
 
 // 开关状态转换
 const loginCaptchaEnabled = computed({
   get: () => formData.login_captcha_enabled === '1',
   set: (val) => { formData.login_captcha_enabled = val ? '1' : '0' }
-})
-
-const registerCaptchaEnabled = computed({
-  get: () => formData.register_captcha_enabled === '1',
-  set: (val) => { formData.register_captcha_enabled = val ? '1' : '0' }
 })
 
 const registerEmailVerify = computed({
@@ -154,9 +192,12 @@ const handleReset = () => {
   formData.email_password = ''
   formData.email_from_name = '系统邮件'
   formData.login_captcha_enabled = '0'
-  formData.register_captcha_enabled = '0'
+  formData.login_captcha_type = 'digit'
+  formData.login_max_retry = 5
+  formData.login_lock_time = 15
   formData.register_email_verify = '0'
   formData.frontend_url = 'http://localhost:5173'
+  formData.slider_captcha_bg = ''
 }
 
 // 测试邮件

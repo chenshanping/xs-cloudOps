@@ -20,6 +20,8 @@ func (m *CaptchaModule) RegisterPublicRoutes(rg *gin.RouterGroup) {
 	// 公开路由，无需认证
 	R(rg, "GET", "/captcha", m.Name(), "获取图形验证码", v1.CaptchaAPI.GetCaptcha)
 	R(rg, "GET", "/captcha/config", m.Name(), "获取验证码配置", v1.CaptchaAPI.GetCaptchaConfig)
+	R(rg, "GET", "/captcha/slider", m.Name(), "获取滑动验证码", v1.CaptchaAPI.GetSliderCaptcha)
+	R(rg, "POST", "/captcha/slider/verify", m.Name(), "验证滑动验证码", v1.CaptchaAPI.VerifySliderCaptcha)
 }
 
 func (m *CaptchaModule) RegisterPrivateRoutes(rg *gin.RouterGroup) {
