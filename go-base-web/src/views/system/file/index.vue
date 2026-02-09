@@ -1,0 +1,281 @@
+<template>
+  <div class="file-page">
+    <a-card>
+      <a-tabs v-model:activeKey="activeTab">
+      <a-tab-pane key="list" tab="文件列表">
+          <ProTable
+            :title="'文件列表'"
+            :columns="columns"
+            :data-source="fileList"
+            :loading="loading"
+            :pagination="pagination"
+            row-key="id"
+            @search="handleSearch"
+            @reset="handleReset"
+            @change="handleTableChange"
+          >
+            <template #search>
+              <a-form-item>
+                <a-input v-model:value="searchForm.name" placeholder="文件名" allowClear style="width: 200px" />
+              </a-form-item>
+              <a-form-item>
+              <a-select v-model:value="searchForm.ext" placeholder="文件类型" allowClear style="width: 120px">
+                  <a-select-option value="">全部</a-select-option>
+                  <a-select-option v-for="item in FILE_TYPES" :key="item.value" :value="item.value">
+                    {{ item.label }}
+                  </a-select-option>
+                </a-select>
+              </a-form-item>
+            </template>
+
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'name'">
+                <div class="file-name-cell">
+                  <img v-if="isExtImg(record.ext)" :src="record.url" style="width: 50px;height: 50px;" />
+                  <component v-else :is="getFileIconComponent(record.ext)" class="file-icon" />
+                  <a-tooltip :title="record.name">
+                    <span class="file-name">{{ record.name }}</span>
+                  </a-tooltip>
+                </div>
+              </template>
+              <template v-if="column.key === 'size'">
+                {{ formatFileSize(record.size) }}
+              </template>
+              <template v-if="column.key === 'ext'">
+                <a-tag :color="getFileTypeInfo(record.ext)?.color">{{ getFileTypeInfo(record.ext)?.label || record.ext?.toUpperCase() }}</a-tag>
+              </template>
+              <template v-if="column.key === 'storage'">
+                <a-tag v-if="record.storage" color="blue">
+                  {{ record.storage.name }}({{record.storage.type}})
+                </a-tag>
+                <span v-else>默认存储</span>
+              </template>
+              <template v-if="column.key === 'created_at'">
+                {{ formatTime(record.created_at) }}
+              </template>
+              <template v-if="column.key === 'action'">
+                <a-button type="link" size="small" @click="handlePreview(record)">预览</a-button>
+                <a-button type="link" size="small" @click="handleCopyUrl(record)">复制链接</a-button>
+                <a-popconfirm title="确定删除吗？" @confirm="handleDelete(record)">
+                  <a-button type="link" size="small" danger>删除</a-button>
+                </a-popconfirm>
+              </template>
+            </template>
+          </ProTable>
+        </a-tab-pane>
+
+        <a-tab-pane key="upload" tab="上传文件">
+          <FileUpload
+            ref="fileUploadRef"
+            :multiple="true"
+            @success="handleUploadSuccess"
+          />
+        </a-tab-pane>
+      </a-tabs>
+    </a-card>
+
+    <!-- 文件预览 -->
+    <FilePreview
+      v-model:open="previewVisible"
+      :url="previewFile?.url || ''"
+      :name="previewFile?.name || ''"
+      :ext="previewFile?.ext || ''"
+      :size="previewFile?.size"
+      :mime-type="previewFile?.mime_type"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive, onMounted } from 'vue'
+import { message } from 'ant-design-vue'
+import ProTable from '@/components/ProTable.vue'
+import {
+  FileImageOutlined,
+  FilePdfOutlined,
+  FileWordOutlined,
+  FileExcelOutlined,
+  FilePptOutlined,
+  FileZipOutlined,
+  FileTextOutlined,
+  VideoCameraOutlined,
+  AudioOutlined,
+  FileOutlined,
+} from '@ant-design/icons-vue'
+import FileUpload from '@/components/FileUpload.vue'
+import FilePreview from '@/components/FilePreview.vue'
+import type { FileInfo } from '@/types/file'
+import { getFileList, deleteFile } from '@/api/file'
+import { formatFileSize } from '@/utils/upload'
+import { formatTime } from '@/utils/format'
+
+const activeTab = ref('list')
+const loading = ref(false)
+const fileList = ref<FileInfo[]>([])
+const fileUploadRef = ref()
+
+const previewVisible = ref(false)
+const previewFile = ref<FileInfo | null>(null)
+
+const searchForm = reactive({
+  name: '',
+  ext: '',
+})
+
+const pagination = reactive({
+  current: 1,
+  pageSize: 10,
+  total: 0,
+})
+
+// 文件类型配置
+const FILE_TYPES = [
+  { label: '图片', value: 'jpg,jpeg,png,gif,webp,bmp,svg', color: 'green' },
+  { label: 'PDF', value: 'pdf', color: 'red' },
+  { label: '文档', value: 'doc,docx,txt', color: 'blue' },
+  { label: '视频', value: 'mp4,avi,mov,wmv,flv,mkv', color: 'purple' },
+  { label: '压缩包', value: 'zip,rar,7z,tar,gz', color: 'orange' },
+  { label: '音频', value: 'mp3,wav,flac,aac', color: 'cyan' },
+]
+
+// 根据扩展名获取文件类型信息
+const getFileTypeInfo = (ext: string) => {
+  if (!ext) return null
+  const lowerExt = ext.toLowerCase()
+  return FILE_TYPES.find(type => type.value.split(',').includes(lowerExt))
+}
+
+const columns = [
+  { title: '文件名', key: 'name', ellipsis: true },
+  { title: '大小', key: 'size', width: 100 },
+  { title: '类型', key: 'ext', width: 80 },
+  { title: '存储', key: 'storage', width: 120 },
+  { title: '上传时间', key: 'created_at', width: 180 },
+  { title: '操作', key: 'action', width: 200 },
+]
+
+const isExtImg = (ext: string) => {
+  const imgType = FILE_TYPES.find(t => t.label === '图片')
+  return imgType ? imgType.value.split(',').includes(ext?.toLowerCase()) : false
+}
+const getFileIconComponent = (ext: string) => {
+  const iconMap: Record<string, any> = {
+    jpg: FileImageOutlined,
+    jpeg: FileImageOutlined,
+    png: FileImageOutlined,
+    gif: FileImageOutlined,
+    webp: FileImageOutlined,
+    bmp: FileImageOutlined,
+    svg: FileImageOutlined,
+    pdf: FilePdfOutlined,
+    doc: FileWordOutlined,
+    docx: FileWordOutlined,
+    xls: FileExcelOutlined,
+    xlsx: FileExcelOutlined,
+    ppt: FilePptOutlined,
+    pptx: FilePptOutlined,
+    zip: FileZipOutlined,
+    rar: FileZipOutlined,
+    '7z': FileZipOutlined,
+    txt: FileTextOutlined,
+    mp4: VideoCameraOutlined,
+    avi: VideoCameraOutlined,
+    mov: VideoCameraOutlined,
+    mp3: AudioOutlined,
+    wav: AudioOutlined,
+  }
+  return iconMap[ext?.toLowerCase()] || FileOutlined
+}
+
+const fetchList = async () => {
+  loading.value = true
+  try {
+    const res = await getFileList({
+      page: pagination.current,
+      page_size: pagination.pageSize,
+      name: searchForm.name,
+      ext: searchForm.ext,
+    })
+    fileList.value = res.data.list
+    pagination.total = res.data.total
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleSearch = () => {
+  pagination.current = 1
+  fetchList()
+}
+
+const handleReset = () => {
+  searchForm.name = ''
+  searchForm.ext = ''
+  pagination.current = 1
+  fetchList()
+}
+
+const handleTableChange = (pag: any) => {
+  pagination.current = pag.current
+  pagination.pageSize = pag.pageSize
+  fetchList()
+}
+
+const handlePreview = (record: FileInfo) => {
+  previewFile.value = record
+  previewVisible.value = true
+}
+
+const handleCopyUrl = async (record: FileInfo) => {
+  try {
+    await navigator.clipboard.writeText(record.url)
+    message.success('链接已复制到剪贴板')
+  } catch {
+    message.error('复制失败')
+  }
+}
+
+const handleDelete = async (record: FileInfo) => {
+  await deleteFile(record.id)
+  message.success('删除成功')
+  fetchList()
+}
+
+const handleUploadSuccess = (file: FileInfo) => {
+  message.success(`${file.name} 上传成功`)
+  // 切换到列表并刷新
+  activeTab.value = 'list'
+  fetchList()
+}
+
+onMounted(() => {
+  fetchList()
+})
+</script>
+
+<style scoped>
+.file-page {
+  height: 100%;
+}
+
+.search-bar {
+  margin-bottom: 16px;
+}
+
+.file-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-icon {
+  font-size: 18px;
+  color: #1890ff;
+}
+
+.file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>
