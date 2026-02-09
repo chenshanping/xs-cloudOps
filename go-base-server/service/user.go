@@ -258,6 +258,22 @@ func (s *UserService) DeleteUser(id uint) error {
 	return err
 }
 
+// 批量删除用户
+func (s *UserService) BatchDeleteUsers(ids []uint) (int, []string) {
+	var successCount int
+	var failedMsgs []string
+
+	for _, id := range ids {
+		if err := s.DeleteUser(id); err != nil {
+			failedMsgs = append(failedMsgs, fmt.Sprintf("ID %d: %s", id, err.Error()))
+		} else {
+			successCount++
+		}
+	}
+
+	return successCount, failedMsgs
+}
+
 // 修改用户状态
 func (s *UserService) UpdateUserStatus(id uint, status int) error {
 	err := global.DB.Model(&model.SysUser{}).Where("id = ?", id).Update("status", status).Error

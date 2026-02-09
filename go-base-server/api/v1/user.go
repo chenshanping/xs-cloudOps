@@ -115,6 +115,36 @@ func (a *UserApi) DeleteUser(c *gin.Context) {
 	response.OkWithMessage(c, "删除成功")
 }
 
+// 批量删除用户
+func (a *UserApi) BatchDeleteUsers(c *gin.Context) {
+	var req struct {
+		Ids []uint `json:"ids" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	if len(req.Ids) == 0 {
+		response.BadRequest(c, "请选择要删除的用户")
+		return
+	}
+
+	successCount, failedMsgs := service.User.BatchDeleteUsers(req.Ids)
+
+	if len(failedMsgs) == 0 {
+		response.OkWithMessage(c, "batch_delete_success")
+	} else if successCount > 0 {
+		response.OkWithData(c, gin.H{
+			"success_count": successCount,
+			"failed_count":  len(failedMsgs),
+			"failed_msgs":   failedMsgs,
+		})
+	} else {
+		response.Fail(c, "删除失败")
+	}
+}
+
 // 修改用户状态
 func (a *UserApi) UpdateUserStatus(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)

@@ -5,6 +5,8 @@
       :data-source="tableData"
       :loading="loading"
       :pagination="pagination"
+      row-key="id"
+      :row-selection="{ selectedRowKeys, onChange: onSelectChange }"
       @search="handleSearch"
       @reset="handleReset"
       @change="handleTableChange"
@@ -31,9 +33,15 @@
 
       <!-- 工具栏 -->
       <template #toolbar>
-        <a-button type="primary" @click="handleAdd" v-permission="'system:user:add'">
-          <PlusOutlined /> 新增
-        </a-button>
+        <a-space>
+          <a-button type="primary" @click="handleAdd" v-permission="'system:user:add'">
+            <PlusOutlined /> 新增
+          </a-button>
+          <a-button type="primary" danger :disabled="selectedRowKeys.length === 0" @click="handleBatchDelete" v-permission="'system:user:delete'">
+            <DeleteOutlined /> 批量删除
+            <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
+          </a-button>
+        </a-space>
       </template>
 
       <!-- 表格单元格 -->
@@ -186,10 +194,10 @@ import { ref, reactive, onMounted } from 'vue'
 import { message, Modal, type FormInstance } from 'ant-design-vue'
 import { ExclamationCircleOutlined } from '@ant-design/icons-vue'
 import { createVNode } from 'vue'
-import { PlusOutlined, UserOutlined, DownOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined, UserOutlined, DownOutlined, DeleteOutlined } from '@ant-design/icons-vue'
 import AvatarUpload from '@/components/AvatarUpload.vue'
 import ProTable from '@/components/ProTable.vue'
-import { getUserList, createUser, updateUser, deleteUser, updateUserStatus, resetPassword, forceUserOffline, getUserProfilesById, type UserProfile } from '@/api/user'
+import { getUserList, createUser, updateUser, deleteUser, batchDeleteUsers, updateUserStatus, resetPassword, forceUserOffline, getUserProfilesById, type UserProfile } from '@/api/user'
 import { getRoleList } from '@/api/role'
 import { formatTime } from '@/utils/format'
 import { useTableColumns } from '@/utils/permission'
@@ -203,6 +211,7 @@ const modalVisible = ref(false)
 const modalTitle = ref('新增用户')
 const isEdit = ref(false)
 const currentId = ref(0)
+const selectedRowKeys = ref<number[]>([])
 
 // 用户身份弹窗
 const profilesVisible = ref(false)
@@ -427,6 +436,40 @@ const confirmDelete = (record: User) => {
       try {
         await deleteUser(record.id)
         message.success('删除成功')
+        fetchData()
+      } catch {
+        // 错误已由 request 拦截器处理
+      }
+    }
+  })
+}
+
+const onSelectChange = (keys: number[]) => {
+  selectedRowKeys.value = keys
+}
+
+// 批量删除用户
+const handleBatchDelete = () => {
+  if (selectedRowKeys.value.length === 0) {
+    message.warning('请选择要删除的用户')
+    return
+  }
+  Modal.confirm({
+    title: '确认批量删除',
+    icon: createVNode(ExclamationCircleOutlined),
+    content: `确定要删除选中的 ${selectedRowKeys.value.length} 个用户吗？`,
+    okText: '删除',
+    okType: 'danger',
+    cancelText: '取消',
+    async onOk() {
+      try {
+        const res = await batchDeleteUsers(selectedRowKeys.value)
+        if (res.data?.failed_count > 0) {
+          message.warning(`成功删除 ${res.data.success_count} 个，失败 ${res.data.failed_count} 个`)
+        } else {
+          message.success('批量删除成功')
+        }
+        selectedRowKeys.value = []
         fetchData()
       } catch {
         // 错误已由 request 拦截器处理

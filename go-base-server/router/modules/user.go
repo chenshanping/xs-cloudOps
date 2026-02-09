@@ -43,6 +43,7 @@ func (m *UserModule) RegisterPrivateRoutes(rg *gin.RouterGroup) {
 	R(rg, "PUT", "/users/:id", m.Name(), "更新用户", v1.User.UpdateUser,
 		registry.WithAuth(), registry.WithRequest(request.UpdateUserRequest{}))
 	R(rg, "DELETE", "/users/:id", m.Name(), "删除用户", v1.User.DeleteUser, registry.WithAuth())
+	R(rg, "DELETE", "/users/batch", m.Name(), "批量删除用户", v1.User.BatchDeleteUsers, registry.WithAuth())
 	R(rg, "PUT", "/users/:id/status", m.Name(), "修改用户状态", v1.User.UpdateUserStatus, registry.WithAuth())
 	R(rg, "PUT", "/users/:id/password", m.Name(), "重置密码", v1.User.ResetPassword,
 		registry.WithAuth(), registry.WithRequest(request.ResetPasswordRequest{}))

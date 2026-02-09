@@ -11,7 +11,7 @@
             <a-input v-model:value="formData.sys_name" placeholder="请输入系统名称" />
           </a-form-item>
           
-          <a-form-item label="系统arLogo">
+          <a-form-item label="系统Logo">
             <ImageUpload 
               v-model="formData.sys_logo" 
               :width="120" 

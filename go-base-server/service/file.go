@@ -18,7 +18,7 @@ type FileService struct{}
 var File = new(FileService)
 
 // GetFileList 获取文件列表
-func (s *FileService) GetFileList(page, pageSize int, name, ext string) ([]model.SysFile, int64, error) {
+func (s *FileService) GetFileList(page, pageSize int, name, ext string, storageID uint) ([]model.SysFile, int64, error) {
 	var files []model.SysFile
 	var total int64
 
@@ -35,6 +35,9 @@ func (s *FileService) GetFileList(page, pageSize int, name, ext string) ([]model
 		} else {
 			db = db.Where("ext IN ?", exts)
 		}
+	}
+	if storageID > 0 {
+		db = db.Where("storage_id = ?", storageID)
 	}
 
 	db.Count(&total)
@@ -98,6 +101,22 @@ func (s *FileService) DeleteFile(id uint) error {
 
 	// 软删除数据库记录
 	return global.DB.Model(&model.SysFile{}).Where("id = ?", id).Update("status", 0).Error
+}
+
+// BatchDeleteFiles 批量删除文件
+func (s *FileService) BatchDeleteFiles(ids []uint) (int, []string) {
+	var successCount int
+	var failedMsgs []string
+
+	for _, id := range ids {
+		if err := s.DeleteFile(id); err != nil {
+			failedMsgs = append(failedMsgs, fmt.Sprintf("ID %d: %s", id, err.Error()))
+		} else {
+			successCount++
+		}
+	}
+
+	return successCount, failedMsgs
 }
 
 // GenerateFilePath 生成文件存储路径

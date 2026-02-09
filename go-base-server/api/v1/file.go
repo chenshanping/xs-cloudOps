@@ -21,8 +21,9 @@ func (a *FileApi) GetFileList(c *gin.Context) {
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
 	name := c.Query("name")
 	ext := c.Query("ext")
+	storageID, _ := strconv.ParseUint(c.Query("storage_id"), 10, 32)
 
-	files, total, err := service.File.GetFileList(page, pageSize, name, ext)
+	files, total, err := service.File.GetFileList(page, pageSize, name, ext, uint(storageID))
 	if err != nil {
 		response.Fail(c, "获取文件列表失败")
 		return
@@ -49,6 +50,36 @@ func (a *FileApi) DeleteFile(c *gin.Context) {
 		return
 	}
 	response.OkWithMessage(c, "删除成功")
+}
+
+// BatchDeleteFiles 批量删除文件
+func (a *FileApi) BatchDeleteFiles(c *gin.Context) {
+	var req struct {
+		Ids []uint `json:"ids" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	if len(req.Ids) == 0 {
+		response.BadRequest(c, "请选择要删除的文件")
+		return
+	}
+
+	successCount, failedMsgs := service.File.BatchDeleteFiles(req.Ids)
+
+	if len(failedMsgs) == 0 {
+		response.OkWithMessage(c, "batch_delete_success")
+	} else if successCount > 0 {
+		response.OkWithData(c, gin.H{
+			"success_count": successCount,
+			"failed_count":  len(failedMsgs),
+			"failed_msgs":   failedMsgs,
+		})
+	} else {
+		response.Fail(c, "删除失败")
+	}
 }
 
 // GetUploadCredential 获取上传凭证

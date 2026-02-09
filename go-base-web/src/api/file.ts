@@ -3,7 +3,7 @@ import type { FileInfo, UploadCredential, InitMultipartUploadResponse, Part } fr
 import type { PageResponse } from '@/types'
 
 // 获取文件列表
-export function getFileList(params: { page: number; page_size: number; name?: string; ext?: string }) {
+export function getFileList(params: { page: number; page_size: number; name?: string; ext?: string; storage_id?: number }) {
   return request.get<PageResponse<FileInfo>>('/files', { params })
 }
 
@@ -15,6 +15,11 @@ export function getFile(id: number) {
 // 删除文件
 export function deleteFile(id: number) {
   return request.delete(`/files/${id}`)
+}
+
+// 批量删除文件
+export function batchDeleteFiles(ids: number[]) {
+  return request.delete('/files/batch', { data: { ids } })
 }
 
 // 获取上传凭证

@@ -32,6 +32,11 @@ export function deleteUser(id: number) {
   return request.delete<any, ApiResponse>(`/users/${id}`)
 }
 
+// 批量删除用户
+export function batchDeleteUsers(ids: number[]) {
+  return request.delete<any, ApiResponse>('/users/batch', { data: { ids } })
+}
+
 // 修改用户状态
 export function updateUserStatus(id: number, status: number) {
   return request.put<any, ApiResponse>(`/users/${id}/status`, { status })
