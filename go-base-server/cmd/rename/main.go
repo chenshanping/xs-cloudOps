@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-const oldModuleName = "ecoBreed-server"
+const oldModuleName = "go-base"
 
 func main() {
 	newName := flag.String("name", "", "新模块名称")
