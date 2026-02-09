@@ -159,8 +159,13 @@ export function deleteModule(moduleName: string) {
   return request.delete<any, ApiResponse>(`/generator/modules/${moduleName}`)
 }
 
-// 保存配置
+// 保存配置（有id则更新，无id则新增）
 export function saveConfig(config: GeneratorConfig) {
+  if (config.id) {
+    // 更新
+    return request.put<any, ApiResponse<SavedConfig>>(`/generator/configs/${config.id}`, config)
+  }
+  // 新增
   return request.post<any, ApiResponse<SavedConfig>>('/generator/configs', config)
 }
 

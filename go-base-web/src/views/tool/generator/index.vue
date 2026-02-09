@@ -36,6 +36,7 @@
               <a-button type="link" size="small" @click="handleEdit(record)">编辑</a-button>
               <a-button type="link" size="small" @click="handleCopy(record)">复制</a-button>
               <a-button type="link" size="small" @click="handleExportConfigJSON(record)">导出JSON</a-button>
+              <a-button type="link" size="small" @click="handleShowERDiagram(record)"><ApartmentOutlined /> E-R图</a-button>
               <a-button type="link" size="small" @click="handlePreviewFromConfig(record)">预览</a-button>
               <a-button 
                 type="link" 
@@ -752,6 +753,16 @@
       />
     </a-modal>
 
+    <!-- E-R图抽屉 -->
+    <a-drawer
+      v-model:open="erDiagramVisible"
+      title="📊 概念模型 E-R 图"
+      placement="bottom"
+      :height="'85vh'"
+    >
+      <ERDiagram :entities="erEntities" :relations="erRelations" style="height: calc(85vh - 100px)" />
+    </a-drawer>
+
     <!-- 变更指南弹窗 -->
     <a-modal v-model:open="changeGuideVisible" title="变更指南" width="1000px" :footer="null">
       <a-tabs v-model:activeKey="changeGuideTab" tab-position="left" style="min-height: 400px">
@@ -789,7 +800,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { message } from 'ant-design-vue'
-import { PlusOutlined, ReloadOutlined, QuestionCircleOutlined, CopyOutlined, ImportOutlined, CodeOutlined, ExportOutlined, PlusCircleOutlined, HolderOutlined, DiffOutlined, CheckCircleOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined, ReloadOutlined, QuestionCircleOutlined, CopyOutlined, ImportOutlined, CodeOutlined, ExportOutlined, PlusCircleOutlined, HolderOutlined, DiffOutlined, CheckCircleOutlined, ApartmentOutlined } from '@ant-design/icons-vue'
 import {
   previewCode,
   generateCode,
@@ -814,6 +825,7 @@ import { getRoleList } from '@/api/role'
 import { getAllDictTypes, type DictType } from '@/api/dict'
 import IconSelect from '@/components/IconSelect.vue'
 import SvgIcon from '@/components/SvgIcon.vue'
+import ERDiagram from '@/components/ERDiagram.vue'
 import type { Menu, Role } from '@/types'
 
 // 常用 Ant Design 图标列表
@@ -885,6 +897,23 @@ const optionsCodeService = ref('')
 const optionsCodeApi = ref('')
 const optionsCodeRouter = ref('')
 const optionsCodeFrontend = ref('')
+
+// E-R图
+const erDiagramVisible = ref(false)
+interface EREntity {
+  name: string
+  comment: string
+  columns: { name: string; comment: string; isPrimary?: boolean }[]
+}
+interface ERRelation {
+  name: string
+  from: string
+  to: string
+  fromCardinality: string
+  toCardinality: string
+}
+const erEntities = ref<EREntity[]>([])
+const erRelations = ref<ERRelation[]>([])
 
 // 变更指南
 const changeGuideVisible = ref(false)
@@ -1894,6 +1923,114 @@ const handleExportConfigJSON = async (record: SavedConfig) => {
     message.success(`配置 "${record.module_name}" 已复制到剪贴板`)
   } catch {
     message.error('导出失败')
+  }
+}
+
+// 显示E-R图
+const handleShowERDiagram = (record: SavedConfig) => {
+  try {
+    const parsed = JSON.parse(record.config_json) as GeneratorConfig
+    
+    // 构建实体列表
+    const entity: EREntity = {
+      name: parsed.table_name,
+      comment: parsed.description || parsed.module_name,
+      columns: parsed.columns.map(col => ({
+        name: col.column_name,
+        comment: col.comment || col.column_name,
+        isPrimary: col.is_primary_key || col.column_name === 'id'
+      }))
+    }
+    
+    // 收集所有实体（包含关联表）
+    const entityMap = new Map<string, EREntity>()
+    entityMap.set(parsed.table_name, entity)
+    
+    // 构建关联列表
+    const relationList: ERRelation[] = []
+    
+    if (parsed.relations && parsed.relations.length > 0) {
+      parsed.relations.forEach(rel => {
+        // 添加关联表作为实体
+        if (rel.related_table && !entityMap.has(rel.related_table)) {
+          // 尝试从已保存的配置中获取关联表的完整字段
+          const relatedConfig = savedConfigs.value.find(c => c.table_name === rel.related_table)
+          let relatedColumns: { name: string; comment: string; isPrimary?: boolean }[] = []
+          
+          if (relatedConfig) {
+            // 从已保存配置中获取完整字段
+            try {
+              const relatedParsed = JSON.parse(relatedConfig.config_json) as GeneratorConfig
+              relatedColumns = relatedParsed.columns.map(col => ({
+                name: col.column_name,
+                comment: col.comment || col.column_name,
+                isPrimary: col.is_primary_key || col.column_name === 'id'
+              }))
+            } catch {
+              // 解析失败，使用默认字段
+            }
+          }
+          
+          // 如果没有找到配置，使用默认字段
+          if (relatedColumns.length === 0) {
+            relatedColumns = [
+              { name: 'id', comment: 'ID', isPrimary: true },
+              { name: rel.display_field || 'name', comment: rel.display_field || '名称', isPrimary: false }
+            ]
+          }
+          
+          entityMap.set(rel.related_table, {
+            name: rel.related_table,
+            comment: rel.comment || relatedConfig?.description || rel.related_model || rel.related_table,
+            columns: relatedColumns
+          })
+        }
+        
+        // 根据关联类型确定基数和关系名称
+        let fromCard = '1'
+        let toCard = 'n'
+        let relationName = '关联'
+        
+        switch (rel.relation_type) {
+          case 'belongsTo':
+            // 属于：本表多对一
+            fromCard = 'n'
+            toCard = '1'
+            relationName = '属于'
+            break
+          case 'hasMany':
+            // 一对多：本表一对多
+            fromCard = '1'
+            toCard = 'n'
+            relationName = '包含'
+            break
+          case 'many2many':
+            // 多对多
+            fromCard = 'm'
+            toCard = 'n'
+            relationName = '关联'
+            break
+        }
+        
+        // 获取关联表的显示名称
+        const relatedEntityName = rel.comment || rel.related_model || rel.related_table
+        
+        relationList.push({
+          name: relationName,
+          from: parsed.description || parsed.module_name,
+          to: relatedEntityName,
+          fromCardinality: fromCard,
+          toCardinality: toCard
+        })
+      })
+    }
+    
+    erEntities.value = Array.from(entityMap.values())
+    erRelations.value = relationList
+    erDiagramVisible.value = true
+  } catch (e) {
+    console.error('E-R图生成失败:', e)
+    message.error('配置解析失败')
   }
 }
 

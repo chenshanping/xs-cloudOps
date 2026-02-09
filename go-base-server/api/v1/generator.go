@@ -1,6 +1,8 @@
 package v1
 
 import (
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 
 	"go-base-server/generator"
@@ -95,19 +97,50 @@ func (a *GeneratorApi) GetGeneratedModules(c *gin.Context) {
 	response.OkWithData(c, modules)
 }
 
-// SaveConfig 保存配置（不生成代码）
+// SaveConfig 新增配置（不生成代码）
 func (a *GeneratorApi) SaveConfig(c *gin.Context) {
 	var config generator.GeneratorConfig
 	if err := c.ShouldBindJSON(&config); err != nil {
 		response.BadRequest(c, "参数错误")
 		return
 	}
+	// 新增时确保ID为0
+	config.ID = 0
 
 	if _, err := service.Generator.SaveConfig(&config); err != nil {
 		response.Fail(c, "保存失败: "+err.Error())
 		return
 	}
 	response.OkWithMessage(c, "保存成功")
+}
+
+// UpdateConfig 更新配置（不生成代码）
+func (a *GeneratorApi) UpdateConfig(c *gin.Context) {
+	idStr := c.Param("id")
+	if idStr == "" {
+		response.BadRequest(c, "ID不能为空")
+		return
+	}
+
+	var config generator.GeneratorConfig
+	if err := c.ShouldBindJSON(&config); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	// 从 URL 获取 ID
+	var id uint
+	if _, err := fmt.Sscanf(idStr, "%d", &id); err != nil || id == 0 {
+		response.BadRequest(c, "ID无效")
+		return
+	}
+	config.ID = id
+
+	if _, err := service.Generator.SaveConfig(&config); err != nil {
+		response.Fail(c, "更新失败: "+err.Error())
+		return
+	}
+	response.OkWithMessage(c, "更新成功")
 }
 
 // GetConfigs 获取已保存的配置列表

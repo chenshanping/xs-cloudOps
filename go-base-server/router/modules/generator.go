@@ -29,7 +29,8 @@ func (m *GeneratorModule) RegisterPrivateRoutes(rg *gin.RouterGroup) {
 	R(rg, "GET", "/generator/modules", m.Name(), "获取已生成模块", v1.GeneratorAPI.GetGeneratedModules, registry.WithAuth())
 	R(rg, "DELETE", "/generator/modules/:name", m.Name(), "删除已生成模块", v1.GeneratorAPI.DeleteModule, registry.WithAuth())
 	// 配置保存/获取/删除
-	R(rg, "POST", "/generator/configs", m.Name(), "保存配置", v1.GeneratorAPI.SaveConfig, registry.WithAuth())
+	R(rg, "POST", "/generator/configs", m.Name(), "新增配置", v1.GeneratorAPI.SaveConfig, registry.WithAuth())
+	R(rg, "PUT", "/generator/configs/:id", m.Name(), "更新配置", v1.GeneratorAPI.UpdateConfig, registry.WithAuth())
 	R(rg, "GET", "/generator/configs", m.Name(), "获取配置列表", v1.GeneratorAPI.GetConfigs, registry.WithAuth())
 	R(rg, "GET", "/generator/configs/:id", m.Name(), "获取配置详情", v1.GeneratorAPI.GetConfig, registry.WithAuth())
 	R(rg, "DELETE", "/generator/configs/:id", m.Name(), "删除配置", v1.GeneratorAPI.DeleteConfig, registry.WithAuth())

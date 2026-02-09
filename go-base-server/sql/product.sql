@@ -1,0 +1,12 @@
+-- 产品信息 建表SQL
+-- 生成时间: 2026-02-10 03:05:15
+-- 模块: product
+
+CREATE TABLE IF NOT EXISTS `product` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `type_id` INT UNSIGNED NULL COMMENT '类型id',
+  `name` VARCHAR(255) NULL COMMENT '产品名称',
+  `created_at` DATETIME NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='产品信息';
