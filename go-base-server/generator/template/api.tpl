@@ -227,6 +227,36 @@ func (a *{{.ModelName}}Api) GetFrontend{{.ModelName}}(c *gin.Context) {
 	response.OkWithData(c, data)
 }
 {{- end}}
+{{- if .HasStats}}
+
+// Get{{.ModelName}}GroupStats 获取{{.Description}}分组统计
+func (a *{{.ModelName}}Api) Get{{.ModelName}}GroupStats(c *gin.Context) {
+	data, err := service.{{.ModelName}}.Get{{.ModelName}}GroupStats()
+	if err != nil {
+		response.Fail(c, "获取统计数据失败")
+		return
+	}
+	response.OkWithData(c, data)
+}
+{{- if .StatsTimeColumn}}
+
+// Get{{.ModelName}}TrendStats 获取{{.Description}}趋势统计
+func (a *{{.ModelName}}Api) Get{{.ModelName}}TrendStats(c *gin.Context) {
+	days := 30 // 默认统计30天
+	if d := c.Query("days"); d != "" {
+		if parsed, err := strconv.Atoi(d); err == nil && parsed > 0 {
+			days = parsed
+		}
+	}
+	data, err := service.{{.ModelName}}.Get{{.ModelName}}TrendStats(days)
+	if err != nil {
+		response.Fail(c, "获取趋势数据失败")
+		return
+	}
+	response.OkWithData(c, data)
+}
+{{- end}}
+{{- end}}
 {{- if .LinkToUser}}
 
 // GetMy{{.ModelName}} 获取当前用户的{{.Description}}信息

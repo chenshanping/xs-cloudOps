@@ -454,6 +454,12 @@
                   </a-select-option>
                 </a-select>
               </template>
+              <template v-if="column.key === 'related_module'">
+                <a-tooltip>
+                  <template #title>关联模块的 API 文件名，留空则使用表名</template>
+                  <a-input v-model:value="record.related_module" size="small" placeholder="留空=表名" style="width: 110px" />
+                </a-tooltip>
+              </template>
               <template v-if="column.key === 'foreign_key'">
                 <a-input v-model:value="record.foreign_key" size="small" placeholder="外键字段" />
               </template>
@@ -473,6 +479,9 @@
               </template>
               <template v-if="column.key === 'comment'">
                 <a-input v-model:value="record.comment" size="small" placeholder="自动获取" />
+              </template>
+              <template v-if="column.key === 'is_required'">
+                <a-checkbox v-model:checked="record.is_required" :disabled="record.relation_type === 'hasMany'" />
               </template>
               <template v-if="column.key === 'join_table'">
                 <a-input v-model:value="record.join_table" size="small" placeholder="中间表" :disabled="record.relation_type !== 'many2many'" />
@@ -544,6 +553,122 @@
                 根据父菜单和模块名自动生成：{{ autoPermission || '请先选择父菜单和填写模块名称' }}
               </div>
             </a-form-item>
+          </a-form>
+        </a-tab-pane>
+
+        <!-- Tab 5: 统计配置 -->
+        <a-tab-pane key="5" tab="📊 统计图表">
+          <a-alert type="info" show-icon style="margin-bottom: 16px">
+            <template #message>配置后将自动生成统计接口和 ECharts 图表组件</template>
+          </a-alert>
+          <a-form :label-col="{ span: 4 }" :wrapper-col="{ span: 18 }">
+            <a-form-item label="启用统计">
+              <a-switch v-model:checked="statsConfig.enabled" />
+            </a-form-item>
+            <template v-if="statsConfig.enabled">
+              <a-form-item label="分组字段">
+                <a-select
+                  v-model:value="statsConfig.group_field"
+                  placeholder="选择用于分组统计的字段"
+                  allow-clear
+                  show-search
+                  style="width: 300px"
+                >
+                  <a-select-option 
+                    v-for="col in statsGroupableColumns" 
+                    :key="col.column_name" 
+                    :value="col.column_name"
+                  >
+                    {{ col.column_name }}
+                    <span v-if="col.comment" style="color: #999"> ({{ col.comment }})</span>
+                  </a-select-option>
+                </a-select>
+                <a-tooltip>
+                  <template #title>
+                    <div>适合分组的字段：</div>
+                    <div>• 分类字段（如 category_id）</div>
+                    <div>• 状态字段（如 status）</div>
+                    <div>• 类型字段（如 type）</div>
+                  </template>
+                  <QuestionCircleOutlined style="margin-left: 8px; color: #999" />
+                </a-tooltip>
+              </a-form-item>
+              <a-form-item v-if="statsConfig.group_field" label="显示字段">
+                <a-input 
+                  v-model:value="statsConfig.group_display" 
+                  placeholder="如 Category.Name，用于显示分组名称"
+                  style="width: 300px"
+                />
+                <span style="margin-left: 8px; color: #999; font-size: 12px">
+                  如果分组字段是外键，填写关联表的显示字段
+                </span>
+              </a-form-item>
+              <a-form-item label="求和字段">
+                <a-select
+                  v-model:value="statsConfig.sum_field"
+                  placeholder="可选，选择需要求和的数值字段"
+                  allow-clear
+                  style="width: 300px"
+                >
+                  <a-select-option 
+                    v-for="col in statsNumericColumns" 
+                    :key="col.column_name" 
+                    :value="col.column_name"
+                  >
+                    {{ col.column_name }}
+                    <span v-if="col.comment" style="color: #999"> ({{ col.comment }})</span>
+                  </a-select-option>
+                </a-select>
+                <span style="margin-left: 8px; color: #999; font-size: 12px">
+                  不选则默认统计数量(COUNT)
+                </span>
+              </a-form-item>
+              <a-form-item label="时间字段">
+                <a-select
+                  v-model:value="statsConfig.time_field"
+                  placeholder="可选，用于生成时间趋势图"
+                  allow-clear
+                  style="width: 300px"
+                >
+                  <a-select-option value="created_at">created_at (创建时间)</a-select-option>
+                  <a-select-option value="updated_at">updated_at (更新时间)</a-select-option>
+                  <a-select-option 
+                    v-for="col in statsTimeColumns" 
+                    :key="col.column_name" 
+                    :value="col.column_name"
+                  >
+                    {{ col.column_name }}
+                    <span v-if="col.comment" style="color: #999"> ({{ col.comment }})</span>
+                  </a-select-option>
+                </a-select>
+              </a-form-item>
+              <a-form-item label="图表类型">
+                <a-checkbox-group v-model:value="statsConfig.chart_types">
+                  <a-checkbox value="pie">🥧 饼图</a-checkbox>
+                  <a-checkbox value="bar">📊 柱状图</a-checkbox>
+                  <a-checkbox value="line" :disabled="!statsConfig.time_field">📈 折线图（需选时间字段）</a-checkbox>
+                </a-checkbox-group>
+              </a-form-item>
+              <a-form-item label="生成预览">
+                <a-card size="small" style="background: #fafafa">
+                  <div style="color: #666; font-size: 13px">
+                    <div v-if="statsConfig.group_field">
+                      <strong>分组统计接口:</strong> 
+                      <code>GET /{{ config.module_name }}/stats/group</code>
+                      <span style="margin-left: 8px">按 {{ statsConfig.group_field }} 分组{{ statsConfig.sum_field ? '求和 ' + statsConfig.sum_field : '计数' }}</span>
+                    </div>
+                    <div v-if="statsConfig.time_field" style="margin-top: 8px">
+                      <strong>时间趋势接口:</strong> 
+                      <code>GET /{{ config.module_name }}/stats/trend</code>
+                      <span style="margin-left: 8px">按 {{ statsConfig.time_field }} 统计趋势</span>
+                    </div>
+                    <div v-if="!statsConfig.group_field && !statsConfig.time_field" style="color: #999">
+                      请至少配置一个分组字段或时间字段
+                    </div>
+                  </div>
+                </a-card>
+              </a-form-item>
+            </template>
           </a-form>
         </a-tab-pane>
       </a-tabs>
@@ -1033,6 +1158,44 @@ const menuConfig = reactive({
   permission: ''
 })
 
+// 统计配置
+const statsConfig = reactive({
+  enabled: false,
+  group_field: '',
+  group_display: '',
+  sum_field: '',
+  time_field: '',
+  chart_types: ['pie', 'bar'] as string[]
+})
+
+// 可用于分组的字段（外键、状态、类型等）
+const statsGroupableColumns = computed(() => {
+  return config.columns.filter(col => 
+    col.column_name.endsWith('_id') || 
+    col.column_name === 'status' || 
+    col.column_name === 'type' ||
+    col.form_type === 'select'
+  )
+})
+
+// 数值类型字段（可用于求和）
+const statsNumericColumns = computed(() => {
+  return config.columns.filter(col => 
+    ['int', 'int64', 'uint', 'float64'].includes(col.field_type) &&
+    !col.column_name.endsWith('_id') &&
+    col.column_name !== 'id'
+  )
+})
+
+// 时间类型字段
+const statsTimeColumns = computed(() => {
+  return config.columns.filter(col => 
+    col.field_type === 'time.Time' || 
+    col.form_type === 'date' || 
+    col.form_type === 'datetime'
+  )
+})
+
 // 当启用 link_to_user 时，自动将菜单父级设为 system(1)
 watch(() => config.link_to_user, (newVal) => {
   if (newVal && menuConfig.parent_id === 0) {
@@ -1134,9 +1297,11 @@ const columnTableColumns = [
 const relationColumns = [
   { title: '关联类型', key: 'relation_type', width: 160 },
   { title: '关联表', key: 'related_table', width: 140 },
+  { title: '模块名', key: 'related_module', width: 120 },
   { title: '外键字段', key: 'foreign_key', width: 120 },
   { title: '显示字段', key: 'display_field', width: 100 },
   { title: '注释', key: 'comment', width: 100 },
+  { title: '必填', key: 'is_required', width: 50 },
   { title: '中间表', key: 'join_table', width: 120 },
   { title: '轻量接口', key: 'use_options_api', width: 100 },
   { title: '左树右表', key: 'use_tree_layout', width: 80 },
@@ -1315,12 +1480,14 @@ const addRelation = () => {
   config.relations.push({
     relation_type: 'belongsTo',
     related_table: '',
+    related_module: '',
     related_model: '',
     foreign_key: '',
     reference_key: 'ID',
     join_table: '',
     display_field: 'name',
     comment: '',
+    is_required: false,
     use_options_api: true,
     use_tree_layout: false
   })
@@ -1795,9 +1962,10 @@ const resetConfig = () => {
     created_by_profile_table: '', created_by_profile_field: '',
     data_isolation: false, admin_role_ids: '', has_audit: false, generate_frontend_api: false,
     link_to_user: false, profile_name: '', profile_icon: '', profile_role_code: '',
-    columns: [], relations: [], menu_config: null
+    columns: [], relations: [], menu_config: null, stats_config: null
   })
   Object.assign(menuConfig, { parent_id: 0, menu_name: '', menu_icon: '', menu_sort: 0, permission: '' })
+  Object.assign(statsConfig, { enabled: false, group_field: '', group_display: '', sum_field: '', time_field: '', chart_types: ['pie', 'bar'] })
 }
 
 // 新增配置
@@ -1823,6 +1991,12 @@ const handleEdit = async (record: SavedConfig) => {
       Object.assign(menuConfig, parsed.menu_config)
     } else {
       Object.assign(menuConfig, { parent_id: 0, menu_name: '', menu_icon: '', menu_sort: 0, permission: '' })
+    }
+    // 加载统计配置
+    if (parsed.stats_config) {
+      Object.assign(statsConfig, parsed.stats_config)
+    } else {
+      Object.assign(statsConfig, { enabled: false, group_field: '', group_display: '', sum_field: '', time_field: '', chart_types: ['pie', 'bar'] })
     }
     // 预加载关联表字段
     await preloadRelationColumns(parsed.relations)
@@ -1858,6 +2032,12 @@ const handleCopy = async (record: SavedConfig) => {
     } else {
       Object.assign(menuConfig, { parent_id: 0, menu_name: '', menu_icon: '', menu_sort: 0, permission: '' })
     }
+    // 加载统计配置
+    if (parsed.stats_config) {
+      Object.assign(statsConfig, parsed.stats_config)
+    } else {
+      Object.assign(statsConfig, { enabled: false, group_field: '', group_display: '', sum_field: '', time_field: '', chart_types: ['pie', 'bar'] })
+    }
     // 预加载关联表字段
     await preloadRelationColumns(parsed.relations)
     drawerTitle.value = '新增配置(复制)'
@@ -1877,7 +2057,8 @@ const buildConfig = (): GeneratorConfig => {
   })
   return {
     ...config,
-    menu_config: menuConfig.menu_name ? menuConfig : null
+    menu_config: menuConfig.menu_name ? menuConfig : null,
+    stats_config: statsConfig.enabled ? { ...statsConfig } : null
   }
 }
 

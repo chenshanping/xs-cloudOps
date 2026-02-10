@@ -474,6 +474,13 @@ const formRules = computed<Record<string, Rule[]>>(() => ({
 {{- end}}
 {{- end}}
 {{- end}}
+{{- range .Relations}}
+{{- if and .IsRequired (eq .RelationType "belongsTo")}}
+  {{.ForeignKeyJson}}: [{ required: true, message: '请选择{{.Comment}}', trigger: 'change', type: 'number' }],
+{{- else if and .IsRequired (eq .RelationType "many2many")}}
+  {{.JsonName}}_ids: [{ required: true, message: '请选择{{.Comment}}', trigger: 'change', type: 'array' }],
+{{- end}}
+{{- end}}
 }))
 {{- else}}
 const formRules: Record<string, Rule[]> = {
@@ -492,6 +499,13 @@ const formRules: Record<string, Rule[]> = {
 {{- else if ne .FormType "switch"}}
   {{.JsonName}}: [{ required: true, message: '请输入{{.Comment}}', trigger: 'blur' }],
 {{- end}}
+{{- end}}
+{{- end}}
+{{- range .Relations}}
+{{- if and .IsRequired (eq .RelationType "belongsTo")}}
+  {{.ForeignKeyJson}}: [{ required: true, message: '请选择{{.Comment}}', trigger: 'change', type: 'number' }],
+{{- else if and .IsRequired (eq .RelationType "many2many")}}
+  {{.JsonName}}_ids: [{ required: true, message: '请选择{{.Comment}}', trigger: 'change', type: 'array' }],
 {{- end}}
 {{- end}}
 }

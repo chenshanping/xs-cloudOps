@@ -1,5 +1,15 @@
 package generator
 
+// StatsConfig 统计配置
+type StatsConfig struct {
+	Enabled      bool     `json:"enabled"`       // 是否启用统计
+	GroupField   string   `json:"group_field"`   // 分组字段（如 category_id, status）
+	GroupDisplay string   `json:"group_display"` // 分组显示字段（用于显示名称，如 Category.Name）
+	SumField     string   `json:"sum_field"`     // 求和字段（可选，如 price, amount）
+	TimeField    string   `json:"time_field"`    // 时间字段（用于趋势统计，如 created_at）
+	ChartTypes   []string `json:"chart_types"`   // 图表类型: pie/bar/line
+}
+
 // GeneratorConfig 代码生成器配置
 type GeneratorConfig struct {
 	ID               uint             `json:"id,omitempty"`      // 配置ID（编辑时传递）
@@ -14,6 +24,7 @@ type GeneratorConfig struct {
 	Columns          []ColumnConfig   `json:"columns"`           // 字段配置
 	Relations        []RelationConfig `json:"relations"`         // 关联关系配置
 	MenuConfig       *MenuConfig      `json:"menu_config"`       // 菜单配置
+	StatsConfig      *StatsConfig     `json:"stats_config"`      // 统计配置
 	// 时间字段开关（用于决定是否在模型中包含这些字段）
 	HasCreatedAt bool `json:"has_created_at"`
 	HasUpdatedAt bool `json:"has_updated_at"`
@@ -84,12 +95,14 @@ type SwitchValue struct {
 type RelationConfig struct {
 	RelationType  string `json:"relation_type"`   // 关联类型: hasOne, hasMany, belongsTo, many2many
 	RelatedTable  string `json:"related_table"`   // 关联表名
+	RelatedModule string `json:"related_module"`  // 关联模块名（用于 API import，留空则使用表名）
 	RelatedModel  string `json:"related_model"`   // 关联模型名称
 	ForeignKey    string `json:"foreign_key"`     // 外键字段
 	ReferenceKey  string `json:"reference_key"`   // 引用字段
 	JoinTable     string `json:"join_table"`      // 中间表(多对多时使用)
 	DisplayField  string `json:"display_field"`   // 显示字段(如name)，用于下拉框和表格显示
 	Comment       string `json:"comment"`         // 关联字段注释（如"产品类型"）
+	IsRequired    bool   `json:"is_required"`     // 是否必填
 	UseOptionsApi bool   `json:"use_options_api"` // 使用轻量options接口（返回id,name,count）而非分页列表
 	UseTreeLayout bool   `json:"use_tree_layout"` // 使用左树右表布局（仅belongsTo生效）
 }

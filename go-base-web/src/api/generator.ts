@@ -51,12 +51,14 @@ export interface ColumnConfig {
 export interface RelationConfig {
   relation_type: string
   related_table: string
+  related_module: string // 关联模块名（用于 API import，留空则使用表名）
   related_model: string
   foreign_key: string
   reference_key: string
   join_table: string
   display_field: string
   comment: string
+  is_required: boolean   // 是否必填
   use_options_api: boolean // 使用轻量options接口（返回id,name,count）
   use_tree_layout: boolean // 使用左树右表布局
 }
@@ -68,6 +70,16 @@ export interface MenuConfig {
   menu_icon: string
   menu_sort: number
   permission: string
+}
+
+// 统计配置
+export interface StatsConfig {
+  enabled: boolean           // 是否启用统计
+  group_field: string        // 分组字段（如 category_id, status）
+  group_display: string      // 分组显示字段（用于显示名称，如 Category.Name）
+  sum_field: string          // 求和字段（可选，如 price, amount）
+  time_field: string         // 时间字段（用于趋势统计，如 created_at）
+  chart_types: string[]      // 图表类型: pie/bar/line
 }
 
 // 生成器配置
@@ -104,6 +116,7 @@ export interface GeneratorConfig {
   columns: ColumnConfig[]
   relations: RelationConfig[]
   menu_config: MenuConfig | null
+  stats_config?: StatsConfig | null  // 统计配置
 }
 
 // 生成的文件

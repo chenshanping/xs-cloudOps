@@ -53,4 +53,11 @@ func (m *{{.ModelName}}Module) RegisterPrivateRoutes(rg *gin.RouterGroup) {
 	R(rg, "POST", "/{{.RoutePath}}/my", m.Name(), "保存我的{{.Description}}", v1.{{.ModelName}}.SaveMy{{.ModelName}},
 		registry.WithAuth(), registry.WithRequest(request.SaveMy{{.ModelName}}Request{}))
 {{- end}}
+{{- if .HasStats}}
+	// 统计接口
+	R(rg, "GET", "/{{.RoutePath}}/stats/group", m.Name(), "{{.Description}}分组统计", v1.{{.ModelName}}.Get{{.ModelName}}GroupStats, registry.WithAuth())
+{{- if .StatsTimeColumn}}
+	R(rg, "GET", "/{{.RoutePath}}/stats/trend", m.Name(), "{{.Description}}趋势统计", v1.{{.ModelName}}.Get{{.ModelName}}TrendStats, registry.WithAuth())
+{{- end}}
+{{- end}}
 }

@@ -11,12 +11,18 @@ type ProductListRequest struct {
 // CreateProductRequest 创建产品信息请求
 type CreateProductRequest struct {
 	Name string `json:"name" comment:"产品名称"`
+	Num int `json:"num" comment:"产品数量"`
+	Price float64 `json:"price" comment:"产品单价"`
+	Status string `json:"status" comment:"状态"`
 	TypeId uint `json:"type_id" comment:"产品分类ID"`
 }
 
 // UpdateProductRequest 更新产品信息请求
 type UpdateProductRequest struct {
 	Name string `json:"name" comment:"产品名称"`
+	Num int `json:"num" comment:"产品数量"`
+	Price float64 `json:"price" comment:"产品单价"`
+	Status string `json:"status" comment:"状态"`
 	TypeId uint `json:"type_id" comment:"产品分类ID"`
 }
 

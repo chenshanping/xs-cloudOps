@@ -82,12 +82,23 @@ type TemplateData struct {
 	ProfileName     string // 身份显示名称
 	ProfileIcon     string // 身份图标
 	ProfileRoleCode string // 身份限定角色编码
+	// 统计配置
+	HasStats         bool   // 是否启用统计功能
+	StatsGroupField  string // 分组字段
+	StatsGroupColumn string // 分组字段（数据库列名）
+	StatsGroupDisplay string // 分组显示字段
+	StatsSumField    string // 求和字段
+	StatsSumColumn   string // 求和字段（数据库列名）
+	StatsTimeField   string // 时间字段
+	StatsTimeColumn  string // 时间字段（数据库列名）
+	StatsChartTypes  []string // 图表类型
 }
 
 // RelationTemplateData 关联关系模板数据
 type RelationTemplateData struct {
 	RelationType   string
 	RelatedTable   string
+	RelatedModule  string // 关联模块名（用于 API import 路径）
 	RelatedModel   string
 	FieldName      string
 	JsonName       string
@@ -97,6 +108,7 @@ type RelationTemplateData struct {
 	JoinTable      string
 	DisplayField   string // 显示字段（如name）
 	Comment        string // 关联注释（如"产品类型"）
+	IsRequired     bool   // 是否必填
 	UseOptionsApi  bool   // 使用轻量options接口
 	UseTreeLayout  bool   // 使用左树右表布局
 }
@@ -261,9 +273,16 @@ func (g *Generator) buildTemplateData() *TemplateData {
 			comment = rel.RelatedTable
 		}
 
-		relData := RelationTemplateData{
+		// 关联模块名：优先使用配置的 RelatedModule，否则使用表名
+		relatedModule := rel.RelatedModule
+		if relatedModule == "" {
+			relatedModule = rel.RelatedTable
+		}
+
+	relData := RelationTemplateData{
 			RelationType:   rel.RelationType,
 			RelatedTable:   rel.RelatedTable,
+			RelatedModule:  relatedModule,
 			RelatedModel:   ToPascalCase(rel.RelatedTable),
 			FieldName:      fieldName,
 			JsonName:       ToSnakeCase(fieldName),
@@ -273,6 +292,7 @@ func (g *Generator) buildTemplateData() *TemplateData {
 			JoinTable:      rel.JoinTable,
 			DisplayField:   displayField,
 			Comment:        comment,
+			IsRequired:     rel.IsRequired,
 			UseOptionsApi:  rel.UseOptionsApi,
 			UseTreeLayout:  rel.UseTreeLayout,
 		}
@@ -376,6 +396,16 @@ func (g *Generator) buildTemplateData() *TemplateData {
 		ProfileName:     profileName,
 		ProfileIcon:     g.Config.ProfileIcon,
 		ProfileRoleCode: profileRoleCode,
+		// 统计配置
+		HasStats:          g.Config.StatsConfig != nil && g.Config.StatsConfig.Enabled,
+		StatsGroupField:   g.getStatsField("group_field"),
+		StatsGroupColumn:  g.getStatsColumn("group_field"),
+		StatsGroupDisplay: g.getStatsGroupDisplay(),
+		StatsSumField:     g.getStatsField("sum_field"),
+		StatsSumColumn:    g.getStatsColumn("sum_field"),
+		StatsTimeField:    g.getStatsField("time_field"),
+		StatsTimeColumn:   g.getStatsColumn("time_field"),
+		StatsChartTypes:   g.getStatsChartTypes(),
 	}
 }
 
@@ -540,6 +570,19 @@ func (g *Generator) generateFrontendCode(data *TemplateData) ([]GeneratedFile, e
 		Type:    "frontend",
 	})
 
+	// 统计组件（仅在启用统计时生成）
+	if data.HasStats {
+		content, err = g.renderTemplate("frontend_stats.tpl", data)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, GeneratedFile{
+			Path:    filepath.Join(g.WebPath, "src", "views", viewPath, "components", data.ModelName+"Stats.vue"),
+			Content: content,
+			Type:    "frontend",
+		})
+	}
+
 	// LinkToUser 功能不再生成单独的 my 页面，身份信息已合并到个人中心
 
 	return files, nil
@@ -556,6 +599,7 @@ func (g *Generator) renderTemplate(name string, data interface{}) (string, error
 	funcMap := template.FuncMap{
 		"ToPascalCase": ToPascalCase,
 		"ToSnakeCase":  ToSnakeCase,
+		"TrimSuffix":   strings.TrimSuffix,
 	}
 
 	tmpl, err := template.New(name).Funcs(funcMap).Parse(string(content))
@@ -756,4 +800,52 @@ func GetGeneratedModules(serverPath string) ([]string, error) {
 	}
 
 	return modules, nil
+}
+
+// getStatsField 获取统计字段名（大驼峰形式）
+func (g *Generator) getStatsField(fieldType string) string {
+	if g.Config.StatsConfig == nil || !g.Config.StatsConfig.Enabled {
+		return ""
+	}
+	switch fieldType {
+	case "group_field":
+		return ToPascalCase(g.Config.StatsConfig.GroupField)
+	case "sum_field":
+		return ToPascalCase(g.Config.StatsConfig.SumField)
+	case "time_field":
+		return ToPascalCase(g.Config.StatsConfig.TimeField)
+	}
+	return ""
+}
+
+// getStatsColumn 获取统计字段名（数据库列名）
+func (g *Generator) getStatsColumn(fieldType string) string {
+	if g.Config.StatsConfig == nil || !g.Config.StatsConfig.Enabled {
+		return ""
+	}
+	switch fieldType {
+	case "group_field":
+		return g.Config.StatsConfig.GroupField
+	case "sum_field":
+		return g.Config.StatsConfig.SumField
+	case "time_field":
+		return g.Config.StatsConfig.TimeField
+	}
+	return ""
+}
+
+// getStatsGroupDisplay 获取分组显示字段
+func (g *Generator) getStatsGroupDisplay() string {
+	if g.Config.StatsConfig == nil || !g.Config.StatsConfig.Enabled {
+		return ""
+	}
+	return g.Config.StatsConfig.GroupDisplay
+}
+
+// getStatsChartTypes 获取图表类型列表
+func (g *Generator) getStatsChartTypes() []string {
+	if g.Config.StatsConfig == nil || !g.Config.StatsConfig.Enabled {
+		return nil
+	}
+	return g.Config.StatsConfig.ChartTypes
 }

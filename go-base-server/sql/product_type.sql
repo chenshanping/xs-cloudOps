@@ -1,6 +1,6 @@
 -- 产品类型 建表SQL
--- 生成时间: 2026-02-10 23:11:15
--- 模块: productType
+-- 生成时间: 2026-02-10 22:34:58
+-- 模块: product_type
 
 CREATE TABLE IF NOT EXISTS `product_type` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',

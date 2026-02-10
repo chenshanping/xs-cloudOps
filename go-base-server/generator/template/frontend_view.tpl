@@ -1,8 +1,13 @@
 <template>
+  <div class="{{.ModuleName}}-page">
+{{- if .HasStats}}
+    <!-- 统计图表 -->
+    <{{.ModelName}}Stats ref="statsRef" />
+{{- end}}
 {{- if .HasTreeLayout}}
-  <div class="{{.ModuleName}}-page tree-table-layout">
-    <!-- 左侧分类树 -->
-    <div class="category-tree-panel">
+    <div class="tree-table-layout">
+      <!-- 左侧分组树 -->
+      <div class="category-tree-panel">
       <div class="tree-header">
         <span class="tree-title"><FolderOutlined /> {{range .Relations}}{{if .UseTreeLayout}}{{.Comment}}{{end}}{{end}}</span>
       </div>
@@ -29,12 +34,10 @@
             <span class="item-count">{{"{{"}} item.count || 0 {{"}}"}}</span>
           </div>
         </div>
-      </a-spin>
-    </div>
-    <!-- 右侧表格 -->
-    <div class="table-panel">
-{{- else}}
-  <div class="{{.ModuleName}}-page">
+        </a-spin>
+      </div>
+      <!-- 右侧表格 -->
+      <div class="table-panel">
 {{- end}}
     <ProTable
       :columns="columns"
@@ -237,6 +240,7 @@
       </template>
     </ProTable>
 {{- if .HasTreeLayout}}
+      </div>
     </div>
 {{- end}}
 
@@ -327,13 +331,16 @@ import FilePreview from '@/components/FilePreview.vue'
 import AuditModal from '@/components/AuditModal.vue'
 {{- end}}
 import {{.ModelName}}Form from './components/{{.ModelName}}Form.vue'
+{{- if .HasStats}}
+import {{.ModelName}}Stats from './components/{{.ModelName}}Stats.vue'
+{{- end}}
 import { get{{.ModelName}}List, delete{{.ModelName}}, batchDelete{{.ModelName}}{{if .HasCreatedBy}}, get{{.ModelName}}CreatorOptions{{end}}{{if .HasAudit}}, audit{{.ModelName}}{{end}} } from '@/api/{{.ModuleName}}'
 {{- range .Relations}}
 {{- if or (eq .RelationType "belongsTo") (eq .RelationType "many2many")}}
 {{- if .UseOptionsApi}}
-import { get{{.RelatedModel}}Options } from '@/api/{{.RelatedTable}}'
+import { get{{.RelatedModel}}Options } from '@/api/{{.RelatedModule}}'
 {{- else}}
-import { get{{.RelatedModel}}List } from '@/api/{{.RelatedTable}}'
+import { get{{.RelatedModel}}List } from '@/api/{{.RelatedModule}}'
 {{- end}}
 {{- end}}
 {{- end}}
@@ -357,6 +364,9 @@ const tableData = ref<{{.ModelName}}[]>([])
 const drawerVisible = ref(false)
 const currentRecord = ref<{{.ModelName}} | null>(null)
 const selectedRowKeys = ref<number[]>([])
+{{- if .HasStats}}
+const statsRef = ref<InstanceType<typeof {{.ModelName}}Stats> | null>(null)
+{{- end}}
 {{- if .HasAudit}}
 // 审批相关
 const auditModalVisible = ref(false)
@@ -649,7 +659,22 @@ const handleTableChange = (pag: any, _filters: any, sorter: any) => {
 }
 
 const handleAdd = () => {
+{{- if .HasTreeLayout}}
+  // 左树右表：新增时传递当前选中的分类
+  if (selectedCategoryId.value) {
+    currentRecord.value = {
+{{- range .Relations}}
+{{- if .UseTreeLayout}}
+      {{.ForeignKeyJson}}: selectedCategoryId.value
+{{- end}}
+{{- end}}
+    } as any
+  } else {
+    currentRecord.value = null
+  }
+{{- else}}
   currentRecord.value = null
+{{- end}}
   drawerVisible.value = true
 }
 
@@ -674,6 +699,9 @@ const handleFormSuccess = () => {
 {{- end}}
 {{- if .HasCreatedBy}}
   fetchCreatorOptions() // 刷新创建人选项
+{{- end}}
+{{- if .HasStats}}
+  statsRef.value?.refresh() // 刷新统计图表
 {{- end}}
 }
 

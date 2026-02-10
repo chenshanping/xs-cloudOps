@@ -1,7 +1,7 @@
 // {{.Description}}
 {{- if .Relations}}
 {{- range .Relations}}
-import type { {{.RelatedModel}} } from './{{.RelatedTable}}'
+import type { {{.RelatedModel}} } from './{{.RelatedModule}}'
 {{- end}}
 {{- end}}
 

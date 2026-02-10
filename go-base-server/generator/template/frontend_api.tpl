@@ -62,3 +62,17 @@ export function saveMy{{.ModelName}}(data: SaveMy{{.ModelName}}Request) {
   return request.post<any, ApiResponse>('/{{.RoutePath}}/my', data)
 }
 {{- end}}
+{{- if .HasStats}}
+
+// 获取{{.Description}}分组统计
+export function get{{.ModelName}}GroupStats() {
+  return request.get<any, ApiResponse<{ group_key: any; value: number }[]>>('/{{.RoutePath}}/stats/group')
+}
+{{- if .StatsTimeColumn}}
+
+// 获取{{.Description}}趋势统计
+export function get{{.ModelName}}TrendStats(days?: number) {
+  return request.get<any, ApiResponse<{ date: string; value: number }[]>>('/{{.RoutePath}}/stats/trend', { params: { days } })
+}
+{{- end}}
+{{- end}}

@@ -74,6 +74,9 @@ func (s *ProductService) CreateProduct(req *request.CreateProductRequest, userID
 
 	data := model.Product{
 		Name: req.Name,
+		Num: req.Num,
+		Price: req.Price,
+		Status: req.Status,
 		TypeId: req.TypeId,
 	}
 	return global.DB.Create(&data).Error
@@ -88,6 +91,9 @@ func (s *ProductService) UpdateProduct(id uint, req *request.UpdateProductReques
 
 	updates := map[string]interface{}{
 		"name": req.Name,
+		"num": req.Num,
+		"price": req.Price,
+		"status": req.Status,
 		"type_id": req.TypeId,
 	}
 	return global.DB.Model(&data).Updates(updates).Error

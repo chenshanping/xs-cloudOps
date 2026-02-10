@@ -37,7 +37,7 @@ func (s *EchartService) GetUserRoleStats() ([]ChartItem, error) {
 	err := global.DB.Table("sys_role").
 		Select("sys_role.name as name, COUNT(DISTINCT sys_user_role.sys_user_id) as value").
 		Joins("LEFT JOIN sys_user_role ON sys_role.id = sys_user_role.sys_role_id").
-		Where("sys_role.status = ?", 1).
+		Where("sys_role.status = ? and sys_role.deleted_at is null", 1).
 		Group("sys_role.id, sys_role.name").
 		Order("value DESC").
 		Scan(&result).Error
