@@ -212,7 +212,10 @@ import { message } from 'ant-design-vue'
 import { getRole, assignMenus, assignApis } from '@/api/role'
 import { getMenuTree } from '@/api/menu'
 import { getAllApis } from '@/api/api'
+import { useUserStore } from '@/store/user'
 import type { Menu, Api } from '@/types'
+
+const userStore = useUserStore()
 
 interface Props {
   roleId: number
@@ -479,6 +482,8 @@ const handleSavePermissions = async () => {
     ])
     message.success('权限分配成功')
     visible.value = false
+    // 刷新当前用户的菜单和权限
+    userStore.getUserInfoAction()
   } finally {
     saveLoading.value = false
   }

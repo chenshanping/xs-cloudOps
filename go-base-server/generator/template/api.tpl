@@ -228,21 +228,23 @@ func (a *{{.ModelName}}Api) GetFrontend{{.ModelName}}(c *gin.Context) {
 }
 {{- end}}
 {{- if .HasStats}}
+{{- range $chart := .StatsCharts}}
 
-// Get{{.ModelName}}GroupStats 获取{{.Description}}分组统计
-func (a *{{.ModelName}}Api) Get{{.ModelName}}GroupStats(c *gin.Context) {
-	data, err := service.{{.ModelName}}.Get{{.ModelName}}GroupStats()
+// Get{{$.ModelName}}Stats{{$chart.Field}} 获取{{$.Description}}按{{$chart.Title}}分组统计
+func (a *{{$.ModelName}}Api) Get{{$.ModelName}}Stats{{$chart.Field}}(c *gin.Context) {
+	data, err := service.{{$.ModelName}}.Get{{$.ModelName}}Stats{{$chart.Field}}()
 	if err != nil {
 		response.Fail(c, "获取统计数据失败")
 		return
 	}
 	response.OkWithData(c, data)
 }
-{{- if .StatsTimeColumn}}
+{{- end}}
+{{- if .HasStatsTrend}}
 
 // Get{{.ModelName}}TrendStats 获取{{.Description}}趋势统计
 func (a *{{.ModelName}}Api) Get{{.ModelName}}TrendStats(c *gin.Context) {
-	days := 30 // 默认统计30天
+	days := 30
 	if d := c.Query("days"); d != "" {
 		if parsed, err := strconv.Atoi(d); err == nil && parsed > 0 {
 			days = parsed

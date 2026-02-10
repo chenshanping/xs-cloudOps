@@ -36,3 +36,18 @@ export function batchDeleteProduct(ids: number[]) {
 export function getProductOptions(params?: { display_field?: string; count_table?: string; count_field?: string; exclude_deleted?: boolean; count_created_by?: number }) {
   return request.get<any, ApiResponse<OptionItem[]>>('/product/options', { params })
 }
+
+// 获取产品信息按产品类型分组统计
+export function getProductStatsTypeId() {
+  return request.get<any, ApiResponse<{ group_key: any; name?: string; value: number }[]>>('/product/stats/type_id')
+}
+
+// 获取产品信息按产品状态分组统计
+export function getProductStatsStatus() {
+  return request.get<any, ApiResponse<{ group_key: any; name?: string; value: number }[]>>('/product/stats/status')
+}
+
+// 获取产品信息趋势统计
+export function getProductTrendStats(days?: number) {
+  return request.get<any, ApiResponse<{ date: string; value: number }[]>>('/product/stats/trend', { params: { days } })
+}

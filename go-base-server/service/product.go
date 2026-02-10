@@ -18,6 +18,12 @@ func (s *ProductService) GetProductList(req *request.ProductListRequest) ([]mode
 	var total int64
 
 	db := global.DB.Model(&model.Product{})
+	if req.Name != nil {
+		db = db.Where("name = ?", *req.Name)
+	}
+	if req.Num != nil {
+		db = db.Where("num >= ?", *req.Num)
+	}
 	if req.TypeId != nil {
 		db = db.Where("type_id = ?", *req.TypeId)
 	}
@@ -33,6 +39,7 @@ func (s *ProductService) GetProductList(req *request.ProductListRequest) ([]mode
 		// 前端传入排序
 		allowedFields := map[string]bool{
 			"id": true,
+			"num": true,
 			"created_at": true,
 		}
 		if allowedFields[req.SortField] {
@@ -166,5 +173,45 @@ func (s *ProductService) GetProductOptions(displayField, countTable, countForeig
 		}
 	}
 
+	return results, err
+}
+
+// GetProductStatsTypeId 获取产品信息按产品类型分组统计
+func (s *ProductService) GetProductStatsTypeId() ([]map[string]interface{}, error) {
+	var results []map[string]interface{}
+	err := global.DB.Table("product").
+		Select("type_id as group_key, COUNT(*) as value").
+		Where("deleted_at IS NULL").
+		Group("type_id").
+		Order("value DESC").
+		Find(&results).Error
+	return results, err
+}
+
+// GetProductStatsStatus 获取产品信息按产品状态分组统计
+func (s *ProductService) GetProductStatsStatus() ([]map[string]interface{}, error) {
+	var results []map[string]interface{}
+	err := global.DB.Table("product").
+		Select("status as group_key, COUNT(*) as value").
+		Where("deleted_at IS NULL").
+		Group("status").
+		Order("value DESC").
+		Find(&results).Error
+	return results, err
+}
+
+// GetProductTrendStats 获取产品信息趋势统计
+func (s *ProductService) GetProductTrendStats(days int) ([]map[string]interface{}, error) {
+	var results []map[string]interface{}
+	if days <= 0 {
+		days = 30
+	}
+	err := global.DB.Table("product").
+		Select("DATE(created_at) as date, COUNT(*) as value").
+		Where("created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)", days).
+		Where("deleted_at IS NULL").
+		Group("DATE(created_at)").
+		Order("date ASC").
+		Find(&results).Error
 	return results, err
 }

@@ -139,3 +139,39 @@ func (a *ProductApi) GetProductOptions(c *gin.Context) {
 	}
 	response.OkWithData(c, list)
 }
+
+// GetProductStatsTypeId 获取产品信息按产品类型分组统计
+func (a *ProductApi) GetProductStatsTypeId(c *gin.Context) {
+	data, err := service.Product.GetProductStatsTypeId()
+	if err != nil {
+		response.Fail(c, "获取统计数据失败")
+		return
+	}
+	response.OkWithData(c, data)
+}
+
+// GetProductStatsStatus 获取产品信息按产品状态分组统计
+func (a *ProductApi) GetProductStatsStatus(c *gin.Context) {
+	data, err := service.Product.GetProductStatsStatus()
+	if err != nil {
+		response.Fail(c, "获取统计数据失败")
+		return
+	}
+	response.OkWithData(c, data)
+}
+
+// GetProductTrendStats 获取产品信息趋势统计
+func (a *ProductApi) GetProductTrendStats(c *gin.Context) {
+	days := 30
+	if d := c.Query("days"); d != "" {
+		if parsed, err := strconv.Atoi(d); err == nil && parsed > 0 {
+			days = parsed
+		}
+	}
+	data, err := service.Product.GetProductTrendStats(days)
+	if err != nil {
+		response.Fail(c, "获取趋势数据失败")
+		return
+	}
+	response.OkWithData(c, data)
+}

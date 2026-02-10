@@ -83,15 +83,22 @@ type TemplateData struct {
 	ProfileIcon     string // 身份图标
 	ProfileRoleCode string // 身份限定角色编码
 	// 统计配置
-	HasStats         bool   // 是否启用统计功能
-	StatsGroupField  string // 分组字段
-	StatsGroupColumn string // 分组字段（数据库列名）
-	StatsGroupDisplay string // 分组显示字段
-	StatsSumField    string // 求和字段
-	StatsSumColumn   string // 求和字段（数据库列名）
-	StatsTimeField   string // 时间字段
-	StatsTimeColumn  string // 时间字段（数据库列名）
-	StatsChartTypes  []string // 图表类型
+	HasStats        bool                     // 是否启用统计功能
+	StatsCharts     []StatsChartTemplateData // 多个分组统计图表
+	StatsTimeField  string                   // 时间字段（大驼峰）
+	StatsTimeColumn string                   // 时间字段（数据库列名）
+	HasStatsCharts  bool                     // 是否有分组图表
+	HasStatsTrend   bool                     // 是否有趋势图
+}
+
+// StatsChartTemplateData 统计图表模板数据
+type StatsChartTemplateData struct {
+	Field        string // 字段名（大驼峰）
+	Column       string // 字段名（数据库列名）
+	ChartType    string // 图表类型: pie/bar
+	Title        string // 图表标题
+	DictType     string // 字典类型（用于映射名称）
+	IsForeignKey bool   // 是否为外键字段
 }
 
 // RelationTemplateData 关联关系模板数据
@@ -190,17 +197,12 @@ func (g *Generator) buildTemplateData() *TemplateData {
 	hasEditor := false
 	hasDictSelect := false
 
-	// 收集 belongsTo 关联的外键字段，用于排除
+	// 收集 belongsTo 关联的外键字段（从 columns 中提取有 RelatedTable 的字段）
 	belongsToForeignKeys := make(map[string]bool)
-	for _, rel := range g.Config.Relations {
-		if rel.RelationType == "belongsTo" && rel.ForeignKey != "" {
-			belongsToForeignKeys[rel.ForeignKey] = true
-		}
-	}
-
-	// belongsTo 外键字段类型强制为 uint
 	for i := range g.Config.Columns {
-		if belongsToForeignKeys[g.Config.Columns[i].ColumnName] {
+		if g.Config.Columns[i].RelatedTable != "" {
+			belongsToForeignKeys[g.Config.Columns[i].ColumnName] = true
+			// 外键字段类型强制为 uint
 			g.Config.Columns[i].FieldType = "uint"
 			g.Config.Columns[i].TsType = "number"
 		}
@@ -256,7 +258,53 @@ func (g *Generator) buildTemplateData() *TemplateData {
 	preloads := make([]string, 0)
 	hasMany2Many := false
 
+	// 1. 从 columns 中提取 belongsTo 关联（有 RelatedTable 的字段）
+	for _, col := range g.Config.Columns {
+		if col.RelatedTable == "" {
+			continue
+		}
+		// 这是一个 belongsTo 关联字段
+		fieldName := ToPascalCase(col.RelatedTable)
+		displayField := col.DisplayField
+		if displayField == "" {
+			displayField = "name"
+		}
+		comment := col.Comment
+		if comment == "" {
+			comment = col.RelatedTable
+		}
+		relatedModule := col.RelatedModule
+		if relatedModule == "" {
+			relatedModule = col.RelatedTable
+		}
+
+		relData := RelationTemplateData{
+			RelationType:   "belongsTo",
+			RelatedTable:   col.RelatedTable,
+			RelatedModule:  relatedModule,
+			RelatedModel:   ToPascalCase(col.RelatedTable),
+			FieldName:      fieldName,
+			JsonName:       ToSnakeCase(fieldName),
+			ForeignKey:     col.ColumnName,
+			ForeignKeyJson: col.JsonName,
+			ReferenceKey:   "ID",
+			JoinTable:      "",
+			DisplayField:   displayField,
+			Comment:        comment,
+			IsRequired:     col.IsRequired,
+			UseOptionsApi:  col.UseOptionsApi,
+			UseTreeLayout:  col.UseTreeLayout,
+		}
+		relations = append(relations, relData)
+		preloads = append(preloads, fieldName)
+	}
+
+	// 2. 从 relations 中提取 hasMany 和 many2many 关联
 	for _, rel := range g.Config.Relations {
+		// 跳过 belongsTo，已经从 columns 中提取
+		if rel.RelationType == "belongsTo" {
+			continue
+		}
 		fieldName := ToPascalCase(rel.RelatedTable)
 		if rel.RelationType == "hasMany" || rel.RelationType == "many2many" {
 			fieldName = fieldName + "s" // 复数形式
@@ -279,7 +327,7 @@ func (g *Generator) buildTemplateData() *TemplateData {
 			relatedModule = rel.RelatedTable
 		}
 
-	relData := RelationTemplateData{
+		relData := RelationTemplateData{
 			RelationType:   rel.RelationType,
 			RelatedTable:   rel.RelatedTable,
 			RelatedModule:  relatedModule,
@@ -397,15 +445,12 @@ func (g *Generator) buildTemplateData() *TemplateData {
 		ProfileIcon:     g.Config.ProfileIcon,
 		ProfileRoleCode: profileRoleCode,
 		// 统计配置
-		HasStats:          g.Config.StatsConfig != nil && g.Config.StatsConfig.Enabled,
-		StatsGroupField:   g.getStatsField("group_field"),
-		StatsGroupColumn:  g.getStatsColumn("group_field"),
-		StatsGroupDisplay: g.getStatsGroupDisplay(),
-		StatsSumField:     g.getStatsField("sum_field"),
-		StatsSumColumn:    g.getStatsColumn("sum_field"),
-		StatsTimeField:    g.getStatsField("time_field"),
-		StatsTimeColumn:   g.getStatsColumn("time_field"),
-		StatsChartTypes:   g.getStatsChartTypes(),
+		HasStats:        g.Config.StatsConfig != nil && g.Config.StatsConfig.Enabled,
+		StatsCharts:     g.buildStatsCharts(),
+		StatsTimeField:  g.getStatsTimeField(),
+		StatsTimeColumn: g.getStatsTimeColumn(),
+		HasStatsCharts:  g.hasStatsCharts(),
+		HasStatsTrend:   g.hasStatsTrend(),
 	}
 }
 
@@ -802,50 +847,80 @@ func GetGeneratedModules(serverPath string) ([]string, error) {
 	return modules, nil
 }
 
-// getStatsField 获取统计字段名（大驼峰形式）
-func (g *Generator) getStatsField(fieldType string) string {
-	if g.Config.StatsConfig == nil || !g.Config.StatsConfig.Enabled {
-		return ""
-	}
-	switch fieldType {
-	case "group_field":
-		return ToPascalCase(g.Config.StatsConfig.GroupField)
-	case "sum_field":
-		return ToPascalCase(g.Config.StatsConfig.SumField)
-	case "time_field":
-		return ToPascalCase(g.Config.StatsConfig.TimeField)
-	}
-	return ""
-}
-
-// getStatsColumn 获取统计字段名（数据库列名）
-func (g *Generator) getStatsColumn(fieldType string) string {
-	if g.Config.StatsConfig == nil || !g.Config.StatsConfig.Enabled {
-		return ""
-	}
-	switch fieldType {
-	case "group_field":
-		return g.Config.StatsConfig.GroupField
-	case "sum_field":
-		return g.Config.StatsConfig.SumField
-	case "time_field":
-		return g.Config.StatsConfig.TimeField
-	}
-	return ""
-}
-
-// getStatsGroupDisplay 获取分组显示字段
-func (g *Generator) getStatsGroupDisplay() string {
-	if g.Config.StatsConfig == nil || !g.Config.StatsConfig.Enabled {
-		return ""
-	}
-	return g.Config.StatsConfig.GroupDisplay
-}
-
-// getStatsChartTypes 获取图表类型列表
-func (g *Generator) getStatsChartTypes() []string {
+// buildStatsCharts 构建统计图表模板数据
+func (g *Generator) buildStatsCharts() []StatsChartTemplateData {
 	if g.Config.StatsConfig == nil || !g.Config.StatsConfig.Enabled {
 		return nil
 	}
-	return g.Config.StatsConfig.ChartTypes
+	charts := make([]StatsChartTemplateData, 0, len(g.Config.StatsConfig.Charts))
+	for _, chart := range g.Config.StatsConfig.Charts {
+		if chart.Field == "" {
+			continue
+		}
+		title := chart.Title
+		dictType := ""
+		isForeignKey := false
+		
+		// 查找对应的字段配置
+		for _, col := range g.Config.Columns {
+			if col.ColumnName == chart.Field {
+				if title == "" {
+					title = col.Comment
+				}
+				dictType = col.DictType
+				isForeignKey = col.RelatedTable != ""
+				break
+			}
+		}
+		if title == "" {
+			title = chart.Field
+		}
+		
+		charts = append(charts, StatsChartTemplateData{
+			Field:        ToPascalCase(chart.Field),
+			Column:       chart.Field,
+			ChartType:    chart.ChartType,
+			Title:        title,
+			DictType:     dictType,
+			IsForeignKey: isForeignKey,
+		})
+	}
+	return charts
+}
+
+// getStatsTimeField 获取时间字段（大驼峰）
+func (g *Generator) getStatsTimeField() string {
+	if g.Config.StatsConfig == nil || !g.Config.StatsConfig.Enabled || g.Config.StatsConfig.TimeField == "" {
+		return ""
+	}
+	return ToPascalCase(g.Config.StatsConfig.TimeField)
+}
+
+// getStatsTimeColumn 获取时间字段（数据库列名）
+func (g *Generator) getStatsTimeColumn() string {
+	if g.Config.StatsConfig == nil || !g.Config.StatsConfig.Enabled {
+		return ""
+	}
+	return g.Config.StatsConfig.TimeField
+}
+
+// hasStatsCharts 是否有分组图表
+func (g *Generator) hasStatsCharts() bool {
+	if g.Config.StatsConfig == nil || !g.Config.StatsConfig.Enabled {
+		return false
+	}
+	for _, chart := range g.Config.StatsConfig.Charts {
+		if chart.Field != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// hasStatsTrend 是否有趋势图
+func (g *Generator) hasStatsTrend() bool {
+	if g.Config.StatsConfig == nil || !g.Config.StatsConfig.Enabled {
+		return false
+	}
+	return g.Config.StatsConfig.TimeField != ""
 }

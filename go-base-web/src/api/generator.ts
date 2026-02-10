@@ -45,6 +45,12 @@ export interface ColumnConfig {
   dict_type: string
   select_options: SelectOption[]
   switch_values: SwitchValue | null
+  // belongsTo 关联配置（仅外键字段使用，如 category_id）
+  related_table: string    // 关联表名（如 category）
+  related_module: string   // 关联模块名（用于 API import，留空则使用表名）
+  display_field: string    // 显示字段（如 name）
+  use_options_api: boolean // 使用轻量options接口
+  use_tree_layout: boolean // 左树右表布局
 }
 
 // 关联配置
@@ -72,14 +78,18 @@ export interface MenuConfig {
   permission: string
 }
 
+// 单个统计图表配置
+export interface StatsChartConfig {
+  field: string      // 分组字段（如 category_id, status）
+  chart_type: string // 图表类型: pie/bar
+  title: string      // 图表标题（可选，默认使用字段注释）
+}
+
 // 统计配置
 export interface StatsConfig {
-  enabled: boolean           // 是否启用统计
-  group_field: string        // 分组字段（如 category_id, status）
-  group_display: string      // 分组显示字段（用于显示名称，如 Category.Name）
-  sum_field: string          // 求和字段（可选，如 price, amount）
-  time_field: string         // 时间字段（用于趋势统计，如 created_at）
-  chart_types: string[]      // 图表类型: pie/bar/line
+  enabled: boolean             // 是否启用统计
+  charts: StatsChartConfig[]   // 多个分组统计图表
+  time_field: string           // 时间字段（用于趋势统计，如 created_at）
 }
 
 // 生成器配置

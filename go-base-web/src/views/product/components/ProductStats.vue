@@ -1,36 +1,45 @@
 <template>
   <div class="stats-container">
     <a-row :gutter="16">
-{{- range $i, $chart := .StatsCharts}}
-      <a-col :span="12" {{if gt $i 1}}style="margin-top: 16px"{{end}}>
-        <a-card title="{{$chart.Title}}" size="small">
-          <a-spin :spinning="chartLoading['{{$chart.Column}}']">
-            <template v-if="chartData['{{$chart.Column}}']?.length > 0">
+      <a-col :span="12" >
+        <a-card title="产品类型" size="small">
+          <a-spin :spinning="chartLoading['type_id']">
+            <template v-if="chartData['type_id']?.length > 0">
               <BaseChart
-                type="{{$chart.ChartType}}"
-                :data="chartData['{{$chart.Column}}']"
+                type="pie"
+                :data="chartData['type_id']"
                 :loading="false"
                 height="300px"
-{{- if eq $chart.ChartType "pie"}}
                 name-field="name"
                 value-field="value"
-{{- else}}
-                x-field="name"
-                y-field="value"
-{{- end}}
               />
             </template>
             <a-empty v-else description="暂无数据" style="height: 300px; display: flex; flex-direction: column; justify-content: center" />
           </a-spin>
         </a-card>
       </a-col>
-{{- end}}
-{{- if .HasStatsTrend}}
+      <a-col :span="12" >
+        <a-card title="产品状态" size="small">
+          <a-spin :spinning="chartLoading['status']">
+            <template v-if="chartData['status']?.length > 0">
+              <BaseChart
+                type="bar"
+                :data="chartData['status']"
+                :loading="false"
+                height="300px"
+                x-field="name"
+                y-field="value"
+              />
+            </template>
+            <a-empty v-else description="暂无数据" style="height: 300px; display: flex; flex-direction: column; justify-content: center" />
+          </a-spin>
+        </a-card>
+      </a-col>
       <a-col :span="24" style="margin-top: 16px">
         <a-card size="small">
           <template #title>
             <a-space>
-              <span>{{.Description}}趋势统计</span>
+              <span>产品信息趋势统计</span>
               <a-radio-group v-model:value="trendDays" size="small" @change="fetchTrendStats">
                 <a-radio-button :value="7">近7天</a-radio-button>
                 <a-radio-button :value="30">近30天</a-radio-button>
@@ -53,7 +62,6 @@
           </a-spin>
         </a-card>
       </a-col>
-{{- end}}
     </a-row>
   </div>
 </template>
@@ -61,112 +69,95 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import BaseChart from '@/components/BaseChart.vue'
-{{- if or .HasStatsCharts .HasStatsTrend}}
-import { {{range $i, $chart := .StatsCharts}}{{if gt $i 0}}, {{end}}get{{$.ModelName}}Stats{{$chart.Field}}{{end}}{{if and .HasStatsCharts .HasStatsTrend}}, {{end}}{{if .HasStatsTrend}}get{{.ModelName}}TrendStats{{end}} } from '@/api/{{.ModuleName}}'
-{{- end}}
-{{- range $rel := .Relations}}
-{{- if eq $rel.RelationType "belongsTo"}}
-{{- range $chart := $.StatsCharts}}
-{{- if and $chart.IsForeignKey (eq $chart.Column $rel.ForeignKeyJson)}}
-import { get{{$rel.RelatedModel}}Options } from '@/api/{{$rel.RelatedModule}}'
-{{- end}}
-{{- end}}
-{{- end}}
-{{- end}}
-{{- $hasDictChart := false}}
-{{- range $chart := .StatsCharts}}
-{{- if $chart.DictType}}
-{{- $hasDictChart = true}}
-{{- end}}
-{{- end}}
-{{- if $hasDictChart}}
+import { getProductStatsTypeId, getProductStatsStatus, getProductTrendStats } from '@/api/product'
+import { getProductTypeOptions } from '@/api/productType'
 import { getDictDataByType } from '@/api/dict'
-{{- end}}
 
 // 各分组图表数据
 const chartData = reactive<Record<string, { name: string; value: number }[]>>({
-{{- range $chart := .StatsCharts}}
-  '{{$chart.Column}}': [],
-{{- end}}
+  'type_id': [],
+  'status': [],
 })
 const chartLoading = reactive<Record<string, boolean>>({
-{{- range $chart := .StatsCharts}}
-  '{{$chart.Column}}': false,
-{{- end}}
+  'type_id': false,
+  'status': false,
 })
-{{- if .HasStatsTrend}}
 
 // 趋势统计数据
 const trendData = ref<{ date: string; value: number }[]>([])
 const trendLoading = ref(false)
 const trendDays = ref(30)
-{{- end}}
 
 // 分组名称映射（用于外键字段和字典字段）
 const nameMap = reactive<Record<string, Record<string, string>>>({})
 
 // 获取分组名称映射
 const fetchNameMaps = async () => {
-{{- range $rel := .Relations}}
-{{- if eq $rel.RelationType "belongsTo"}}
-{{- range $chart := $.StatsCharts}}
-{{- if and $chart.IsForeignKey (eq $chart.Column $rel.ForeignKeyJson)}}
-  // 获取{{$chart.Title}}关联表名称
+  // 获取产品类型关联表名称
   try {
-    const res = await get{{$rel.RelatedModel}}Options({ display_field: '{{$rel.DisplayField}}' })
+    const res = await getProductTypeOptions({ display_field: 'name' })
     const map: Record<string, string> = {}
     res.data?.forEach((item: any) => {
       map[item.id] = item.name
     })
-    nameMap['{{$chart.Column}}'] = map
+    nameMap['type_id'] = map
   } catch (e) {
-    console.error('获取{{$chart.Column}}分组名称失败', e)
+    console.error('获取type_id分组名称失败', e)
   }
-{{- end}}
-{{- end}}
-{{- end}}
-{{- end}}
-{{- range $chart := .StatsCharts}}
-{{- if $chart.DictType}}
-  // 获取{{$chart.Title}}字典名称
+  // 获取产品状态字典名称
   try {
-    const res = await getDictDataByType('{{$chart.DictType}}')
+    const res = await getDictDataByType('common_status')
     const map: Record<string, string> = {}
     res.data?.forEach((item: any) => {
       map[item.value] = item.label
     })
-    nameMap['{{$chart.Column}}'] = map
+    nameMap['status'] = map
   } catch (e) {
-    console.error('获取{{$chart.Column}}字典名称失败', e)
+    console.error('获取status字典名称失败', e)
   }
-{{- end}}
-{{- end}}
 }
-{{range $chart := .StatsCharts}}
-// 获取{{$chart.Title}}统计数据
-const fetchStats{{$chart.Field}} = async () => {
-  chartLoading['{{$chart.Column}}'] = true
+
+// 获取产品类型统计数据
+const fetchStatsTypeId = async () => {
+  chartLoading['type_id'] = true
   try {
-    const res = await get{{$.ModelName}}Stats{{$chart.Field}}()
+    const res = await getProductStatsTypeId()
     const data = res.data || []
-    const map = nameMap['{{$chart.Column}}'] || {}
-    chartData['{{$chart.Column}}'] = data.map((item: any) => ({
+    const map = nameMap['type_id'] || {}
+    chartData['type_id'] = data.map((item: any) => ({
       name: map[item.group_key] || item.name || `ID:${item.group_key}`,
       value: Number(item.value)
     }))
   } catch (e) {
-    console.error('获取{{$chart.Title}}统计失败', e)
+    console.error('获取产品类型统计失败', e)
   } finally {
-    chartLoading['{{$chart.Column}}'] = false
+    chartLoading['type_id'] = false
   }
 }
-{{end}}
-{{- if .HasStatsTrend}}
+
+// 获取产品状态统计数据
+const fetchStatsStatus = async () => {
+  chartLoading['status'] = true
+  try {
+    const res = await getProductStatsStatus()
+    const data = res.data || []
+    const map = nameMap['status'] || {}
+    chartData['status'] = data.map((item: any) => ({
+      name: map[item.group_key] || item.name || `ID:${item.group_key}`,
+      value: Number(item.value)
+    }))
+  } catch (e) {
+    console.error('获取产品状态统计失败', e)
+  } finally {
+    chartLoading['status'] = false
+  }
+}
+
 // 获取趋势统计数据
 const fetchTrendStats = async () => {
   trendLoading.value = true
   try {
-    const res = await get{{.ModelName}}TrendStats(trendDays.value)
+    const res = await getProductTrendStats(trendDays.value)
     // 格式化日期显示
     trendData.value = (res.data || []).map((item: any) => ({
       ...item,
@@ -178,18 +169,14 @@ const fetchTrendStats = async () => {
     trendLoading.value = false
   }
 }
-{{- end}}
 
 // 暴露刷新方法供父组件调用
 defineExpose({
   refresh: async () => {
     await fetchNameMaps()
-{{- range $chart := .StatsCharts}}
-    fetchStats{{$chart.Field}}()
-{{- end}}
-{{- if .HasStatsTrend}}
+    fetchStatsTypeId()
+    fetchStatsStatus()
     fetchTrendStats()
-{{- end}}
   }
 })
 </script>

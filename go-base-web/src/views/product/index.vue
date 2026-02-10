@@ -4,7 +4,7 @@
       <!-- 左侧分组树 -->
       <div class="category-tree-panel">
       <div class="tree-header">
-        <span class="tree-title"><FolderOutlined /> 产品分类</span>
+        <span class="tree-title"><FolderOutlined /> 产品类型</span>
       </div>
       <a-spin :spinning="treeLoading">
         <div class="tree-content">
@@ -46,6 +46,14 @@
       @search="handleSearch"
       @reset="handleReset"
     >
+      <template #search>
+        <a-form-item label="产品名称">
+          <a-input v-model:value="searchForm.name" placeholder="请输入产品名称" allowClear style="width: 200px" />
+        </a-form-item>
+        <a-form-item label="产品数量">
+          <a-input v-model:value="searchForm.num" placeholder="请输入产品数量" allowClear style="width: 200px" />
+        </a-form-item>
+      </template>
 
       <template #toolbar>
         <a-space>
@@ -53,6 +61,7 @@
           <a-button danger :disabled="selectedRowKeys.length === 0" @click="confirmBatchDelete" v-permission="'product:delete'">
             <DeleteOutlined /> 批量删除 {{ selectedRowKeys.length > 0 ? `(${selectedRowKeys.length})` : '' }}
           </a-button>
+          <a-button @click="openStatsModal"><BarChartOutlined /> 统计图表</a-button>
         </a-space>
       </template>
 
@@ -87,15 +96,25 @@
     <a-modal v-model:open="textModalVisible" :title="textModalTitle" :footer="null" width="600px">
       <div class="text-content">{{ textModalContent }}</div>
     </a-modal>
+    <!-- 统计图表抽屉 -->
+    <a-drawer
+      v-model:open="statsModalVisible"
+      title="📊 产品信息统计图表"
+      placement="right"
+      width="80%"
+    >
+      <ProductStats ref="statsRef" />
+    </a-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, createVNode } from 'vue'
 import { message, Modal } from 'ant-design-vue'
-import { PlusOutlined, DeleteOutlined, ExclamationCircleOutlined, FolderOutlined, AppstoreOutlined, TagOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined, DeleteOutlined, ExclamationCircleOutlined, FolderOutlined, AppstoreOutlined, TagOutlined, BarChartOutlined } from '@ant-design/icons-vue'
 import ProTable from '@/components/ProTable.vue'
 import ProductForm from './components/ProductForm.vue'
+import ProductStats from './components/ProductStats.vue'
 import { getProductList, deleteProduct, batchDeleteProduct } from '@/api/product'
 import { getProductTypeOptions } from '@/api/productType'
 import { formatTime } from '@/utils/format'
@@ -108,6 +127,16 @@ const tableData = ref<Product[]>([])
 const drawerVisible = ref(false)
 const currentRecord = ref<Product | null>(null)
 const selectedRowKeys = ref<number[]>([])
+const statsRef = ref<InstanceType<typeof ProductStats> | null>(null)
+const statsModalVisible = ref(false)
+
+const openStatsModal = () => {
+  statsModalVisible.value = true
+  // 延迟刷新，等待抽屉打开后再加载数据
+  setTimeout(() => {
+    statsRef.value?.refresh()
+  }, 100)
+}
 
 // 左树右表相关
 const treeLoading = ref(false)
@@ -159,6 +188,8 @@ const filterOption = (input: string, option: any) => {
 }
 
 const searchForm = reactive({
+  name: undefined as string | undefined,
+  num: undefined as number | undefined,
   type_id: undefined as number | undefined,
 })
 
@@ -177,10 +208,10 @@ const pagination = reactive({
 const baseColumns = [
   { title: 'ID', dataIndex: 'id', key: 'id', align: 'center', sorter: true },
   { title: '产品名称', dataIndex: 'name', key: 'name', align: 'center' },
-  { title: '产品数量', dataIndex: 'num', key: 'num', align: 'center' },
+  { title: '产品数量', dataIndex: 'num', key: 'num', align: 'center', sorter: true },
   { title: '产品单价', dataIndex: 'price', key: 'price', align: 'center' },
   { title: '状态', dataIndex: 'status', key: 'status', align: 'center' },
-  { title: '产品分类', dataIndex: 'product_type', key: 'product_type', align: 'center' },
+  { title: '产品类型', dataIndex: 'product_type', key: 'product_type', align: 'center' },
   { title: '创建时间', dataIndex: 'created_at', key: 'created_at', align: 'center', sorter: true },
 ]
 
@@ -215,6 +246,8 @@ const handleSearch = () => {
 }
 
 const handleReset = () => {
+  searchForm.name = undefined
+  searchForm.num = undefined
   searchForm.type_id = undefined
   sortInfo.field = ''
   sortInfo.order = ''
@@ -262,6 +295,7 @@ const handleCopy = (record: Product) => {
 const handleFormSuccess = () => {
   fetchData()
   fetchProductTypeOptions() // 刷新关联选项count
+  statsRef.value?.refresh() // 刷新统计图表
 }
 
 // 确认删除
@@ -316,11 +350,12 @@ const fetchProductTypeOptions = async () => {
     const res = await getProductTypeOptions({
       display_field: 'name',
       count_table: 'product',
-      count_field: 'type_id'
+      count_field: 'type_id',
+      exclude_deleted: true
     })
     product_typeOptions.value = res.data || []
   } catch (e) {
-    console.error('获取产品分类选项失败', e)
+    console.error('获取产品类型选项失败', e)
   }
 }
 

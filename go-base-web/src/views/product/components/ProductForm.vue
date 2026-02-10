@@ -23,8 +23,8 @@
           </a-select-option>
         </a-select>
       </a-form-item>
-      <a-form-item label="产品分类" name="type_id">
-        <a-select v-model:value="formState.type_id" placeholder="请选择产品分类" allow-clear show-search :filter-option="filterOption">
+      <a-form-item label="产品类型" name="type_id">
+        <a-select v-model:value="formState.type_id" placeholder="请选择产品类型" allow-clear show-search :filter-option="filterOption">
           <a-select-option v-for="item in product_typeOptions" :key="item.id" :value="item.id">
             {{ item.name }}{{ item.count !== undefined ? ` (${item.count})` : '' }}
           </a-select-option>
@@ -113,6 +113,7 @@ const formState = reactive(getInitialFormState())
 const formRules: Record<string, Rule[]> = {
   name: [{ required: true, message: '请输入产品名称', trigger: 'blur' }],
   status: [{ required: true, message: '请选择状态', trigger: 'change' }],
+  type_id: [{ required: true, message: '请选择产品类型', trigger: 'change', type: 'number' }],
 }
 
 // 重置表单

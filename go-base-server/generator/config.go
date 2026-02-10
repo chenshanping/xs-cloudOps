@@ -1,13 +1,17 @@
 package generator
 
+// StatsChartConfig 单个统计图表配置
+type StatsChartConfig struct {
+	Field     string `json:"field"`      // 分组字段（如 category_id, status）
+	ChartType string `json:"chart_type"` // 图表类型: pie/bar
+	Title     string `json:"title"`      // 图表标题（可选，默认使用字段注释）
+}
+
 // StatsConfig 统计配置
 type StatsConfig struct {
-	Enabled      bool     `json:"enabled"`       // 是否启用统计
-	GroupField   string   `json:"group_field"`   // 分组字段（如 category_id, status）
-	GroupDisplay string   `json:"group_display"` // 分组显示字段（用于显示名称，如 Category.Name）
-	SumField     string   `json:"sum_field"`     // 求和字段（可选，如 price, amount）
-	TimeField    string   `json:"time_field"`    // 时间字段（用于趋势统计，如 created_at）
-	ChartTypes   []string `json:"chart_types"`   // 图表类型: pie/bar/line
+	Enabled   bool               `json:"enabled"`    // 是否启用统计
+	Charts    []StatsChartConfig `json:"charts"`     // 多个分组统计图表
+	TimeField string             `json:"time_field"` // 时间字段（用于趋势统计，如 created_at）
 }
 
 // GeneratorConfig 代码生成器配置
@@ -75,6 +79,12 @@ type ColumnConfig struct {
 	SelectOptions []SelectOption `json:"select_options"`
 	// 开关值（form_type=switch时使用）
 	SwitchValues *SwitchValue `json:"switch_values"`
+	// belongsTo 关联配置（仅外键字段使用，如 category_id）
+	RelatedTable  string `json:"related_table"`   // 关联表名（如 category）
+	RelatedModule string `json:"related_module"`  // 关联模块名（用于 API import，留空则使用表名）
+	DisplayField  string `json:"display_field"`   // 显示字段（如 name）
+	UseOptionsApi bool   `json:"use_options_api"` // 使用轻量options接口
+	UseTreeLayout bool   `json:"use_tree_layout"` // 左树右表布局
 }
 
 // SelectOption 下拉选项

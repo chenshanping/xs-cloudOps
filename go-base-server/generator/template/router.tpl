@@ -55,8 +55,10 @@ func (m *{{.ModelName}}Module) RegisterPrivateRoutes(rg *gin.RouterGroup) {
 {{- end}}
 {{- if .HasStats}}
 	// 统计接口
-	R(rg, "GET", "/{{.RoutePath}}/stats/group", m.Name(), "{{.Description}}分组统计", v1.{{.ModelName}}.Get{{.ModelName}}GroupStats, registry.WithAuth())
-{{- if .StatsTimeColumn}}
+{{- range $chart := .StatsCharts}}
+	R(rg, "GET", "/{{$.RoutePath}}/stats/{{$chart.Column}}", m.Name(), "{{$.Description}}{{$chart.Title}}统计", v1.{{$.ModelName}}.Get{{$.ModelName}}Stats{{$chart.Field}}, registry.WithAuth())
+{{- end}}
+{{- if .HasStatsTrend}}
 	R(rg, "GET", "/{{.RoutePath}}/stats/trend", m.Name(), "{{.Description}}趋势统计", v1.{{.ModelName}}.Get{{.ModelName}}TrendStats, registry.WithAuth())
 {{- end}}
 {{- end}}

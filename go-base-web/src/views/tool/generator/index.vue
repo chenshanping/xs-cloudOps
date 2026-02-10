@@ -36,7 +36,7 @@
               <a-button type="link" size="small" @click="handleEdit(record)">编辑</a-button>
               <a-button type="link" size="small" @click="handleCopy(record)">复制</a-button>
               <a-button type="link" size="small" @click="handleExportConfigJSON(record)">导出JSON</a-button>
-              <a-button type="link" size="small" @click="handleShowERDiagram(record)"><ApartmentOutlined /> E-R图</a-button>
+              <!-- <a-button type="link" size="small" @click="handleShowERDiagram(record)"><ApartmentOutlined /> E-R图</a-button> -->
               <a-button type="link" size="small" @click="handlePreviewFromConfig(record)">预览</a-button>
               <a-button 
                 type="link" 
@@ -327,6 +327,34 @@
               <template v-if="column.key === 'comment'">
                 <a-input v-model:value="record.comment" size="small" style="width: 100px" />
               </template>
+              <template v-if="column.key === 'related_table'">
+                <template v-if="record.column_name?.endsWith('_id') && record.column_name !== 'id'">
+                  <a-select 
+                    v-model:value="record.related_table" 
+                    size="small" 
+                    style="width: 110px" 
+                    placeholder="选择关联表"
+                    allow-clear
+                    show-search
+                    :filter-option="(input: string, option: any) => option.label?.toLowerCase().includes(input.toLowerCase())"
+                    @change="onColumnRelatedTableChange(record)"
+                  >
+                    <a-select-option v-for="t in filteredDbTables" :key="t.table_name" :value="t.table_name" :label="t.table_name">
+                      {{ t.table_name }}
+                    </a-select-option>
+                  </a-select>
+                  <a-button 
+                    v-if="record.related_table" 
+                    type="link" 
+                    size="small" 
+                    @click="openColumnRelationConfig(index)"
+                    style="padding: 0 4px"
+                  >
+                    <SettingOutlined />
+                  </a-button>
+                </template>
+                <span v-else style="color: #999">-</span>
+              </template>
               <template v-if="column.key === 'is_required'">
                 <a-checkbox v-model:checked="record.is_required" />
               </template>
@@ -424,8 +452,13 @@
           </a-table>
         </a-tab-pane>
 
-        <!-- Tab 3: 关联关系 -->
-        <a-tab-pane key="3" tab="关联关系">
+        <!-- Tab 3: 一对多/多对多关联 -->
+        <a-tab-pane key="3" tab="一对多/多对多">
+          <a-alert type="info" show-icon style="margin-bottom: 16px">
+            <template #message>
+              <span><b>belongsTo</b> 关联请在「字段配置」中设置外键字段的「关联表」，此处仅配置 hasMany 和 many2many</span>
+            </template>
+          </a-alert>
           <div style="margin-bottom: 16px; text-align: right;">
             <a-button type="primary" @click="addRelation"><PlusOutlined /> 添加关联</a-button>
           </div>
@@ -433,7 +466,6 @@
             <template #bodyCell="{ column, record, index }">
               <template v-if="column.key === 'relation_type'">
                 <a-select v-model:value="record.relation_type" size="small" style="width: 140px">
-                  <a-select-option value="belongsTo">属于(本表有外键)</a-select-option>
                   <a-select-option value="hasMany">一对多(他表有外键)</a-select-option>
                   <a-select-option value="many2many">多对多</a-select-option>
                 </a-select>
@@ -507,17 +539,6 @@
                   </a-button>
                 </a-space>
               </template>
-              <template v-if="column.key === 'use_tree_layout'">
-                <a-tooltip>
-                  <template #title>
-                    <div>开启后页面使用左树右表布局</div>
-                    <div style="margin-top: 4px">左侧显示分类树，点击过滤右侧表格</div>
-                    <div style="margin-top: 4px; color: #faad14">仅 belongsTo 关联生效</div>
-                    <div style="margin-top: 4px; color: #52c41a">启用时自动开启轻量接口</div>
-                  </template>
-                  <a-checkbox v-model:checked="record.use_tree_layout" :disabled="record.relation_type !== 'belongsTo'" @change="onTreeLayoutChange(record)" />
-                </a-tooltip>
-              </template>
               <template v-if="column.key === 'action'">
                 <a-button type="link" size="small" danger @click="removeRelation(index)">删除</a-button>
               </template>
@@ -559,74 +580,62 @@
         <!-- Tab 5: 统计配置 -->
         <a-tab-pane key="5" tab="📊 统计图表">
           <a-alert type="info" show-icon style="margin-bottom: 16px">
-            <template #message>配置后将自动生成统计接口和 ECharts 图表组件</template>
+            <template #message>配置后将自动生成统计接口和 ECharts 图表组件，每个分组字段对应一个图表</template>
           </a-alert>
           <a-form :label-col="{ span: 4 }" :wrapper-col="{ span: 18 }">
             <a-form-item label="启用统计">
               <a-switch v-model:checked="statsConfig.enabled" />
             </a-form-item>
             <template v-if="statsConfig.enabled">
-              <a-form-item label="分组字段">
-                <a-select
-                  v-model:value="statsConfig.group_field"
-                  placeholder="选择用于分组统计的字段"
-                  allow-clear
-                  show-search
-                  style="width: 300px"
+              <a-form-item label="分组图表">
+                <div style="margin-bottom: 8px">
+                  <a-button type="dashed" size="small" @click="addStatsChart"><PlusOutlined /> 添加图表</a-button>
+                </div>
+                <a-table 
+                  :columns="statsChartColumns" 
+                  :data-source="statsConfig.charts" 
+                  :pagination="false" 
+                  size="small" 
+                  :row-key="(_, index) => index"
                 >
-                  <a-select-option 
-                    v-for="col in statsGroupableColumns" 
-                    :key="col.column_name" 
-                    :value="col.column_name"
-                  >
-                    {{ col.column_name }}
-                    <span v-if="col.comment" style="color: #999"> ({{ col.comment }})</span>
-                  </a-select-option>
-                </a-select>
-                <a-tooltip>
-                  <template #title>
-                    <div>适合分组的字段：</div>
-                    <div>• 分类字段（如 category_id）</div>
-                    <div>• 状态字段（如 status）</div>
-                    <div>• 类型字段（如 type）</div>
+                  <template #bodyCell="{ column, record, index }">
+                    <template v-if="column.key === 'field'">
+                      <a-select 
+                        v-model:value="record.field" 
+                        size="small" 
+                        style="width: 160px" 
+                        placeholder="选择字段"
+                        @change="onStatsChartFieldChange(record)"
+                      >
+                        <a-select-option 
+                          v-for="col in statsGroupableColumns" 
+                          :key="col.column_name" 
+                          :value="col.column_name"
+                        >
+                          {{ col.column_name }}
+                          <span v-if="col.comment" style="color: #999"> ({{ col.comment }})</span>
+                        </a-select-option>
+                      </a-select>
+                    </template>
+                    <template v-if="column.key === 'chart_type'">
+                      <a-select v-model:value="record.chart_type" size="small" style="width: 100px">
+                        <a-select-option value="pie">🥧 饼图</a-select-option>
+                        <a-select-option value="bar">📊 柱状图</a-select-option>
+                      </a-select>
+                    </template>
+                    <template v-if="column.key === 'title'">
+                      <a-input v-model:value="record.title" size="small" placeholder="自动生成" style="width: 120px" />
+                    </template>
+                    <template v-if="column.key === 'action'">
+                      <a-button type="link" size="small" danger @click="statsConfig.charts.splice(index, 1)">删除</a-button>
+                    </template>
                   </template>
-                  <QuestionCircleOutlined style="margin-left: 8px; color: #999" />
-                </a-tooltip>
+                </a-table>
               </a-form-item>
-              <a-form-item v-if="statsConfig.group_field" label="显示字段">
-                <a-input 
-                  v-model:value="statsConfig.group_display" 
-                  placeholder="如 Category.Name，用于显示分组名称"
-                  style="width: 300px"
-                />
-                <span style="margin-left: 8px; color: #999; font-size: 12px">
-                  如果分组字段是外键，填写关联表的显示字段
-                </span>
-              </a-form-item>
-              <a-form-item label="求和字段">
-                <a-select
-                  v-model:value="statsConfig.sum_field"
-                  placeholder="可选，选择需要求和的数值字段"
-                  allow-clear
-                  style="width: 300px"
-                >
-                  <a-select-option 
-                    v-for="col in statsNumericColumns" 
-                    :key="col.column_name" 
-                    :value="col.column_name"
-                  >
-                    {{ col.column_name }}
-                    <span v-if="col.comment" style="color: #999"> ({{ col.comment }})</span>
-                  </a-select-option>
-                </a-select>
-                <span style="margin-left: 8px; color: #999; font-size: 12px">
-                  不选则默认统计数量(COUNT)
-                </span>
-              </a-form-item>
-              <a-form-item label="时间字段">
+              <a-form-item label="趋势图">
                 <a-select
                   v-model:value="statsConfig.time_field"
-                  placeholder="可选，用于生成时间趋势图"
+                  placeholder="可选，选择时间字段生成折线趋势图"
                   allow-clear
                   style="width: 300px"
                 >
@@ -641,29 +650,25 @@
                     <span v-if="col.comment" style="color: #999"> ({{ col.comment }})</span>
                   </a-select-option>
                 </a-select>
-              </a-form-item>
-              <a-form-item label="图表类型">
-                <a-checkbox-group v-model:value="statsConfig.chart_types">
-                  <a-checkbox value="pie">🥧 饼图</a-checkbox>
-                  <a-checkbox value="bar">📊 柱状图</a-checkbox>
-                  <a-checkbox value="line" :disabled="!statsConfig.time_field">📈 折线图（需选时间字段）</a-checkbox>
-                </a-checkbox-group>
+                <span style="margin-left: 8px; color: #999; font-size: 12px">
+                  选择后生成时间趋势折线图
+                </span>
               </a-form-item>
               <a-form-item label="生成预览">
                 <a-card size="small" style="background: #fafafa">
                   <div style="color: #666; font-size: 13px">
-                    <div v-if="statsConfig.group_field">
-                      <strong>分组统计接口:</strong> 
-                      <code>GET /{{ config.module_name }}/stats/group</code>
-                      <span style="margin-left: 8px">按 {{ statsConfig.group_field }} 分组{{ statsConfig.sum_field ? '求和 ' + statsConfig.sum_field : '计数' }}</span>
+                    <div v-for="(chart, i) in statsConfig.charts" :key="i" style="margin-bottom: 4px">
+                      <strong>分组统计{{ i + 1 }}:</strong> 
+                      <code>GET /{{ config.module_name }}/stats/{{ chart.field }}</code>
+                      <span style="margin-left: 8px">按 {{ chart.field }} {{ chart.chart_type === 'pie' ? '饼图' : '柱状图' }}</span>
                     </div>
                     <div v-if="statsConfig.time_field" style="margin-top: 8px">
-                      <strong>时间趋势接口:</strong> 
+                      <strong>时间趋势:</strong> 
                       <code>GET /{{ config.module_name }}/stats/trend</code>
-                      <span style="margin-left: 8px">按 {{ statsConfig.time_field }} 统计趋势</span>
+                      <span style="margin-left: 8px">按 {{ statsConfig.time_field }} 折线图</span>
                     </div>
-                    <div v-if="!statsConfig.group_field && !statsConfig.time_field" style="color: #999">
-                      请至少配置一个分组字段或时间字段
+                    <div v-if="statsConfig.charts.length === 0 && !statsConfig.time_field" style="color: #999">
+                      请添加至少一个分组图表或选择时间字段
                     </div>
                   </div>
                 </a-card>
@@ -919,13 +924,44 @@
       </a-tabs>
       <a-empty v-if="changeCategories.length === 0" description="配置无变化或无法检测差异" />
     </a-modal>
+
+    <!-- 字段关联配置弹窗 -->
+    <a-modal v-model:open="columnRelationConfigVisible" title="关联配置" @ok="saveColumnRelationConfig" width="500px">
+      <a-form :label-col="{ span: 6 }" :wrapper-col="{ span: 16 }">
+        <a-form-item label="关联表">
+          <span>{{ editingColumnRelationIndex >= 0 ? config.columns[editingColumnRelationIndex]?.related_table : '' }}</span>
+        </a-form-item>
+        <a-form-item label="模块名">
+          <a-input v-model:value="editingColumnRelation.related_module" placeholder="留空则使用表名" />
+          <div style="color: #999; font-size: 12px; margin-top: 4px">用于 API 导入路径，如 @/api/xxx.ts</div>
+        </a-form-item>
+        <a-form-item label="显示字段">
+          <a-select v-model:value="editingColumnRelation.display_field" placeholder="选择显示字段">
+            <a-select-option v-for="c in editingColumnRelationColumns" :key="c.column_name" :value="c.column_name">
+              {{ c.column_name }}<span v-if="c.comment" style="color: #999"> ({{ c.comment }})</span>
+            </a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="轻量接口">
+          <a-checkbox v-model:checked="editingColumnRelation.use_options_api">
+            使用 options 接口（返回 id, name, count）
+          </a-checkbox>
+        </a-form-item>
+        <a-form-item label="左树右表">
+          <a-checkbox v-model:checked="editingColumnRelation.use_tree_layout">
+            启用左树右表布局
+          </a-checkbox>
+          <div style="color: #999; font-size: 12px; margin-top: 4px">左侧显示分类树，右侧显示表格</div>
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { message } from 'ant-design-vue'
-import { PlusOutlined, ReloadOutlined, QuestionCircleOutlined, CopyOutlined, ImportOutlined, CodeOutlined, ExportOutlined, PlusCircleOutlined, HolderOutlined, DiffOutlined, CheckCircleOutlined, ApartmentOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined, ReloadOutlined, QuestionCircleOutlined, CopyOutlined, ImportOutlined, CodeOutlined, ExportOutlined, PlusCircleOutlined, HolderOutlined, DiffOutlined, CheckCircleOutlined, ApartmentOutlined, SettingOutlined } from '@ant-design/icons-vue'
 import {
   previewCode,
   generateCode,
@@ -1117,7 +1153,13 @@ const createEmptyColumn = (): ColumnConfig => ({
   form_type: 'input',
   dict_type: '',
   select_options: [],
-  switch_values: null
+  switch_values: null,
+  // belongsTo 关联配置
+  related_table: '',
+  related_module: '',
+  display_field: 'name',
+  use_options_api: true,
+  use_tree_layout: false
 })
 
 // 配置数据
@@ -1159,13 +1201,14 @@ const menuConfig = reactive({
 })
 
 // 统计配置
-const statsConfig = reactive({
+const statsConfig = reactive<{
+  enabled: boolean
+  charts: { field: string; chart_type: string; title: string }[]
+  time_field: string
+}>({
   enabled: false,
-  group_field: '',
-  group_display: '',
-  sum_field: '',
-  time_field: '',
-  chart_types: ['pie', 'bar'] as string[]
+  charts: [],
+  time_field: ''
 })
 
 // 可用于分组的字段（外键、状态、类型等）
@@ -1178,15 +1221,6 @@ const statsGroupableColumns = computed(() => {
   )
 })
 
-// 数值类型字段（可用于求和）
-const statsNumericColumns = computed(() => {
-  return config.columns.filter(col => 
-    ['int', 'int64', 'uint', 'float64'].includes(col.field_type) &&
-    !col.column_name.endsWith('_id') &&
-    col.column_name !== 'id'
-  )
-})
-
 // 时间类型字段
 const statsTimeColumns = computed(() => {
   return config.columns.filter(col => 
@@ -1195,6 +1229,27 @@ const statsTimeColumns = computed(() => {
     col.form_type === 'datetime'
   )
 })
+
+// 统计图表表格列
+const statsChartColumns = [
+  { title: '分组字段', key: 'field', width: 180 },
+  { title: '图表类型', key: 'chart_type', width: 120 },
+  { title: '标题', key: 'title', width: 140 },
+  { title: '操作', key: 'action', width: 80 }
+]
+
+// 添加统计图表
+const addStatsChart = () => {
+  statsConfig.charts.push({ field: '', chart_type: 'pie', title: '' })
+}
+
+// 图表字段变更时自动生成标题
+const onStatsChartFieldChange = (chart: { field: string; chart_type: string; title: string }) => {
+  if (chart.field && !chart.title) {
+    const col = config.columns.find(c => c.column_name === chart.field)
+    chart.title = col?.comment || chart.field
+  }
+}
 
 // 当启用 link_to_user 时，自动将菜单父级设为 system(1)
 watch(() => config.link_to_user, (newVal) => {
@@ -1281,6 +1336,7 @@ const columnTableColumns = [
   { title: 'DB类型', key: 'db_type', width: 100 },
   { title: '长度', key: 'db_length', width: 70 },
   { title: '注释', key: 'comment', width: 110 },
+  { title: '关联表', key: 'related_table', width: 120 },
   { title: '必填', key: 'is_required', width: 50 },
   { title: '搜索', key: 'is_searchable', width: 50 },
   { title: '搜索类型', key: 'search_type', width: 80 },
@@ -1294,6 +1350,7 @@ const columnTableColumns = [
   { title: '操作', key: 'action', width: 100, fixed: 'right' }
 ]
 
+// 一对多/多对多关联配置列（belongsTo 已在字段表中配置）
 const relationColumns = [
   { title: '关联类型', key: 'relation_type', width: 160 },
   { title: '关联表', key: 'related_table', width: 140 },
@@ -1304,7 +1361,6 @@ const relationColumns = [
   { title: '必填', key: 'is_required', width: 50 },
   { title: '中间表', key: 'join_table', width: 120 },
   { title: '轻量接口', key: 'use_options_api', width: 100 },
-  { title: '左树右表', key: 'use_tree_layout', width: 80 },
   { title: '操作', key: 'action', width: 60 }
 ]
 
@@ -1475,10 +1531,10 @@ const customRow = (_record: any, index: number | undefined) => {
   }
 }
 
-// 关联操作
+// 关联操作（hasMany/many2many）
 const addRelation = () => {
   config.relations.push({
-    relation_type: 'belongsTo',
+    relation_type: 'hasMany',
     related_table: '',
     related_module: '',
     related_model: '',
@@ -1494,12 +1550,86 @@ const addRelation = () => {
 }
 const removeRelation = (index: number) => config.relations.splice(index, 1)
 
-// 左树右表勾选变化时，自动开启轻量接口
-const onTreeLayoutChange = (record: any) => {
-  if (record.use_tree_layout) {
-    record.use_options_api = true
+// 字段关联表选择变化时（belongsTo）
+const onColumnRelatedTableChange = async (record: ColumnConfig) => {
+  if (!record.related_table) {
+    record.display_field = ''
+    record.related_module = ''
+    record.use_options_api = false
+    record.use_tree_layout = false
+    return
+  }
+  // 获取表注释作为默认comment
+  const tableInfo = dbTables.value.find(t => t.table_name === record.related_table)
+  if (tableInfo?.table_comment && !record.comment) {
+    record.comment = tableInfo.table_comment
+  }
+  // 加载关联表字段
+  if (!relationTableColumns.value[record.related_table]) {
+    try {
+      const res = await getTableColumns(record.related_table)
+      relationTableColumns.value[record.related_table] = res.data || []
+    } catch (e) {
+      console.error('获取表字段失败', e)
+    }
+  }
+  // 设置默认值
+  record.display_field = 'name'
+  record.use_options_api = true
+  // 尝试自动设置display_field
+  const cols = relationTableColumns.value[record.related_table] || []
+  const nameCol = cols.find(c => c.column_name === 'name')
+  if (!nameCol) {
+    const strCol = cols.find(c => c.field_type === 'string' && c.column_name !== 'id')
+    if (strCol) {
+      record.display_field = strCol.column_name
+    }
   }
 }
+
+// 字段关联配置弹窗
+const columnRelationConfigVisible = ref(false)
+const editingColumnRelationIndex = ref(-1)
+const editingColumnRelation = reactive({
+  related_module: '',
+  display_field: 'name',
+  use_options_api: true,
+  use_tree_layout: false
+})
+
+const openColumnRelationConfig = (index: number) => {
+  editingColumnRelationIndex.value = index
+  const col = config.columns[index]
+  Object.assign(editingColumnRelation, {
+    related_module: col.related_module || '',
+    display_field: col.display_field || 'name',
+    use_options_api: col.use_options_api ?? true,
+    use_tree_layout: col.use_tree_layout ?? false
+  })
+  columnRelationConfigVisible.value = true
+}
+
+const saveColumnRelationConfig = () => {
+  if (editingColumnRelationIndex.value >= 0) {
+    const col = config.columns[editingColumnRelationIndex.value]
+    col.related_module = editingColumnRelation.related_module
+    col.display_field = editingColumnRelation.display_field
+    col.use_options_api = editingColumnRelation.use_options_api
+    col.use_tree_layout = editingColumnRelation.use_tree_layout
+    // 左树右表时自动开启轻量接口
+    if (col.use_tree_layout) {
+      col.use_options_api = true
+    }
+  }
+  columnRelationConfigVisible.value = false
+}
+
+// 获取当前编辑字段的关联表字段列表
+const editingColumnRelationColumns = computed(() => {
+  if (editingColumnRelationIndex.value < 0) return []
+  const col = config.columns[editingColumnRelationIndex.value]
+  return relationTableColumns.value[col.related_table] || []
+})
 
 // 关联表选择变化时
 const onRelatedTableChange = async (record: any) => {
@@ -1965,7 +2095,7 @@ const resetConfig = () => {
     columns: [], relations: [], menu_config: null, stats_config: null
   })
   Object.assign(menuConfig, { parent_id: 0, menu_name: '', menu_icon: '', menu_sort: 0, permission: '' })
-  Object.assign(statsConfig, { enabled: false, group_field: '', group_display: '', sum_field: '', time_field: '', chart_types: ['pie', 'bar'] })
+  Object.assign(statsConfig, { enabled: false, charts: [], time_field: '' })
 }
 
 // 新增配置
@@ -1996,7 +2126,7 @@ const handleEdit = async (record: SavedConfig) => {
     if (parsed.stats_config) {
       Object.assign(statsConfig, parsed.stats_config)
     } else {
-      Object.assign(statsConfig, { enabled: false, group_field: '', group_display: '', sum_field: '', time_field: '', chart_types: ['pie', 'bar'] })
+      Object.assign(statsConfig, { enabled: false, charts: [], time_field: '' })
     }
     // 预加载关联表字段
     await preloadRelationColumns(parsed.relations)
@@ -2036,7 +2166,7 @@ const handleCopy = async (record: SavedConfig) => {
     if (parsed.stats_config) {
       Object.assign(statsConfig, parsed.stats_config)
     } else {
-      Object.assign(statsConfig, { enabled: false, group_field: '', group_display: '', sum_field: '', time_field: '', chart_types: ['pie', 'bar'] })
+      Object.assign(statsConfig, { enabled: false, charts: [], time_field: '' })
     }
     // 预加载关联表字段
     await preloadRelationColumns(parsed.relations)

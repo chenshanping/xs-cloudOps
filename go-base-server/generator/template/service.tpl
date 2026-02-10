@@ -690,58 +690,30 @@ func (s *{{.ModelName}}Service) GetFrontend{{.ModelName}}(id uint) (*model.{{.Mo
 }
 {{- end}}
 {{- if .HasStats}}
+{{- range $chart := .StatsCharts}}
 
-// Get{{.ModelName}}GroupStats 获取{{.Description}}分组统计
-func (s *{{.ModelName}}Service) Get{{.ModelName}}GroupStats() ([]map[string]interface{}, error) {
+// Get{{$.ModelName}}Stats{{$chart.Field}} 获取{{$.Description}}按{{$chart.Title}}分组统计
+func (s *{{$.ModelName}}Service) Get{{$.ModelName}}Stats{{$chart.Field}}() ([]map[string]interface{}, error) {
 	var results []map[string]interface{}
-
-{{- if .StatsSumColumn}}
-	// 求和统计
-	err := global.DB.Table("{{.TableName}}").
-		Select("{{.StatsGroupColumn}} as group_key, SUM({{.StatsSumColumn}}) as value").
-{{- if .HasDeletedAt}}
+	err := global.DB.Table("{{$.TableName}}").
+		Select("{{$chart.Column}} as group_key, COUNT(*) as value").
+{{- if $.HasDeletedAt}}
 		Where("deleted_at IS NULL").
 {{- end}}
-		Group("{{.StatsGroupColumn}}").
+		Group("{{$chart.Column}}").
 		Order("value DESC").
 		Find(&results).Error
-{{- else}}
-	// 计数统计
-	err := global.DB.Table("{{.TableName}}").
-		Select("{{.StatsGroupColumn}} as group_key, COUNT(*) as value").
-{{- if .HasDeletedAt}}
-		Where("deleted_at IS NULL").
-{{- end}}
-		Group("{{.StatsGroupColumn}}").
-		Order("value DESC").
-		Find(&results).Error
-{{- end}}
-
 	return results, err
 }
-{{- if .StatsTimeColumn}}
+{{- end}}
+{{- if .HasStatsTrend}}
 
 // Get{{.ModelName}}TrendStats 获取{{.Description}}趋势统计
 func (s *{{.ModelName}}Service) Get{{.ModelName}}TrendStats(days int) ([]map[string]interface{}, error) {
 	var results []map[string]interface{}
-
 	if days <= 0 {
-		days = 30 // 默认统计30天
+		days = 30
 	}
-
-{{- if .StatsSumColumn}}
-	// 求和趋势
-	err := global.DB.Table("{{.TableName}}").
-		Select("DATE({{.StatsTimeColumn}}) as date, SUM({{.StatsSumColumn}}) as value").
-		Where("{{.StatsTimeColumn}} >= DATE_SUB(CURDATE(), INTERVAL ? DAY)", days).
-{{- if .HasDeletedAt}}
-		Where("deleted_at IS NULL").
-{{- end}}
-		Group("DATE({{.StatsTimeColumn}})").
-		Order("date ASC").
-		Find(&results).Error
-{{- else}}
-	// 计数趋势
 	err := global.DB.Table("{{.TableName}}").
 		Select("DATE({{.StatsTimeColumn}}) as date, COUNT(*) as value").
 		Where("{{.StatsTimeColumn}} >= DATE_SUB(CURDATE(), INTERVAL ? DAY)", days).
@@ -751,8 +723,6 @@ func (s *{{.ModelName}}Service) Get{{.ModelName}}TrendStats(days int) ([]map[str
 		Group("DATE({{.StatsTimeColumn}})").
 		Order("date ASC").
 		Find(&results).Error
-{{- end}}
-
 	return results, err
 }
 {{- end}}

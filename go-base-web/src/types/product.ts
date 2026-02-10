@@ -4,11 +4,11 @@ import type { ProductType } from './productType'
 // 产品信息响应体
 export interface Product {
   id: number
-  type_id?: number
-  name?: string
+  type_id: number
+  name: string
   num?: number
   price?: number
-  status?: string
+  status: string
   product_type?: ProductType
   created_at?: string
   updated_at?: string
@@ -16,10 +16,10 @@ export interface Product {
 
 // 创建产品信息请求体
 export interface CreateProductRequest {
-  name?: string
+  name: string
   num?: number
   price?: number
-  status?: string
+  status: string
   type_id?: number
 }
 
@@ -30,6 +30,8 @@ export type UpdateProductRequest = Partial<CreateProductRequest>
 export interface ProductQuery {
   page?: number
   page_size?: number
+  name?: string
+  num?: number
   type_id?: number
   sort_field?: string
   sort_order?: 'ascend' | 'descend'

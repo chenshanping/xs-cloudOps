@@ -63,12 +63,14 @@ export function saveMy{{.ModelName}}(data: SaveMy{{.ModelName}}Request) {
 }
 {{- end}}
 {{- if .HasStats}}
+{{- range $chart := .StatsCharts}}
 
-// 获取{{.Description}}分组统计
-export function get{{.ModelName}}GroupStats() {
-  return request.get<any, ApiResponse<{ group_key: any; value: number }[]>>('/{{.RoutePath}}/stats/group')
+// 获取{{$.Description}}按{{$chart.Title}}分组统计
+export function get{{$.ModelName}}Stats{{$chart.Field}}() {
+  return request.get<any, ApiResponse<{ group_key: any; name?: string; value: number }[]>>('/{{$.RoutePath}}/stats/{{$chart.Column}}')
 }
-{{- if .StatsTimeColumn}}
+{{- end}}
+{{- if .HasStatsTrend}}
 
 // 获取{{.Description}}趋势统计
 export function get{{.ModelName}}TrendStats(days?: number) {

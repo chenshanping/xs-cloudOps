@@ -1,9 +1,5 @@
 <template>
   <div class="{{.ModuleName}}-page">
-{{- if .HasStats}}
-    <!-- 统计图表 -->
-    <{{.ModelName}}Stats ref="statsRef" />
-{{- end}}
 {{- if .HasTreeLayout}}
     <div class="tree-table-layout">
       <!-- 左侧分组树 -->
@@ -126,11 +122,17 @@
           <a-button danger :disabled="selectedRowKeys.length === 0" @click="confirmBatchDelete" v-permission="'{{.MenuConfig.Permission}}:delete'">
             <DeleteOutlined /> 批量删除 {{"{{"}} selectedRowKeys.length > 0 ? `(${selectedRowKeys.length})` : '' {{"}}"}}
           </a-button>
+{{- if .HasStats}}
+          <a-button @click="openStatsModal"><BarChartOutlined /> 统计图表</a-button>
+{{- end}}
 {{- else}}
           <a-button type="primary" @click="handleAdd"><PlusOutlined /> 新增</a-button>
           <a-button danger :disabled="selectedRowKeys.length === 0" @click="confirmBatchDelete">
             <DeleteOutlined /> 批量删除 {{"{{"}} selectedRowKeys.length > 0 ? `(${selectedRowKeys.length})` : '' {{"}}"}}
           </a-button>
+{{- if .HasStats}}
+          <a-button @click="openStatsModal"><BarChartOutlined /> 统计图表</a-button>
+{{- end}}
 {{- end}}
         </a-space>
       </template>
@@ -316,13 +318,24 @@
 {{- end}}
     </a-modal>
 {{- end}}
+{{- if .HasStats}}
+    <!-- 统计图表抽屉 -->
+    <a-drawer
+      v-model:open="statsModalVisible"
+      title="📊 {{.Description}}统计图表"
+      placement="right"
+      width="80%"
+    >
+      <{{.ModelName}}Stats ref="statsRef" />
+    </a-drawer>
+{{- end}}
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted{{if or .HasTreeLayout (and .HasCreatedBy .DataIsolation) .HasDictSelect}}, computed{{end}}, createVNode } from 'vue'
 import { message, Modal } from 'ant-design-vue'
-import { PlusOutlined, DeleteOutlined, ExclamationCircleOutlined{{if .HasTreeLayout}}, FolderOutlined, AppstoreOutlined, TagOutlined{{end}}{{if and .HasAudit .LinkToUser}}, InfoCircleOutlined{{end}} } from '@ant-design/icons-vue'
+import { PlusOutlined, DeleteOutlined, ExclamationCircleOutlined{{if .HasTreeLayout}}, FolderOutlined, AppstoreOutlined, TagOutlined{{end}}{{if and .HasAudit .LinkToUser}}, InfoCircleOutlined{{end}}{{if .HasStats}}, BarChartOutlined{{end}} } from '@ant-design/icons-vue'
 import ProTable from '@/components/ProTable.vue'
 {{- if .HasFiles}}
 import FilePreview from '@/components/FilePreview.vue'
@@ -366,6 +379,15 @@ const currentRecord = ref<{{.ModelName}} | null>(null)
 const selectedRowKeys = ref<number[]>([])
 {{- if .HasStats}}
 const statsRef = ref<InstanceType<typeof {{.ModelName}}Stats> | null>(null)
+const statsModalVisible = ref(false)
+
+const openStatsModal = () => {
+  statsModalVisible.value = true
+  // 延迟刷新，等待抽屉打开后再加载数据
+  setTimeout(() => {
+    statsRef.value?.refresh()
+  }, 100)
+}
 {{- end}}
 {{- if .HasAudit}}
 // 审批相关

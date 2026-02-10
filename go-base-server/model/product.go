@@ -1,14 +1,9 @@
 package model
-import (
-	"time"
-)
 
 // Product 产品信息
 type Product struct {
-	ID uint `json:"id" gorm:"primarykey"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	TypeId uint `json:"type_id" gorm:"comment:类型id"` // 类型id
+	BaseModel
+	TypeId uint `json:"type_id" gorm:"comment:产品类型"` // 产品类型
 	Name string `json:"name" gorm:"size:255;comment:产品名称"` // 产品名称
 	Num int `json:"num" gorm:"comment:产品数量"` // 产品数量
 	Price float64 `json:"price" gorm:"comment:产品单价"` // 产品单价
