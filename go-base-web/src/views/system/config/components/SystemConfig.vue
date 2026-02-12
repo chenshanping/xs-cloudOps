@@ -33,6 +33,56 @@
 
           
 
+          <!-- 主题预设 -->
+          <a-divider orientation="left">主题选择</a-divider>
+          
+          <a-form-item label="预设主题">
+            <a-space>
+              <div 
+                class="theme-card" 
+                :class="{ active: currentTheme === 'dark' }"
+                @click="applyTheme('dark')"
+              >
+                <div class="theme-preview dark-theme">
+                  <div class="theme-sidebar"></div>
+                  <div class="theme-main">
+                    <div class="theme-header"></div>
+                    <div class="theme-content"></div>
+                  </div>
+                </div>
+                <span>暗色主题</span>
+              </div>
+              <div 
+                class="theme-card" 
+                :class="{ active: currentTheme === 'light' }"
+                @click="applyTheme('light')"
+              >
+                <div class="theme-preview light-theme">
+                  <div class="theme-sidebar"></div>
+                  <div class="theme-main">
+                    <div class="theme-header"></div>
+                    <div class="theme-content"></div>
+                  </div>
+                </div>
+                <span>亮色主题</span>
+              </div>
+              <div 
+                class="theme-card" 
+                :class="{ active: currentTheme === 'blue' }"
+                @click="applyTheme('blue')"
+              >
+                <div class="theme-preview blue-theme">
+                  <div class="theme-sidebar"></div>
+                  <div class="theme-main">
+                    <div class="theme-header"></div>
+                    <div class="theme-content"></div>
+                  </div>
+                </div>
+                <span>蓝色主题</span>
+              </div>
+            </a-space>
+          </a-form-item>
+
           <!-- 菜单配置 -->
           <a-divider orientation="left">菜单配置</a-divider>
           
@@ -152,7 +202,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { message } from 'ant-design-vue'
 import { useRoute } from 'vue-router'
 import { useConfigStore } from '@/store/config'
@@ -161,6 +211,54 @@ import ImageUpload from '@/components/ImageUpload.vue'
 const configStore = useConfigStore()
 const route = useRoute()
 const saving = ref(false)
+
+// 主题预设
+const themes = {
+  dark: {
+    menu_bg_color: '#001529',
+    menu_text_color: 'rgba(255, 255, 255, 0.65)',
+    menu_active_bg_color: '#1890ff',
+    menu_active_text_color: '#ffffff',
+    header_bg_color: '#ffffff',
+    header_text_color: '#333333'
+  },
+  light: {
+    menu_bg_color: '#ffffff',
+    menu_text_color: '#333333',
+    menu_active_bg_color: '#e6f7ff',
+    menu_active_text_color: '#1890ff',
+    header_bg_color: '#001529',
+    header_text_color: '#ffffff'
+  },
+  blue: {
+    menu_bg_color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    menu_text_color: 'rgba(255, 255, 255, 0.85)',
+    menu_active_bg_color: 'rgba(255, 255, 255, 0.2)',
+    menu_active_text_color: '#ffffff',
+    header_bg_color: '#ffffff',
+    header_text_color: '#333333'
+  }
+}
+
+// 当前主题识别
+const currentTheme = computed(() => {
+  const menuBg = formData.menu_bg_color
+  if (menuBg === '#001529') return 'dark'
+  if (menuBg === '#ffffff') return 'light'
+  if (menuBg.includes('667eea')) return 'blue'
+  return ''
+})
+
+// 应用主题
+const applyTheme = (themeName: 'dark' | 'light' | 'blue') => {
+  const theme = themes[themeName]
+  formData.menu_bg_color = theme.menu_bg_color
+  formData.menu_text_color = theme.menu_text_color
+  formData.menu_active_bg_color = theme.menu_active_bg_color
+  formData.menu_active_text_color = theme.menu_active_text_color
+  formData.header_bg_color = theme.header_bg_color
+  formData.header_text_color = theme.header_text_color
+}
 
 // 系统配置相关键
 const SYSTEM_CONFIG_KEYS = [
@@ -395,5 +493,86 @@ const handleReset = () => {
   margin-bottom: 16px;
   padding-bottom: 8px;
   border-bottom: 1px solid #e8e8e8;
+}
+
+/* 主题卡片样式 */
+.theme-card {
+  cursor: pointer;
+  text-align: center;
+  padding: 8px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  transition: all 0.3s;
+}
+
+.theme-card:hover {
+  border-color: #d9d9d9;
+}
+
+.theme-card.active {
+  border-color: #1890ff;
+}
+
+.theme-card span {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #666;
+}
+
+.theme-preview {
+  width: 80px;
+  height: 56px;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.theme-preview .theme-sidebar {
+  width: 24px;
+}
+
+.theme-preview .theme-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #f0f2f5;
+}
+
+.theme-preview .theme-header {
+  height: 12px;
+}
+
+.theme-preview .theme-content {
+  flex: 1;
+  margin: 3px;
+  background: #fff;
+  border-radius: 2px;
+}
+
+/* 暗色主题 */
+.dark-theme .theme-sidebar {
+  background: #001529;
+}
+.dark-theme .theme-header {
+  background: #fff;
+}
+
+/* 亮色主题 */
+.light-theme .theme-sidebar {
+  background: #fff;
+  border-right: 1px solid #e8e8e8;
+}
+.light-theme .theme-header {
+  background: #001529;
+}
+
+/* 蓝色主题 */
+.blue-theme .theme-sidebar {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+.blue-theme .theme-header {
+  background: #fff;
 }
 </style>

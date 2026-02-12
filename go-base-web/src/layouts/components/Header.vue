@@ -99,8 +99,8 @@ const handleLogout = () => {
 
 <style scoped>
 .header {
-  height: 48px;
-  line-height: 48px;
+  height: 64px;
+  line-height: 64px;
   padding: 0 16px;
   display: flex;
   justify-content: space-between;
