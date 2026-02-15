@@ -200,3 +200,79 @@ func (a *GeneratorApi) ExecuteSQL(c *gin.Context) {
 	}
 	response.OkWithMessage(c, "SQL执行成功")
 }
+
+// ExportConfig 导出配置为JSON
+func (a *GeneratorApi) ExportConfig(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		response.BadRequest(c, "ID不能为空")
+		return
+	}
+
+	config, err := service.Generator.GetConfig(id)
+	if err != nil {
+		response.Fail(c, "获取配置失败: "+err.Error())
+		return
+	}
+
+	// 导出为JSON字符串
+	jsonStr, err := generator.ExportConfigToString(config)
+	if err != nil {
+		response.Fail(c, "导出失败: "+err.Error())
+		return
+	}
+
+	// 设置响应头，触发下载
+	c.Header("Content-Type", "application/json")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s_config.json", config.ModuleName))
+	c.String(200, jsonStr)
+}
+
+// ImportConfig 导入配置
+func (a *GeneratorApi) ImportConfig(c *gin.Context) {
+	var req struct {
+		ConfigJSON string `json:"config_json" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	// 从JSON字符串导入配置
+	config, err := generator.ImportConfigFromString(req.ConfigJSON)
+	if err != nil {
+		response.Fail(c, "导入失败: "+err.Error())
+		return
+	}
+
+	// 保存导入的配置（ID设为0，作为新配置保存）
+	config.ID = 0
+	savedConfig, err := service.Generator.SaveConfig(config)
+	if err != nil {
+		response.Fail(c, "保存导入的配置失败: "+err.Error())
+		return
+	}
+
+	response.OkWithData(c, savedConfig)
+}
+
+// ImportConfigPreview 预览导入的配置（不保存）
+func (a *GeneratorApi) ImportConfigPreview(c *gin.Context) {
+	var req struct {
+		ConfigJSON string `json:"config_json" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	// 从JSON字符串导入配置
+	config, err := generator.ImportConfigFromString(req.ConfigJSON)
+	if err != nil {
+		response.Fail(c, "解析失败: "+err.Error())
+		return
+	}
+
+	// 返回解析后的配置供前端预览
+	response.OkWithData(c, config)
+}

@@ -1,5 +1,20 @@
 package request
 
+// {{.ModelName}}QueryRequest {{.Description}}查询请求（用于导出）
+type {{.ModelName}}QueryRequest struct {
+{{- range .SearchColumns}}
+	{{.FieldName}} {{if or (eq .FieldType "int") (eq .FieldType "int64") (eq .FieldType "uint") (eq .FieldType "float64")}}*{{.FieldType}}{{else if eq .SearchType "eq"}}*{{.FieldType}}{{else}}string{{end}} `json:"{{.JsonName}}" form:"{{.JsonName}}"{{if .Comment}} comment:"{{.Comment}}"{{end}}`
+{{- end}}
+{{- range .Relations}}
+{{- if eq .RelationType "belongsTo"}}
+	{{.ForeignKey | ToPascalCase}} *uint `json:"{{.ForeignKeyJson}}" form:"{{.ForeignKeyJson}}" comment:"{{if .Comment}}{{.Comment}}ID{{else}}{{.FieldName}}ID{{end}}"`
+{{- end}}
+{{- end}}
+{{- if .HasCreatedBy}}
+	CreatedBy *uint `json:"created_by" form:"created_by" comment:"创建人 ID"`
+{{- end}}
+}
+
 // {{.ModelName}}ListRequest {{.Description}}列表请求
 type {{.ModelName}}ListRequest struct {
 	PageRequest

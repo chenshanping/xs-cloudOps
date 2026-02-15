@@ -3,6 +3,7 @@ package middleware
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"go-base-server/global"
 	"go-base-server/model"
@@ -75,9 +76,28 @@ func OperationLog() gin.HandlerFunc {
 		// 读取请求体
 		var requestBody string
 		if c.Request.Body != nil {
-			bodyBytes, _ := io.ReadAll(c.Request.Body)
-			requestBody = string(bodyBytes)
-			c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+			// 检查是否为文件上传（multipart/form-data）
+			contentType := c.Request.Header.Get("Content-Type")
+			if strings.Contains(contentType, "multipart/form-data") {
+				// 文件上传请求，记录文件信息而不是完整内容
+				if err := c.Request.ParseMultipartForm(32 << 20); err == nil { // 32MB
+					if c.Request.MultipartForm != nil && len(c.Request.MultipartForm.File) > 0 {
+						var fileInfos []string
+						for fieldName, files := range c.Request.MultipartForm.File {
+							for _, file := range files {
+								fileInfos = append(fileInfos, 
+									fmt.Sprintf("%s: %s (%.2fKB)", fieldName, file.Filename, float64(file.Size)/1024))
+							}
+						}
+						requestBody = "[文件上传] " + strings.Join(fileInfos, ", ")
+					}
+				}
+			} else {
+				// 普通请求，读取请求体
+				bodyBytes, _ := io.ReadAll(c.Request.Body)
+				requestBody = string(bodyBytes)
+				c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+			}
 		}
 
 		// 包装响应写入器
@@ -92,14 +112,33 @@ func OperationLog() gin.HandlerFunc {
 		// 记录日志
 		latency := time.Since(start).Milliseconds()
 
-		// 获取完整响应体用于解析业务码
-		fullResponseBody := writer.body.String()
-		businessCode := parseBusinessCode(fullResponseBody)
+		// 检查是否为文件下载响应（通过Content-Type判断）
+		contentType := c.Writer.Header().Get("Content-Type")
+		isFileDownload := strings.Contains(contentType, "application/octet-stream") ||
+			strings.Contains(contentType, "application/vnd.openxmlformats-officedocument") ||
+			strings.Contains(contentType, "application/vnd.ms-excel") ||
+			strings.Contains(contentType, "application/pdf") ||
+			strings.Contains(contentType, "image/") ||
+			strings.Contains(contentType, "video/") ||
+			strings.Contains(contentType, "audio/")
 
-		// 限制响应体长度
-		responseBody := fullResponseBody
-		if len(responseBody) > 1000 {
-			responseBody = responseBody[:1000] + "..."
+		var responseBody string
+		var businessCode int
+
+		if isFileDownload {
+			// 文件下载响应，不记录响应体
+			responseBody = "[文件下载]"
+			businessCode = 200 // 文件下载默认认为成功
+		} else {
+			// 获取完整响应体用于解析业务码
+			fullResponseBody := writer.body.String()
+			businessCode = parseBusinessCode(fullResponseBody)
+
+			// 限制响应体长度
+			responseBody = fullResponseBody
+			if len(responseBody) > 1000 {
+				responseBody = responseBody[:1000] + "..."
+			}
 		}
 
 		// 获取路由元信息（使用 FullPath 获取路由模板，如 /api/v1/roles/:id/menus）

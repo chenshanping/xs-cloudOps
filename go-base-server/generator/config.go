@@ -70,6 +70,7 @@ type ColumnConfig struct {
 	SearchType    string `json:"search_type"`     // 搜索类型: eq(等于)/like(模糊)/gt(大于)/lt(小于)/between(范围)
 	IsListVisible bool   `json:"is_list_visible"` // 是否列表显示
 	IsFormVisible bool   `json:"is_form_visible"` // 是否表单显示
+	IsExportable  bool   `json:"is_exportable"`   // 是否可导入导出
 	IsSortable    bool   `json:"is_sortable"`     // 是否可排序
 	SortOrder     string `json:"sort_order"`      // 默认排序方式: asc/desc
 	IsUnique      bool   `json:"is_unique"`       // 是否唯一

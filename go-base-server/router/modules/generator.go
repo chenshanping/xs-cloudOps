@@ -36,4 +36,8 @@ func (m *GeneratorModule) RegisterPrivateRoutes(rg *gin.RouterGroup) {
 	R(rg, "DELETE", "/generator/configs/:id", m.Name(), "删除配置", v1.GeneratorAPI.DeleteConfig, registry.WithAuth())
 	// 执行SQL
 	R(rg, "POST", "/generator/execute-sql", m.Name(), "执行建表SQL", v1.GeneratorAPI.ExecuteSQL, registry.WithAuth())
+	// 导入导出
+	R(rg, "GET", "/generator/configs/:id/export", m.Name(), "导出配置", v1.GeneratorAPI.ExportConfig, registry.WithAuth())
+	R(rg, "POST", "/generator/configs/import", m.Name(), "导入配置", v1.GeneratorAPI.ImportConfig, registry.WithAuth())
+	R(rg, "POST", "/generator/configs/import-preview", m.Name(), "预览导入配置", v1.GeneratorAPI.ImportConfigPreview, registry.WithAuth())
 }

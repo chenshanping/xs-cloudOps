@@ -11,7 +11,7 @@
  Target Server Version : 80400 (8.4.0)
  File Encoding         : 65001
 
- Date: 14/02/2026 15:22:21
+ Date: 15/02/2026 14:00:15
 */
 
 SET NAMES utf8mb4;
@@ -346,6 +346,54 @@ INSERT INTO `casbin_rule` VALUES (117, 'p', 'user', '/api/v1/user/profile', 'GET
 INSERT INTO `casbin_rule` VALUES (118, 'p', 'user', '/api/v1/user/profile', 'PUT', '', '', '');
 INSERT INTO `casbin_rule` VALUES (143, 'p', 'user', '/api/v1/user/profiles', 'GET', '', '', '');
 INSERT INTO `casbin_rule` VALUES (144, 'p', 'user', '/api/v1/users/:id/profiles', 'GET', '', '', '');
+
+-- ----------------------------
+-- Table structure for product
+-- ----------------------------
+DROP TABLE IF EXISTS `product`;
+CREATE TABLE `product`  (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `type_id` int UNSIGNED NOT NULL COMMENT '产品类型',
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '产品名称',
+  `num` int NULL DEFAULT NULL COMMENT '产品数量',
+  `price` double NULL DEFAULT NULL COMMENT '产品单价',
+  `status` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '状态',
+  `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted_at` datetime NULL DEFAULT NULL COMMENT '删除时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_name`(`name` ASC) USING BTREE,
+  INDEX `idx_deleted_at`(`deleted_at` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '产品信息' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of product
+-- ----------------------------
+INSERT INTO `product` VALUES (1, 1, '33_deleted_20260214234619', 33, 33, '1', '2026-02-14 23:35:29', '2026-02-14 23:46:19', '2026-02-14 23:46:20');
+INSERT INTO `product` VALUES (2, 1, '33', 33, 33, '1', '2026-02-14 23:46:24', '2026-02-14 23:46:24', NULL);
+INSERT INTO `product` VALUES (3, 2, '方法_deleted_20260215000231', 330, 330, '2', '2026-02-15 00:02:23', '2026-02-15 00:02:31', '2026-02-15 00:02:31');
+INSERT INTO `product` VALUES (4, 2, '方法_deleted_20260215002806', 330, 330, '2', '2026-02-15 00:27:56', '2026-02-15 00:28:06', '2026-02-15 00:28:06');
+
+-- ----------------------------
+-- Table structure for product_type
+-- ----------------------------
+DROP TABLE IF EXISTS `product_type`;
+CREATE TABLE `product_type`  (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '产品类型名称',
+  `icon` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '类型图标',
+  `status` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_name`(`name` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '产品类型' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of product_type
+-- ----------------------------
+INSERT INTO `product_type` VALUES (1, '33', '33', '1', '2026-02-14 23:30:42', '2026-02-14 23:30:42');
+INSERT INTO `product_type` VALUES (2, '33333', '333', '2', '2026-02-14 23:51:08', '2026-02-14 23:57:28');
 
 -- ----------------------------
 -- Table structure for sys_api
@@ -841,10 +889,10 @@ INSERT INTO `sys_generator` VALUES (23, '2026-02-09 18:22:42.740', '2026-02-09 1
 INSERT INTO `sys_generator` VALUES (24, '2026-02-10 02:41:17.287', '2026-02-10 02:41:17.287', '2026-02-10 02:41:30.035', 'product_type', 'productType', '产品类型', '{\"table_name\":\"product_type\",\"module_name\":\"productType\",\"description\":\"产品类型\",\"author\":\"csp\",\"generate_backend\":true,\"generate_frontend\":false,\"generate_sql\":true,\"frontend_path\":\"\",\"columns\":[{\"column_name\":\"name\",\"field_name\":\"Name\",\"field_type\":\"string\",\"json_name\":\"name\",\"ts_type\":\"string\",\"comment\":\"产品类型名称\",\"gorm_tag\":\"\",\"db_type\":\"\",\"db_length\":0,\"default_value\":\"\",\"is_primary_key\":false,\"is_required\":false,\"is_searchable\":false,\"search_type\":\"eq\",\"is_list_visible\":true,\"is_form_visible\":true,\"is_sortable\":false,\"sort_order\":\"asc\",\"is_unique\":false,\"form_type\":\"input\",\"dict_type\":\"\",\"select_options\":[],\"switch_values\":null}],\"relations\":[],\"menu_config\":{\"parent_id\":0,\"menu_name\":\"产品类型\",\"menu_icon\":\"\",\"menu_sort\":0,\"permission\":\"productType\"},\"has_created_at\":true,\"has_updated_at\":true,\"has_deleted_at\":false,\"has_created_by\":false,\"created_by_profile_table\":\"\",\"created_by_profile_field\":\"\",\"data_isolation\":false,\"admin_role_ids\":\"\",\"has_audit\":false,\"generate_frontend_api\":false,\"link_to_user\":false,\"profile_name\":\"\",\"profile_icon\":\"\",\"profile_role_code\":\"\"}');
 INSERT INTO `sys_generator` VALUES (25, '2026-02-10 02:41:18.095', '2026-02-10 02:41:18.095', '2026-02-10 02:41:31.530', 'product_type', 'productType', '产品类型', '{\"table_name\":\"product_type\",\"module_name\":\"productType\",\"description\":\"产品类型\",\"author\":\"csp\",\"generate_backend\":true,\"generate_frontend\":false,\"generate_sql\":true,\"frontend_path\":\"\",\"columns\":[{\"column_name\":\"name\",\"field_name\":\"Name\",\"field_type\":\"string\",\"json_name\":\"name\",\"ts_type\":\"string\",\"comment\":\"产品类型名称\",\"gorm_tag\":\"\",\"db_type\":\"\",\"db_length\":0,\"default_value\":\"\",\"is_primary_key\":false,\"is_required\":false,\"is_searchable\":false,\"search_type\":\"eq\",\"is_list_visible\":true,\"is_form_visible\":true,\"is_sortable\":false,\"sort_order\":\"asc\",\"is_unique\":false,\"form_type\":\"input\",\"dict_type\":\"\",\"select_options\":[],\"switch_values\":null}],\"relations\":[],\"menu_config\":{\"parent_id\":0,\"menu_name\":\"产品类型\",\"menu_icon\":\"\",\"menu_sort\":0,\"permission\":\"productType\"},\"has_created_at\":true,\"has_updated_at\":true,\"has_deleted_at\":false,\"has_created_by\":false,\"created_by_profile_table\":\"\",\"created_by_profile_field\":\"\",\"data_isolation\":false,\"admin_role_ids\":\"\",\"has_audit\":false,\"generate_frontend_api\":false,\"link_to_user\":false,\"profile_name\":\"\",\"profile_icon\":\"\",\"profile_role_code\":\"\"}');
 INSERT INTO `sys_generator` VALUES (26, '2026-02-10 02:41:18.205', '2026-02-10 02:41:18.205', '2026-02-10 02:43:22.858', 'product_type', 'productType', '产品类型', '{\"table_name\":\"product_type\",\"module_name\":\"productType\",\"description\":\"产品类型\",\"author\":\"csp\",\"generate_backend\":true,\"generate_frontend\":false,\"generate_sql\":true,\"frontend_path\":\"\",\"columns\":[{\"column_name\":\"name\",\"field_name\":\"Name\",\"field_type\":\"string\",\"json_name\":\"name\",\"ts_type\":\"string\",\"comment\":\"产品类型名称\",\"gorm_tag\":\"size:255;comment:产品类型名称\",\"db_type\":\"\",\"db_length\":0,\"default_value\":\"\",\"is_primary_key\":false,\"is_required\":false,\"is_searchable\":false,\"search_type\":\"eq\",\"is_list_visible\":true,\"is_form_visible\":true,\"is_sortable\":false,\"sort_order\":\"asc\",\"is_unique\":false,\"form_type\":\"input\",\"dict_type\":\"\",\"select_options\":[],\"switch_values\":null}],\"relations\":[],\"menu_config\":{\"parent_id\":0,\"menu_name\":\"产品类型\",\"menu_icon\":\"\",\"menu_sort\":0,\"permission\":\"productType\"},\"has_created_at\":true,\"has_updated_at\":true,\"has_deleted_at\":false,\"has_created_by\":false,\"created_by_profile_table\":\"\",\"created_by_profile_field\":\"\",\"data_isolation\":false,\"admin_role_ids\":\"\",\"has_audit\":false,\"generate_frontend_api\":false,\"link_to_user\":false,\"profile_name\":\"\",\"profile_icon\":\"\",\"profile_role_code\":\"\"}');
-INSERT INTO `sys_generator` VALUES (27, '2026-02-10 02:41:33.136', '2026-02-10 23:11:15.720', NULL, 'product_type', 'productType', '产品类型', '{\"id\":27,\"table_name\":\"product_type\",\"module_name\":\"productType\",\"description\":\"产品类型\",\"author\":\"csp\",\"generate_backend\":true,\"generate_frontend\":true,\"generate_sql\":true,\"frontend_path\":\"\",\"columns\":[{\"column_name\":\"name\",\"field_name\":\"Name\",\"field_type\":\"string\",\"json_name\":\"name\",\"ts_type\":\"string\",\"comment\":\"产品类型名称\",\"gorm_tag\":\"size:255;comment:产品类型名称\",\"db_type\":\"\",\"db_length\":0,\"default_value\":\"\",\"is_primary_key\":false,\"is_required\":false,\"is_searchable\":false,\"search_type\":\"eq\",\"is_list_visible\":true,\"is_form_visible\":true,\"is_sortable\":false,\"sort_order\":\"asc\",\"is_unique\":false,\"form_type\":\"input\",\"dict_type\":\"\",\"select_options\":[],\"switch_values\":null},{\"column_name\":\"icon\",\"field_name\":\"Icon\",\"field_type\":\"string\",\"json_name\":\"icon\",\"ts_type\":\"string\",\"comment\":\"类型图标\",\"gorm_tag\":\"size:255;comment:类型图标\",\"db_type\":\"\",\"db_length\":0,\"default_value\":\"\",\"is_primary_key\":false,\"is_required\":false,\"is_searchable\":false,\"search_type\":\"eq\",\"is_list_visible\":true,\"is_form_visible\":true,\"is_sortable\":false,\"sort_order\":\"asc\",\"is_unique\":false,\"form_type\":\"input\",\"dict_type\":\"\",\"select_options\":[],\"switch_values\":null}],\"relations\":[],\"menu_config\":{\"parent_id\":0,\"menu_name\":\"产品类型\",\"menu_icon\":\"\",\"menu_sort\":0,\"permission\":\"product_type\"},\"stats_config\":null,\"has_created_at\":true,\"has_updated_at\":true,\"has_deleted_at\":false,\"has_created_by\":false,\"created_by_profile_table\":\"\",\"created_by_profile_field\":\"\",\"data_isolation\":false,\"admin_role_ids\":\"\",\"has_audit\":false,\"generate_frontend_api\":false,\"link_to_user\":false,\"profile_name\":\"\",\"profile_icon\":\"\",\"profile_role_code\":\"\"}');
+INSERT INTO `sys_generator` VALUES (27, '2026-02-10 02:41:33.136', '2026-02-14 23:29:15.839', NULL, 'product_type', 'productType', '产品类型', '{\"id\":27,\"table_name\":\"product_type\",\"module_name\":\"productType\",\"description\":\"产品类型\",\"author\":\"csp\",\"generate_backend\":true,\"generate_frontend\":true,\"generate_sql\":true,\"frontend_path\":\"\",\"columns\":[{\"column_name\":\"name\",\"field_name\":\"Name\",\"field_type\":\"string\",\"json_name\":\"name\",\"ts_type\":\"string\",\"comment\":\"产品类型名称\",\"gorm_tag\":\"size:255;comment:产品类型名称\",\"db_type\":\"\",\"db_length\":0,\"default_value\":\"\",\"is_primary_key\":false,\"is_required\":false,\"is_searchable\":false,\"search_type\":\"eq\",\"is_list_visible\":true,\"is_form_visible\":true,\"is_sortable\":false,\"sort_order\":\"asc\",\"is_unique\":true,\"form_type\":\"input\",\"dict_type\":\"\",\"select_options\":[],\"switch_values\":null,\"related_table\":\"\",\"related_module\":\"\",\"display_field\":\"\",\"use_options_api\":false,\"use_tree_layout\":false},{\"column_name\":\"icon\",\"field_name\":\"Icon\",\"field_type\":\"string\",\"json_name\":\"icon\",\"ts_type\":\"string\",\"comment\":\"类型图标\",\"gorm_tag\":\"size:255;comment:类型图标\",\"db_type\":\"\",\"db_length\":0,\"default_value\":\"\",\"is_primary_key\":false,\"is_required\":false,\"is_searchable\":false,\"search_type\":\"eq\",\"is_list_visible\":true,\"is_form_visible\":true,\"is_sortable\":false,\"sort_order\":\"asc\",\"is_unique\":false,\"form_type\":\"input\",\"dict_type\":\"\",\"select_options\":[],\"switch_values\":null,\"related_table\":\"\",\"related_module\":\"\",\"display_field\":\"\",\"use_options_api\":false,\"use_tree_layout\":false},{\"column_name\":\"status\",\"field_name\":\"Status\",\"field_type\":\"string\",\"json_name\":\"status\",\"ts_type\":\"string\",\"comment\":\"\",\"gorm_tag\":\"size:255\",\"db_type\":\"\",\"db_length\":0,\"default_value\":\"\",\"is_primary_key\":false,\"is_required\":false,\"is_searchable\":false,\"search_type\":\"eq\",\"is_list_visible\":true,\"is_form_visible\":true,\"is_sortable\":false,\"sort_order\":\"asc\",\"is_unique\":false,\"form_type\":\"select\",\"dict_type\":\"common_status\",\"select_options\":[],\"switch_values\":null,\"related_table\":\"\",\"related_module\":\"\",\"display_field\":\"name\",\"use_options_api\":true,\"use_tree_layout\":false}],\"relations\":[],\"menu_config\":{\"parent_id\":0,\"menu_name\":\"产品类型\",\"menu_icon\":\"\",\"menu_sort\":0,\"permission\":\"product_type\"},\"stats_config\":null,\"has_created_at\":true,\"has_updated_at\":true,\"has_deleted_at\":false,\"has_created_by\":false,\"created_by_profile_table\":\"\",\"created_by_profile_field\":\"\",\"data_isolation\":false,\"admin_role_ids\":\"\",\"has_audit\":false,\"generate_frontend_api\":false,\"link_to_user\":false,\"profile_name\":\"\",\"profile_icon\":\"\",\"profile_role_code\":\"\"}');
 INSERT INTO `sys_generator` VALUES (28, '2026-02-10 02:42:36.524', '2026-02-10 02:42:36.524', '2026-02-10 02:45:57.570', 'product', 'product', '产品信息', '{\"table_name\":\"product\",\"module_name\":\"product\",\"description\":\"产品信息\",\"author\":\"\",\"generate_backend\":true,\"generate_frontend\":false,\"generate_sql\":true,\"frontend_path\":\"\",\"columns\":[{\"column_name\":\"type_id\",\"field_name\":\"TypeId\",\"field_type\":\"int\",\"json_name\":\"type_id\",\"ts_type\":\"number\",\"comment\":\"产品类型id\",\"gorm_tag\":\"\",\"db_type\":\"\",\"db_length\":0,\"default_value\":\"\",\"is_primary_key\":false,\"is_required\":false,\"is_searchable\":false,\"search_type\":\"eq\",\"is_list_visible\":true,\"is_form_visible\":true,\"is_sortable\":false,\"sort_order\":\"asc\",\"is_unique\":false,\"form_type\":\"select\",\"dict_type\":\"\",\"select_options\":[],\"switch_values\":null},{\"column_name\":\"name\",\"field_name\":\"Name\",\"field_type\":\"string\",\"json_name\":\"name\",\"ts_type\":\"string\",\"comment\":\"产品名称\",\"gorm_tag\":\"\",\"db_type\":\"\",\"db_length\":0,\"default_value\":\"\",\"is_primary_key\":false,\"is_required\":false,\"is_searchable\":false,\"search_type\":\"eq\",\"is_list_visible\":true,\"is_form_visible\":true,\"is_sortable\":false,\"sort_order\":\"asc\",\"is_unique\":false,\"form_type\":\"input\",\"dict_type\":\"\",\"select_options\":[],\"switch_values\":null}],\"relations\":[],\"menu_config\":null,\"has_created_at\":true,\"has_updated_at\":true,\"has_deleted_at\":false,\"has_created_by\":false,\"created_by_profile_table\":\"\",\"created_by_profile_field\":\"\",\"data_isolation\":false,\"admin_role_ids\":\"\",\"has_audit\":false,\"generate_frontend_api\":false,\"link_to_user\":false,\"profile_name\":\"\",\"profile_icon\":\"\",\"profile_role_code\":\"\"}');
 INSERT INTO `sys_generator` VALUES (29, '2026-02-10 02:42:47.270', '2026-02-10 02:42:47.270', '2026-02-10 02:43:20.725', 'product', 'product', '产品信息', '{\"table_name\":\"product\",\"module_name\":\"product\",\"description\":\"产品信息\",\"author\":\"\",\"generate_backend\":true,\"generate_frontend\":false,\"generate_sql\":true,\"frontend_path\":\"\",\"columns\":[{\"column_name\":\"type_id\",\"field_name\":\"TypeId\",\"field_type\":\"int\",\"json_name\":\"type_id\",\"ts_type\":\"number\",\"comment\":\"产品类型id\",\"gorm_tag\":\"comment:产品类型id\",\"db_type\":\"\",\"db_length\":0,\"default_value\":\"\",\"is_primary_key\":false,\"is_required\":false,\"is_searchable\":false,\"search_type\":\"eq\",\"is_list_visible\":true,\"is_form_visible\":true,\"is_sortable\":false,\"sort_order\":\"asc\",\"is_unique\":false,\"form_type\":\"select\",\"dict_type\":\"\",\"select_options\":[],\"switch_values\":null},{\"column_name\":\"name\",\"field_name\":\"Name\",\"field_type\":\"string\",\"json_name\":\"name\",\"ts_type\":\"string\",\"comment\":\"产品名称\",\"gorm_tag\":\"size:255;comment:产品名称\",\"db_type\":\"\",\"db_length\":0,\"default_value\":\"\",\"is_primary_key\":false,\"is_required\":false,\"is_searchable\":false,\"search_type\":\"eq\",\"is_list_visible\":true,\"is_form_visible\":true,\"is_sortable\":false,\"sort_order\":\"asc\",\"is_unique\":false,\"form_type\":\"input\",\"dict_type\":\"\",\"select_options\":[],\"switch_values\":null}],\"relations\":[],\"menu_config\":null,\"has_created_at\":true,\"has_updated_at\":true,\"has_deleted_at\":false,\"has_created_by\":false,\"created_by_profile_table\":\"\",\"created_by_profile_field\":\"\",\"data_isolation\":false,\"admin_role_ids\":\"\",\"has_audit\":false,\"generate_frontend_api\":false,\"link_to_user\":false,\"profile_name\":\"\",\"profile_icon\":\"\",\"profile_role_code\":\"\"}');
-INSERT INTO `sys_generator` VALUES (30, '2026-02-10 02:52:41.384', '2026-02-11 01:49:40.874', NULL, 'product', 'product', '产品信息', '{\"id\":30,\"table_name\":\"product\",\"module_name\":\"product\",\"description\":\"产品信息\",\"author\":\"\",\"generate_backend\":true,\"generate_frontend\":true,\"generate_sql\":true,\"frontend_path\":\"\",\"columns\":[{\"column_name\":\"type_id\",\"field_name\":\"TypeId\",\"field_type\":\"uint\",\"json_name\":\"type_id\",\"ts_type\":\"number\",\"comment\":\"产品类型\",\"gorm_tag\":\"comment:产品类型\",\"db_type\":\"\",\"db_length\":0,\"default_value\":\"\",\"is_primary_key\":false,\"is_required\":true,\"is_searchable\":false,\"search_type\":\"eq\",\"is_list_visible\":true,\"is_form_visible\":true,\"is_sortable\":false,\"sort_order\":\"asc\",\"is_unique\":false,\"form_type\":\"select\",\"dict_type\":\"\",\"select_options\":[],\"switch_values\":null,\"related_table\":\"product_type\",\"related_module\":\"productType\",\"display_field\":\"name\",\"use_options_api\":true,\"use_tree_layout\":true},{\"column_name\":\"name\",\"field_name\":\"Name\",\"field_type\":\"string\",\"json_name\":\"name\",\"ts_type\":\"string\",\"comment\":\"产品名称\",\"gorm_tag\":\"size:255;comment:产品名称\",\"db_type\":\"\",\"db_length\":0,\"default_value\":\"\",\"is_primary_key\":false,\"is_required\":true,\"is_searchable\":true,\"search_type\":\"eq\",\"is_list_visible\":true,\"is_form_visible\":true,\"is_sortable\":false,\"sort_order\":\"asc\",\"is_unique\":false,\"form_type\":\"input\",\"dict_type\":\"\",\"select_options\":[],\"switch_values\":null,\"related_table\":\"\",\"related_module\":\"\",\"display_field\":\"\",\"use_options_api\":false,\"use_tree_layout\":false},{\"column_name\":\"num\",\"field_name\":\"Num\",\"field_type\":\"int\",\"json_name\":\"num\",\"ts_type\":\"number\",\"comment\":\"产品数量\",\"gorm_tag\":\"comment:产品数量\",\"db_type\":\"\",\"db_length\":0,\"default_value\":\"\",\"is_primary_key\":false,\"is_required\":false,\"is_searchable\":true,\"search_type\":\"gte\",\"is_list_visible\":true,\"is_form_visible\":true,\"is_sortable\":true,\"sort_order\":\"desc\",\"is_unique\":false,\"form_type\":\"number\",\"dict_type\":\"\",\"select_options\":[],\"switch_values\":null,\"related_table\":\"\",\"related_module\":\"\",\"display_field\":\"\",\"use_options_api\":false,\"use_tree_layout\":false},{\"column_name\":\"price\",\"field_name\":\"Price\",\"field_type\":\"float64\",\"json_name\":\"price\",\"ts_type\":\"number\",\"comment\":\"产品单价\",\"gorm_tag\":\"comment:产品单价\",\"db_type\":\"\",\"db_length\":0,\"default_value\":\"\",\"is_primary_key\":false,\"is_required\":false,\"is_searchable\":false,\"search_type\":\"eq\",\"is_list_visible\":true,\"is_form_visible\":true,\"is_sortable\":false,\"sort_order\":\"asc\",\"is_unique\":false,\"form_type\":\"number\",\"dict_type\":\"\",\"select_options\":[],\"switch_values\":null,\"related_table\":\"\",\"related_module\":\"\",\"display_field\":\"\",\"use_options_api\":false,\"use_tree_layout\":false},{\"column_name\":\"status\",\"field_name\":\"Status\",\"field_type\":\"string\",\"json_name\":\"status\",\"ts_type\":\"string\",\"comment\":\"状态\",\"gorm_tag\":\"size:255;comment:状态\",\"db_type\":\"\",\"db_length\":0,\"default_value\":\"\",\"is_primary_key\":false,\"is_required\":true,\"is_searchable\":false,\"search_type\":\"eq\",\"is_list_visible\":true,\"is_form_visible\":true,\"is_sortable\":false,\"sort_order\":\"asc\",\"is_unique\":false,\"form_type\":\"select\",\"dict_type\":\"common_status\",\"select_options\":[],\"switch_values\":null,\"related_table\":\"\",\"related_module\":\"\",\"display_field\":\"\",\"use_options_api\":false,\"use_tree_layout\":false}],\"relations\":[],\"menu_config\":{\"parent_id\":0,\"menu_name\":\"产品信息\",\"menu_icon\":\"official-AccountBookFilled\",\"menu_sort\":0,\"permission\":\"product\"},\"stats_config\":{\"enabled\":true,\"charts\":[{\"field\":\"type_id\",\"chart_type\":\"pie\",\"title\":\"产品类型\"},{\"field\":\"status\",\"chart_type\":\"bar\",\"title\":\"产品状态\"}],\"time_field\":\"created_at\"},\"has_created_at\":true,\"has_updated_at\":true,\"has_deleted_at\":true,\"has_created_by\":false,\"created_by_profile_table\":\"\",\"created_by_profile_field\":\"\",\"data_isolation\":false,\"admin_role_ids\":\"\",\"has_audit\":false,\"generate_frontend_api\":false,\"link_to_user\":false,\"profile_name\":\"\",\"profile_icon\":\"\",\"profile_role_code\":\"\"}');
+INSERT INTO `sys_generator` VALUES (30, '2026-02-10 02:52:41.384', '2026-02-14 23:32:38.188', NULL, 'product', 'product', '产品信息', '{\"id\":30,\"table_name\":\"product\",\"module_name\":\"product\",\"description\":\"产品信息\",\"author\":\"\",\"generate_backend\":true,\"generate_frontend\":true,\"generate_sql\":true,\"frontend_path\":\"\",\"columns\":[{\"column_name\":\"type_id\",\"field_name\":\"TypeId\",\"field_type\":\"uint\",\"json_name\":\"type_id\",\"ts_type\":\"number\",\"comment\":\"产品类型\",\"gorm_tag\":\"comment:产品类型\",\"db_type\":\"\",\"db_length\":0,\"default_value\":\"\",\"is_primary_key\":false,\"is_required\":true,\"is_searchable\":false,\"search_type\":\"eq\",\"is_list_visible\":true,\"is_form_visible\":true,\"is_sortable\":false,\"sort_order\":\"asc\",\"is_unique\":false,\"form_type\":\"select\",\"dict_type\":\"\",\"select_options\":[],\"switch_values\":null,\"related_table\":\"product_type\",\"related_module\":\"productType\",\"display_field\":\"name\",\"use_options_api\":true,\"use_tree_layout\":true},{\"column_name\":\"name\",\"field_name\":\"Name\",\"field_type\":\"string\",\"json_name\":\"name\",\"ts_type\":\"string\",\"comment\":\"产品名称\",\"gorm_tag\":\"size:255;comment:产品名称\",\"db_type\":\"\",\"db_length\":0,\"default_value\":\"\",\"is_primary_key\":false,\"is_required\":true,\"is_searchable\":true,\"search_type\":\"eq\",\"is_list_visible\":true,\"is_form_visible\":true,\"is_sortable\":false,\"sort_order\":\"asc\",\"is_unique\":true,\"form_type\":\"input\",\"dict_type\":\"\",\"select_options\":[],\"switch_values\":null,\"related_table\":\"\",\"related_module\":\"\",\"display_field\":\"\",\"use_options_api\":false,\"use_tree_layout\":false},{\"column_name\":\"num\",\"field_name\":\"Num\",\"field_type\":\"int\",\"json_name\":\"num\",\"ts_type\":\"number\",\"comment\":\"产品数量\",\"gorm_tag\":\"comment:产品数量\",\"db_type\":\"\",\"db_length\":0,\"default_value\":\"\",\"is_primary_key\":false,\"is_required\":false,\"is_searchable\":true,\"search_type\":\"gte\",\"is_list_visible\":true,\"is_form_visible\":true,\"is_sortable\":true,\"sort_order\":\"desc\",\"is_unique\":false,\"form_type\":\"number\",\"dict_type\":\"\",\"select_options\":[],\"switch_values\":null,\"related_table\":\"\",\"related_module\":\"\",\"display_field\":\"\",\"use_options_api\":false,\"use_tree_layout\":false},{\"column_name\":\"price\",\"field_name\":\"Price\",\"field_type\":\"float64\",\"json_name\":\"price\",\"ts_type\":\"number\",\"comment\":\"产品单价\",\"gorm_tag\":\"comment:产品单价\",\"db_type\":\"\",\"db_length\":0,\"default_value\":\"\",\"is_primary_key\":false,\"is_required\":false,\"is_searchable\":false,\"search_type\":\"eq\",\"is_list_visible\":true,\"is_form_visible\":true,\"is_sortable\":false,\"sort_order\":\"asc\",\"is_unique\":false,\"form_type\":\"number\",\"dict_type\":\"\",\"select_options\":[],\"switch_values\":null,\"related_table\":\"\",\"related_module\":\"\",\"display_field\":\"\",\"use_options_api\":false,\"use_tree_layout\":false},{\"column_name\":\"status\",\"field_name\":\"Status\",\"field_type\":\"string\",\"json_name\":\"status\",\"ts_type\":\"string\",\"comment\":\"状态\",\"gorm_tag\":\"size:255;comment:状态\",\"db_type\":\"\",\"db_length\":0,\"default_value\":\"\",\"is_primary_key\":false,\"is_required\":true,\"is_searchable\":false,\"search_type\":\"eq\",\"is_list_visible\":true,\"is_form_visible\":true,\"is_sortable\":false,\"sort_order\":\"asc\",\"is_unique\":false,\"form_type\":\"select\",\"dict_type\":\"common_status\",\"select_options\":[],\"switch_values\":null,\"related_table\":\"\",\"related_module\":\"\",\"display_field\":\"\",\"use_options_api\":false,\"use_tree_layout\":false}],\"relations\":[],\"menu_config\":{\"parent_id\":0,\"menu_name\":\"产品信息\",\"menu_icon\":\"official-AccountBookFilled\",\"menu_sort\":0,\"permission\":\"product\"},\"stats_config\":{\"enabled\":true,\"charts\":[{\"field\":\"type_id\",\"chart_type\":\"pie\",\"title\":\"产品类型\"},{\"field\":\"status\",\"chart_type\":\"bar\",\"title\":\"产品状态\"}],\"time_field\":\"created_at\"},\"has_created_at\":true,\"has_updated_at\":true,\"has_deleted_at\":true,\"has_created_by\":false,\"created_by_profile_table\":\"\",\"created_by_profile_field\":\"\",\"data_isolation\":false,\"admin_role_ids\":\"\",\"has_audit\":false,\"generate_frontend_api\":false,\"link_to_user\":false,\"profile_name\":\"\",\"profile_icon\":\"\",\"profile_role_code\":\"\"}');
 
 -- ----------------------------
 -- Table structure for sys_login_log
@@ -862,7 +910,7 @@ CREATE TABLE `sys_login_log`  (
   `msg` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '消息',
   `created_at` datetime(3) NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 35 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 36 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_login_log
@@ -901,6 +949,7 @@ INSERT INTO `sys_login_log` VALUES (31, 0, 'csp', '::1', '本地', 'Chrome', 'Wi
 INSERT INTO `sys_login_log` VALUES (32, 0, 'csp', '::1', '本地', 'Chrome', 'Windows', 0, '密码错误', '2026-02-10 02:14:11.801');
 INSERT INTO `sys_login_log` VALUES (33, 0, '1', '::1', '本地', 'Chrome', 'Windows', 0, '用户不存在', '2026-02-10 02:18:16.243');
 INSERT INTO `sys_login_log` VALUES (34, 1, 'admin', '::1', '本地', 'Chrome', 'Windows', 1, '登录成功', '2026-02-12 22:32:37.974');
+INSERT INTO `sys_login_log` VALUES (35, 1, 'admin', '::1', '本地', 'Chrome', 'Windows', 1, '登录成功', '2026-02-14 21:04:49.776');
 
 -- ----------------------------
 -- Table structure for sys_menu
@@ -923,7 +972,7 @@ CREATE TABLE `sys_menu`  (
   `hidden` bigint NULL DEFAULT 0 COMMENT '是否隐藏 0显示 1隐藏',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_sys_menu_deleted_at`(`deleted_at` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 299 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 369 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_menu
@@ -1206,6 +1255,76 @@ INSERT INTO `sys_menu` VALUES (295, '2026-02-11 01:49:41.844', '2026-02-11 01:49
 INSERT INTO `sys_menu` VALUES (296, '2026-02-11 01:49:41.878', '2026-02-11 01:49:41.878', '2026-02-12 22:41:01.101', 293, '编辑', '', '', '', 3, 3, 'product:edit', 1, 0);
 INSERT INTO `sys_menu` VALUES (297, '2026-02-11 01:49:41.911', '2026-02-11 01:49:41.911', '2026-02-12 22:41:01.101', 293, '删除', '', '', '', 4, 3, 'product:delete', 1, 0);
 INSERT INTO `sys_menu` VALUES (298, '2026-02-11 02:16:31.159', '2026-02-11 02:16:31.159', '2026-02-11 02:16:46.030', 0, '33', '333', '', 'AccountBookOutlined', 0, 1, '', 1, 0);
+INSERT INTO `sys_menu` VALUES (299, '2026-02-14 20:57:27.509', '2026-02-14 20:57:27.509', '2026-02-14 21:02:25.411', 0, '产品类型', '/productType', 'productType/index', '', 0, 2, 'product_type:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (300, '2026-02-14 20:57:27.606', '2026-02-14 20:57:27.606', '2026-02-14 21:02:25.370', 299, '查看', '', '', '', 1, 3, 'product_type:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (301, '2026-02-14 20:57:27.681', '2026-02-14 20:57:27.681', '2026-02-14 21:02:25.370', 299, '新增', '', '', '', 2, 3, 'product_type:add', 1, 0);
+INSERT INTO `sys_menu` VALUES (302, '2026-02-14 20:57:27.721', '2026-02-14 20:57:27.721', '2026-02-14 21:02:25.370', 299, '编辑', '', '', '', 3, 3, 'product_type:edit', 1, 0);
+INSERT INTO `sys_menu` VALUES (303, '2026-02-14 20:57:27.775', '2026-02-14 20:57:27.775', '2026-02-14 21:02:25.370', 299, '删除', '', '', '', 4, 3, 'product_type:delete', 1, 0);
+INSERT INTO `sys_menu` VALUES (304, '2026-02-14 20:57:29.771', '2026-02-14 20:57:29.771', '2026-02-14 21:02:19.989', 0, '产品信息', '/product', 'product/index', 'official-AccountBookFilled', 0, 2, 'product:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (305, '2026-02-14 20:57:29.896', '2026-02-14 20:57:29.896', '2026-02-14 21:02:19.884', 304, '查看', '', '', '', 1, 3, 'product:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (306, '2026-02-14 20:57:29.995', '2026-02-14 20:57:29.995', '2026-02-14 21:02:19.884', 304, '新增', '', '', '', 2, 3, 'product:add', 1, 0);
+INSERT INTO `sys_menu` VALUES (307, '2026-02-14 20:57:30.509', '2026-02-14 20:57:30.509', '2026-02-14 21:02:19.884', 304, '编辑', '', '', '', 3, 3, 'product:edit', 1, 0);
+INSERT INTO `sys_menu` VALUES (308, '2026-02-14 20:57:30.615', '2026-02-14 20:57:30.615', '2026-02-14 21:02:19.884', 304, '删除', '', '', '', 4, 3, 'product:delete', 1, 0);
+INSERT INTO `sys_menu` VALUES (309, '2026-02-14 21:02:27.214', '2026-02-14 21:02:27.214', '2026-02-14 22:03:32.147', 0, '产品类型', '/productType', 'productType/index', '', 0, 2, 'product_type:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (310, '2026-02-14 21:02:27.281', '2026-02-14 21:02:27.281', '2026-02-14 22:03:32.096', 309, '查看', '', '', '', 1, 3, 'product_type:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (311, '2026-02-14 21:02:27.339', '2026-02-14 21:02:27.339', '2026-02-14 22:03:32.096', 309, '新增', '', '', '', 2, 3, 'product_type:add', 1, 0);
+INSERT INTO `sys_menu` VALUES (312, '2026-02-14 21:02:27.399', '2026-02-14 21:02:27.399', '2026-02-14 22:03:32.096', 309, '编辑', '', '', '', 3, 3, 'product_type:edit', 1, 0);
+INSERT INTO `sys_menu` VALUES (313, '2026-02-14 21:02:27.449', '2026-02-14 21:02:27.449', '2026-02-14 22:03:32.096', 309, '删除', '', '', '', 4, 3, 'product_type:delete', 1, 0);
+INSERT INTO `sys_menu` VALUES (314, '2026-02-14 22:04:53.237', '2026-02-14 22:04:53.237', '2026-02-14 22:04:55.253', 0, '产品信息', '/product', 'product/index', 'official-AccountBookFilled', 0, 2, 'product:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (315, '2026-02-14 22:04:53.395', '2026-02-14 22:04:53.395', '2026-02-14 22:04:55.215', 314, '查看', '', '', '', 1, 3, 'product:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (316, '2026-02-14 22:04:53.478', '2026-02-14 22:04:53.478', '2026-02-14 22:04:55.215', 314, '新增', '', '', '', 2, 3, 'product:add', 1, 0);
+INSERT INTO `sys_menu` VALUES (317, '2026-02-14 22:04:53.528', '2026-02-14 22:04:53.528', '2026-02-14 22:04:55.215', 314, '编辑', '', '', '', 3, 3, 'product:edit', 1, 0);
+INSERT INTO `sys_menu` VALUES (318, '2026-02-14 22:04:53.561', '2026-02-14 22:04:53.561', '2026-02-14 22:04:55.215', 314, '删除', '', '', '', 4, 3, 'product:delete', 1, 0);
+INSERT INTO `sys_menu` VALUES (319, '2026-02-14 22:04:57.032', '2026-02-14 22:04:57.032', '2026-02-14 22:28:18.509', 0, '产品类型', '/productType', 'productType/index', '', 0, 2, 'product_type:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (320, '2026-02-14 22:04:57.129', '2026-02-14 22:04:57.129', '2026-02-14 22:28:18.397', 319, '查看', '', '', '', 1, 3, 'product_type:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (321, '2026-02-14 22:04:57.214', '2026-02-14 22:04:57.214', '2026-02-14 22:28:18.397', 319, '新增', '', '', '', 2, 3, 'product_type:add', 1, 0);
+INSERT INTO `sys_menu` VALUES (322, '2026-02-14 22:04:57.387', '2026-02-14 22:04:57.387', '2026-02-14 22:28:18.397', 319, '编辑', '', '', '', 3, 3, 'product_type:edit', 1, 0);
+INSERT INTO `sys_menu` VALUES (323, '2026-02-14 22:04:57.454', '2026-02-14 22:04:57.454', '2026-02-14 22:28:18.397', 319, '删除', '', '', '', 4, 3, 'product_type:delete', 1, 0);
+INSERT INTO `sys_menu` VALUES (324, '2026-02-14 22:28:20.915', '2026-02-14 22:28:20.915', '2026-02-14 22:53:01.013', 0, '产品类型', '/productType', 'productType/index', '', 0, 2, 'product_type:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (325, '2026-02-14 22:28:20.980', '2026-02-14 22:28:20.980', '2026-02-14 22:53:00.972', 324, '查看', '', '', '', 1, 3, 'product_type:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (326, '2026-02-14 22:28:21.039', '2026-02-14 22:28:21.039', '2026-02-14 22:53:00.972', 324, '新增', '', '', '', 2, 3, 'product_type:add', 1, 0);
+INSERT INTO `sys_menu` VALUES (327, '2026-02-14 22:28:21.140', '2026-02-14 22:28:21.140', '2026-02-14 22:53:00.972', 324, '编辑', '', '', '', 3, 3, 'product_type:edit', 1, 0);
+INSERT INTO `sys_menu` VALUES (328, '2026-02-14 22:28:21.239', '2026-02-14 22:28:21.239', '2026-02-14 22:53:00.972', 324, '删除', '', '', '', 4, 3, 'product_type:delete', 1, 0);
+INSERT INTO `sys_menu` VALUES (329, '2026-02-14 22:53:02.999', '2026-02-14 22:53:02.999', '2026-02-14 23:04:22.747', 0, '产品类型', '/productType', 'productType/index', '', 0, 2, 'product_type:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (330, '2026-02-14 22:53:03.140', '2026-02-14 22:53:03.140', '2026-02-14 23:04:21.385', 329, '查看', '', '', '', 1, 3, 'product_type:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (331, '2026-02-14 22:53:03.181', '2026-02-14 22:53:03.181', '2026-02-14 23:04:20.041', 329, '新增', '', '', '', 2, 3, 'product_type:add', 1, 0);
+INSERT INTO `sys_menu` VALUES (332, '2026-02-14 22:53:03.311', '2026-02-14 22:53:03.311', '2026-02-14 23:04:18.641', 329, '编辑', '', '', '', 3, 3, 'product_type:edit', 1, 0);
+INSERT INTO `sys_menu` VALUES (333, '2026-02-14 22:53:03.373', '2026-02-14 22:53:03.373', '2026-02-14 23:04:17.195', 329, '删除', '', '', '', 4, 3, 'product_type:delete', 1, 0);
+INSERT INTO `sys_menu` VALUES (334, '2026-02-14 23:04:49.000', '2026-02-14 23:04:49.000', '2026-02-14 23:05:31.072', 0, '产品类型', '/productType', 'productType/index', '', 0, 2, 'product_type:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (335, '2026-02-14 23:04:49.000', '2026-02-14 23:04:49.000', '2026-02-14 23:05:31.020', 334, '查看', '', '', '', 1, 3, 'product_type:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (336, '2026-02-14 23:04:49.000', '2026-02-14 23:04:49.000', '2026-02-14 23:05:31.020', 334, '新增', '', '', '', 2, 3, 'product_type:add', 1, 0);
+INSERT INTO `sys_menu` VALUES (337, '2026-02-14 23:04:49.000', '2026-02-14 23:04:49.000', '2026-02-14 23:05:31.020', 334, '编辑', '', '', '', 3, 3, 'product_type:edit', 1, 0);
+INSERT INTO `sys_menu` VALUES (338, '2026-02-14 23:04:49.000', '2026-02-14 23:04:49.000', '2026-02-14 23:05:31.020', 334, '删除', '', '', '', 4, 3, 'product_type:delete', 1, 0);
+INSERT INTO `sys_menu` VALUES (339, '2026-02-14 23:04:49.000', '2026-02-14 23:04:49.000', '2026-02-14 23:05:31.020', 334, '导出', '', '', '', 5, 3, 'product_type:export', 1, 0);
+INSERT INTO `sys_menu` VALUES (340, '2026-02-14 23:04:49.000', '2026-02-14 23:04:49.000', '2026-02-14 23:05:31.020', 334, '导入', '', '', '', 6, 3, 'product_type:import', 1, 0);
+INSERT INTO `sys_menu` VALUES (341, '2026-02-14 23:25:10.793', '2026-02-14 23:25:10.793', '2026-02-14 23:27:52.951', 0, '产品类型', '/productType', 'productType/index', '', 0, 2, 'product_type:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (342, '2026-02-14 23:25:10.981', '2026-02-14 23:25:10.981', '2026-02-14 23:27:52.902', 341, '查看', '', '', '', 1, 3, 'product_type:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (343, '2026-02-14 23:25:11.028', '2026-02-14 23:25:11.028', '2026-02-14 23:27:52.902', 341, '新增', '', '', '', 2, 3, 'product_type:add', 1, 0);
+INSERT INTO `sys_menu` VALUES (344, '2026-02-14 23:25:11.078', '2026-02-14 23:25:11.078', '2026-02-14 23:27:52.902', 341, '编辑', '', '', '', 3, 3, 'product_type:edit', 1, 0);
+INSERT INTO `sys_menu` VALUES (345, '2026-02-14 23:25:11.144', '2026-02-14 23:25:11.144', '2026-02-14 23:27:52.902', 341, '删除', '', '', '', 4, 3, 'product_type:delete', 1, 0);
+INSERT INTO `sys_menu` VALUES (346, '2026-02-14 23:25:11.195', '2026-02-14 23:25:11.195', '2026-02-14 23:27:52.902', 341, '导出', '', '', '', 5, 3, 'product_type:export', 1, 0);
+INSERT INTO `sys_menu` VALUES (347, '2026-02-14 23:25:11.262', '2026-02-14 23:25:11.262', '2026-02-14 23:27:52.902', 341, '导入', '', '', '', 6, 3, 'product_type:import', 1, 0);
+INSERT INTO `sys_menu` VALUES (348, '2026-02-14 23:27:55.068', '2026-02-14 23:27:55.068', '2026-02-14 23:29:13.715', 0, '产品类型', '/productType', 'productType/index', '', 0, 2, 'product_type:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (349, '2026-02-14 23:27:55.112', '2026-02-14 23:27:55.112', '2026-02-14 23:29:13.672', 348, '查看', '', '', '', 1, 3, 'product_type:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (350, '2026-02-14 23:27:55.212', '2026-02-14 23:27:55.212', '2026-02-14 23:29:13.672', 348, '新增', '', '', '', 2, 3, 'product_type:add', 1, 0);
+INSERT INTO `sys_menu` VALUES (351, '2026-02-14 23:27:55.427', '2026-02-14 23:27:55.427', '2026-02-14 23:29:13.672', 348, '编辑', '', '', '', 3, 3, 'product_type:edit', 1, 0);
+INSERT INTO `sys_menu` VALUES (352, '2026-02-14 23:27:55.535', '2026-02-14 23:27:55.535', '2026-02-14 23:29:13.672', 348, '删除', '', '', '', 4, 3, 'product_type:delete', 1, 0);
+INSERT INTO `sys_menu` VALUES (353, '2026-02-14 23:27:55.602', '2026-02-14 23:27:55.602', '2026-02-14 23:29:13.672', 348, '导出', '', '', '', 5, 3, 'product_type:export', 1, 0);
+INSERT INTO `sys_menu` VALUES (354, '2026-02-14 23:27:55.651', '2026-02-14 23:27:55.651', '2026-02-14 23:29:13.672', 348, '导入', '', '', '', 6, 3, 'product_type:import', 1, 0);
+INSERT INTO `sys_menu` VALUES (355, '2026-02-14 23:29:16.312', '2026-02-14 23:29:16.312', NULL, 0, '产品类型', '/productType', 'productType/index', '', 0, 2, 'product_type:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (356, '2026-02-14 23:29:16.402', '2026-02-14 23:29:16.402', NULL, 355, '查看', '', '', '', 1, 3, 'product_type:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (357, '2026-02-14 23:29:16.478', '2026-02-14 23:29:16.478', NULL, 355, '新增', '', '', '', 2, 3, 'product_type:add', 1, 0);
+INSERT INTO `sys_menu` VALUES (358, '2026-02-14 23:29:16.638', '2026-02-14 23:29:16.638', NULL, 355, '编辑', '', '', '', 3, 3, 'product_type:edit', 1, 0);
+INSERT INTO `sys_menu` VALUES (359, '2026-02-14 23:29:16.685', '2026-02-14 23:29:16.685', NULL, 355, '删除', '', '', '', 4, 3, 'product_type:delete', 1, 0);
+INSERT INTO `sys_menu` VALUES (360, '2026-02-14 23:29:16.718', '2026-02-14 23:29:16.718', NULL, 355, '导出', '', '', '', 5, 3, 'product_type:export', 1, 0);
+INSERT INTO `sys_menu` VALUES (361, '2026-02-14 23:29:16.768', '2026-02-14 23:29:16.768', NULL, 355, '导入', '', '', '', 6, 3, 'product_type:import', 1, 0);
+INSERT INTO `sys_menu` VALUES (362, '2026-02-14 23:32:38.612', '2026-02-14 23:32:38.612', NULL, 0, '产品信息', '/product', 'product/index', 'official-AccountBookFilled', 0, 2, 'product:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (363, '2026-02-14 23:32:38.705', '2026-02-14 23:32:38.705', NULL, 362, '查看', '', '', '', 1, 3, 'product:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (364, '2026-02-14 23:32:38.772', '2026-02-14 23:32:38.772', NULL, 362, '新增', '', '', '', 2, 3, 'product:add', 1, 0);
+INSERT INTO `sys_menu` VALUES (365, '2026-02-14 23:32:38.820', '2026-02-14 23:32:38.820', NULL, 362, '编辑', '', '', '', 3, 3, 'product:edit', 1, 0);
+INSERT INTO `sys_menu` VALUES (366, '2026-02-14 23:32:38.921', '2026-02-14 23:32:38.921', NULL, 362, '删除', '', '', '', 4, 3, 'product:delete', 1, 0);
+INSERT INTO `sys_menu` VALUES (367, '2026-02-14 23:32:39.175', '2026-02-14 23:32:39.175', NULL, 362, '导出', '', '', '', 5, 3, 'product:export', 1, 0);
+INSERT INTO `sys_menu` VALUES (368, '2026-02-14 23:32:39.419', '2026-02-14 23:32:39.419', NULL, 362, '导入', '', '', '', 6, 3, 'product:import', 1, 0);
 
 -- ----------------------------
 -- Table structure for sys_operation_log
@@ -1256,7 +1375,7 @@ CREATE TABLE `sys_role`  (
 -- ----------------------------
 -- Records of sys_role
 -- ----------------------------
-INSERT INTO `sys_role` VALUES (1, '2026-01-24 02:39:47.708', '2026-02-11 02:17:00.233', NULL, '超级管理员', 'admin', 1, 1, '拥有所有权限');
+INSERT INTO `sys_role` VALUES (1, '2026-01-24 02:39:47.708', '2026-02-14 23:33:02.176', NULL, '超级管理员', 'admin', 1, 1, '拥有所有权限');
 INSERT INTO `sys_role` VALUES (2, '2026-01-24 02:57:36.645', '2026-02-10 01:16:54.128', NULL, '普通用户', 'user', 0, 1, '普通注册用户');
 INSERT INTO `sys_role` VALUES (3, '2026-01-25 15:21:40.670', '2026-02-10 01:16:46.578', NULL, '系统管理员', 'system_admin', 0, 1, '系统的最高权限用户，负责整个平台的运营和管理');
 INSERT INTO `sys_role` VALUES (4, '2026-02-03 03:10:06.138', '2026-02-04 08:37:19.212', '2026-02-05 06:28:34.541', '医生', 'doctor', 0, 1, '经过认证的专业心理咨询师，可出题、管理试卷、发布心理健康宣传');
@@ -1484,6 +1603,20 @@ INSERT INTO `sys_role_menu` VALUES (3, 24);
 INSERT INTO `sys_role_menu` VALUES (1, 25);
 INSERT INTO `sys_role_menu` VALUES (3, 25);
 INSERT INTO `sys_role_menu` VALUES (1, 211);
+INSERT INTO `sys_role_menu` VALUES (1, 355);
+INSERT INTO `sys_role_menu` VALUES (1, 356);
+INSERT INTO `sys_role_menu` VALUES (1, 357);
+INSERT INTO `sys_role_menu` VALUES (1, 358);
+INSERT INTO `sys_role_menu` VALUES (1, 359);
+INSERT INTO `sys_role_menu` VALUES (1, 360);
+INSERT INTO `sys_role_menu` VALUES (1, 361);
+INSERT INTO `sys_role_menu` VALUES (1, 362);
+INSERT INTO `sys_role_menu` VALUES (1, 363);
+INSERT INTO `sys_role_menu` VALUES (1, 364);
+INSERT INTO `sys_role_menu` VALUES (1, 365);
+INSERT INTO `sys_role_menu` VALUES (1, 366);
+INSERT INTO `sys_role_menu` VALUES (1, 367);
+INSERT INTO `sys_role_menu` VALUES (1, 368);
 
 -- ----------------------------
 -- Table structure for sys_slow_log
@@ -1497,7 +1630,7 @@ CREATE TABLE `sys_slow_log`  (
   `source` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '调用来源',
   `created_at` datetime(3) NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 50 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 53 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_slow_log
@@ -1519,6 +1652,9 @@ INSERT INTO `sys_slow_log` VALUES (46, '-- 产品类型 建表SQL\r\n-- 生成�
 INSERT INTO `sys_slow_log` VALUES (47, 'truncate table casbin_rule', 0, 1055, 'C:/Users/Administrator/go/pkg/mod/github.com/casbin/casbin/v2@v2.82.0/enforcer.go:451', '2026-02-10 23:11:09.769');
 INSERT INTO `sys_slow_log` VALUES (48, 'truncate table casbin_rule', 0, 1045, 'C:/Users/Administrator/go/pkg/mod/github.com/casbin/casbin/v2@v2.82.0/enforcer.go:451', '2026-02-11 02:16:54.441');
 INSERT INTO `sys_slow_log` VALUES (49, 'truncate table casbin_rule', 0, 1044, 'C:/Users/Administrator/go/pkg/mod/github.com/casbin/casbin/v2@v2.82.0/enforcer.go:451', '2026-02-11 02:17:01.744');
+INSERT INTO `sys_slow_log` VALUES (50, '-- 产品信息 建表SQL\r\n-- 生成时间: 2026-02-14 22:04:51\r\n-- 模块: product\r\n\r\nCREATE TABLE IF NOT EXISTS `product` (\r\n  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT \'主键ID\',\r\n  `type_id` INT UNSIGNED NOT NULL COMMENT \'产品类型\',\r\n  `name` VARCHAR(255) NOT NULL COMMENT \'产品名称\',\r\n  `num` INT NULL COMMENT \'产品数量\',\r\n  `price` DOUBLE NULL COMMENT \'产品单价\',\r\n  `status` VARCHAR(255) NOT NULL COMMENT \'状态\',\r\n  `created_at` DATETIME NULL DEFAULT CURRENT_TIMESTAMP COMMENT \'创建时间\',\r\n  `updated_at` DATETIME NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT \'更新时间\',\r\n  `deleted_at` DATETIME NULL COMMENT \'删除时间\',\r\n  PRIMARY KEY (`id`),\r\n  INDEX `idx_deleted_at` (`deleted_at`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT=\'产品信息\';\r\n', 0, 1200, 'E:/goProject/go-base/go-base-server/service/generator.go:275', '2026-02-14 22:04:53.236');
+INSERT INTO `sys_slow_log` VALUES (51, 'truncate table casbin_rule', 0, 1246, 'C:/Users/Administrator/go/pkg/mod/github.com/casbin/casbin/v2@v2.82.0/enforcer.go:451', '2026-02-14 23:04:10.051');
+INSERT INTO `sys_slow_log` VALUES (52, 'truncate table casbin_rule', 0, 1394, 'C:/Users/Administrator/go/pkg/mod/github.com/casbin/casbin/v2@v2.82.0/enforcer.go:451', '2026-02-14 23:29:36.863');
 
 -- ----------------------------
 -- Table structure for sys_storage

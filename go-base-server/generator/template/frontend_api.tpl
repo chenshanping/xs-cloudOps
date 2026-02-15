@@ -78,3 +78,34 @@ export function get{{.ModelName}}TrendStats(days?: number) {
 }
 {{- end}}
 {{- end}}
+
+// 导出{{.Description}}
+export function export{{.ModelName}}(params?: {{.ModelName}}Query) {
+  return request.get('/{{.RoutePath}}/export', { 
+    params,
+    responseType: 'blob'
+  })
+}
+
+// 导入{{.Description}}
+export function import{{.ModelName}}(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request.post<any, ApiResponse<{
+    success_count: number
+    fail_count: number
+    total: number
+    errors: string[]
+  }>>('/{{.RoutePath}}/import', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}
+
+// 下载导入模板
+export function downloadTemplate{{.ModelName}}() {
+  return request.get('/{{.RoutePath}}/template', {
+    responseType: 'blob'
+  })
+}

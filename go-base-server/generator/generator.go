@@ -3,6 +3,7 @@ package generator
 import (
 	"bytes"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -38,6 +39,7 @@ type TemplateData struct {
 	SearchColumns       []ColumnConfig
 	ListColumns         []ColumnConfig
 	FormColumns         []ColumnConfig
+	ExportColumns       []ColumnConfig // 可导入导出字段
 	SortColumns         []ColumnConfig // 可排序字段
 	UniqueColumns       []ColumnConfig // 唯一字段
 	Relations           []RelationTemplateData
@@ -189,6 +191,7 @@ func (g *Generator) buildTemplateData() *TemplateData {
 	searchColumns := make([]ColumnConfig, 0)
 	listColumns := make([]ColumnConfig, 0)
 	formColumns := make([]ColumnConfig, 0)
+	exportColumns := make([]ColumnConfig, 0)
 	sortColumns := make([]ColumnConfig, 0)
 	uniqueColumns := make([]ColumnConfig, 0)
 	hasTimeField := false
@@ -224,6 +227,10 @@ func (g *Generator) buildTemplateData() *TemplateData {
 		// 表单显示时排除 belongsTo 外键字段（会用关联下拉框）
 		if col.IsFormVisible && !belongsToForeignKeys[col.ColumnName] {
 			formColumns = append(formColumns, col)
+		}
+		// 导出时排除 belongsTo 外键字段（会用关联对象显示）
+		if col.IsExportable && !belongsToForeignKeys[col.ColumnName] {
+			exportColumns = append(exportColumns, col)
 		}
 		if col.IsSortable {
 			sortColumns = append(sortColumns, col)
@@ -408,6 +415,7 @@ func (g *Generator) buildTemplateData() *TemplateData {
 		SearchColumns:       searchColumns,
 		ListColumns:         listColumns,
 		FormColumns:         formColumns,
+		ExportColumns:       exportColumns,
 		SortColumns:         sortColumns,
 		UniqueColumns:       uniqueColumns,
 		Relations:           relations,
@@ -923,4 +931,78 @@ func (g *Generator) hasStatsTrend() bool {
 		return false
 	}
 	return g.Config.StatsConfig.TimeField != ""
+}
+
+// ExportConfig 导出生成器配置到JSON文件
+func ExportConfig(config *GeneratorConfig, exportPath string) error {
+	// 序列化配置为JSON（带缩进，便于阅读）
+	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("序列化配置失败: %v", err)
+	}
+
+	// 确保目录存在
+	dir := filepath.Dir(exportPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("创建目录失败: %v", err)
+	}
+
+	// 写入文件
+	if err := os.WriteFile(exportPath, data, 0644); err != nil {
+		return fmt.Errorf("写入文件失败: %v", err)
+	}
+
+	return nil
+}
+
+// ImportConfig 从JSON文件导入生成器配置
+func ImportConfig(importPath string) (*GeneratorConfig, error) {
+	// 读取文件
+	data, err := os.ReadFile(importPath)
+	if err != nil {
+		return nil, fmt.Errorf("读取文件失败: %v", err)
+	}
+
+	// 反序列化JSON
+	var config GeneratorConfig
+	if err := json.Unmarshal(data, &config); err != nil {
+		return nil, fmt.Errorf("解析配置失败: %v", err)
+	}
+
+	// 验证必填字段
+	if config.TableName == "" {
+		return nil, fmt.Errorf("配置缺少必填字段: table_name")
+	}
+	if config.ModuleName == "" {
+		return nil, fmt.Errorf("配置缺少必填字段: module_name")
+	}
+
+	return &config, nil
+}
+
+// ExportConfigToString 导出配置为JSON字符串（用于API返回）
+func ExportConfigToString(config *GeneratorConfig) (string, error) {
+	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("序列化配置失败: %v", err)
+	}
+	return string(data), nil
+}
+
+// ImportConfigFromString 从JSON字符串导入配置（用于API接收）
+func ImportConfigFromString(jsonStr string) (*GeneratorConfig, error) {
+	var config GeneratorConfig
+	if err := json.Unmarshal([]byte(jsonStr), &config); err != nil {
+		return nil, fmt.Errorf("解析配置失败: %v", err)
+	}
+
+	// 验证必填字段
+	if config.TableName == "" {
+		return nil, fmt.Errorf("配置缺少必填字段: table_name")
+	}
+	if config.ModuleName == "" {
+		return nil, fmt.Errorf("配置缺少必填字段: module_name")
+	}
+
+	return &config, nil
 }

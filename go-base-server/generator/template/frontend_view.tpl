@@ -122,6 +122,16 @@
           <a-button danger :disabled="selectedRowKeys.length === 0" @click="confirmBatchDelete" v-permission="'{{.MenuConfig.Permission}}:delete'">
             <DeleteOutlined /> 批量删除 {{"{{"}} selectedRowKeys.length > 0 ? `(${selectedRowKeys.length})` : '' {{"}}"}}
           </a-button>
+          <a-button @click="handleExport" v-permission="'{{.MenuConfig.Permission}}:export'"><DownloadOutlined /> 导出</a-button>
+          <a-upload
+            :show-upload-list="false"
+            :before-upload="handleImport"
+            accept=".xlsx,.xls"
+            v-permission="'{{.MenuConfig.Permission}}:import'"
+          >
+            <a-button><UploadOutlined /> 导入</a-button>
+          </a-upload>
+          <a-button @click="handleDownloadTemplate" v-permission="'{{.MenuConfig.Permission}}:import'"><FileExcelOutlined /> 下载模板</a-button>
 {{- if .HasStats}}
           <a-button @click="openStatsModal"><BarChartOutlined /> 统计图表</a-button>
 {{- end}}
@@ -130,6 +140,15 @@
           <a-button danger :disabled="selectedRowKeys.length === 0" @click="confirmBatchDelete">
             <DeleteOutlined /> 批量删除 {{"{{"}} selectedRowKeys.length > 0 ? `(${selectedRowKeys.length})` : '' {{"}}"}}
           </a-button>
+          <a-button @click="handleExport"><DownloadOutlined /> 导出</a-button>
+          <a-upload
+            :show-upload-list="false"
+            :before-upload="handleImport"
+            accept=".xlsx,.xls"
+          >
+            <a-button><UploadOutlined /> 导入</a-button>
+          </a-upload>
+          <a-button @click="handleDownloadTemplate"><FileExcelOutlined /> 下载模板</a-button>
 {{- if .HasStats}}
           <a-button @click="openStatsModal"><BarChartOutlined /> 统计图表</a-button>
 {{- end}}
@@ -335,7 +354,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted{{if or .HasTreeLayout (and .HasCreatedBy .DataIsolation) .HasDictSelect}}, computed{{end}}, createVNode } from 'vue'
 import { message, Modal } from 'ant-design-vue'
-import { PlusOutlined, DeleteOutlined, ExclamationCircleOutlined{{if .HasTreeLayout}}, FolderOutlined, AppstoreOutlined, TagOutlined{{end}}{{if and .HasAudit .LinkToUser}}, InfoCircleOutlined{{end}}{{if .HasStats}}, BarChartOutlined{{end}} } from '@ant-design/icons-vue'
+import { PlusOutlined, DeleteOutlined, ExclamationCircleOutlined{{if .HasTreeLayout}}, FolderOutlined, AppstoreOutlined, TagOutlined{{end}}{{if and .HasAudit .LinkToUser}}, InfoCircleOutlined{{end}}{{if .HasStats}}, BarChartOutlined{{end}}, DownloadOutlined, UploadOutlined, FileExcelOutlined } from '@ant-design/icons-vue'
 import ProTable from '@/components/ProTable.vue'
 {{- if .HasFiles}}
 import FilePreview from '@/components/FilePreview.vue'
@@ -347,7 +366,7 @@ import {{.ModelName}}Form from './components/{{.ModelName}}Form.vue'
 {{- if .HasStats}}
 import {{.ModelName}}Stats from './components/{{.ModelName}}Stats.vue'
 {{- end}}
-import { get{{.ModelName}}List, delete{{.ModelName}}, batchDelete{{.ModelName}}{{if .HasCreatedBy}}, get{{.ModelName}}CreatorOptions{{end}}{{if .HasAudit}}, audit{{.ModelName}}{{end}} } from '@/api/{{.ModuleName}}'
+import { get{{.ModelName}}List, delete{{.ModelName}}, batchDelete{{.ModelName}}{{if .HasCreatedBy}}, get{{.ModelName}}CreatorOptions{{end}}{{if .HasAudit}}, audit{{.ModelName}}{{end}}, export{{.ModelName}}, import{{.ModelName}}, downloadTemplate{{.ModelName}} } from '@/api/{{.ModuleName}}'
 {{- range .Relations}}
 {{- if or (eq .RelationType "belongsTo") (eq .RelationType "many2many")}}
 {{- if .UseOptionsApi}}
@@ -591,7 +610,7 @@ const baseColumns = [
 ]
 
 // 操作列配置
-const actionColumn = { title: '操作', key: 'action', width: 200, align: 'center' }
+const actionColumn = { title: '操作', key: 'action', width: 200, align: 'center',fixed: 'right' }
 
 // 根据权限动态显示操作列（有编辑或删除权限时显示）
 const columns = useTableColumns(baseColumns, actionColumn, ['{{.MenuConfig.Permission}}:edit', '{{.MenuConfig.Permission}}:delete'])
@@ -786,6 +805,81 @@ const confirmBatchDelete = () => {
     }
   })
 }
+
+// 导出数据
+const handleExport = async () => {
+  try {
+    loading.value = true
+    const res = await export{{.ModelName}}(searchForm)
+    const blob = new Blob([res as any], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `{{.ModuleName}}_${new Date().getTime()}.xlsx`
+    link.click()
+    window.URL.revokeObjectURL(url)
+    message.success('导出成功')
+  } catch (error) {
+    message.error('导出失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 导入数据
+const handleImport = async (file: File) => {
+  try {
+    loading.value = true
+    const res = await import{{.ModelName}}(file)
+    if (res.data.fail_count > 0) {
+      Modal.info({
+        title: '导入完成',
+        width: 600,
+        content: createVNode('div', {}, [
+          createVNode('p', {}, `成功: ${res.data.success_count} 条，失败: ${res.data.fail_count} 条`),
+          res.data.errors.length > 0 && createVNode('div', { style: 'max-height: 300px; overflow-y: auto; margin-top: 10px;' }, [
+            createVNode('p', { style: 'font-weight: bold; color: #ff4d4f;' }, '错误详情:'),
+            ...res.data.errors.map((err: string) => createVNode('p', { style: 'color: #666; font-size: 12px;' }, err))
+          ])
+        ])
+      })
+    } else {
+      message.success(`导入成功 ${res.data.success_count} 条数据`)
+    }
+    fetchData()
+{{- range .Relations}}
+{{- if and (or (eq .RelationType "belongsTo") (eq .RelationType "many2many")) .UseOptionsApi}}
+    fetch{{.RelatedModel}}Options()
+{{- end}}
+{{- end}}
+{{- if .HasCreatedBy}}
+    fetchCreatorOptions()
+{{- end}}
+  } catch (error: any) {
+    message.error(error.message || '导入失败')
+  } finally {
+    loading.value = false
+  }
+  return false // 阻止默认上传行为
+}
+
+// 下载导入模板
+const handleDownloadTemplate = async () => {
+  try {
+    const res = await downloadTemplate{{.ModelName}}()
+    const blob = new Blob([res as any], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = '{{.ModuleName}}_template.xlsx'
+    link.click()
+    window.URL.revokeObjectURL(url)
+    message.success('模板下载成功')
+  } catch (error) {
+    message.error('模板下载失败')
+  }
+}
+
 {{- if .HasAudit}}
 
 // 审批

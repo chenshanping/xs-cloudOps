@@ -284,3 +284,31 @@ func (s *DictService) DeleteDictData(id uint) error {
 	}
 	return err
 }
+
+// GetDictLabel 根据字典类型和值获取标签（用于导出）
+func (s *DictService) GetDictLabel(dictType string, value string) string {
+	list, err := s.GetDictDataByType(dictType)
+	if err != nil {
+		return value
+	}
+	for _, item := range list {
+		if item.Value == value {
+			return item.Label
+		}
+	}
+	return value
+}
+
+// GetDictValue 根据字典类型和标签获取值（用于导入）
+func (s *DictService) GetDictValue(dictType string, label string) string {
+	list, err := s.GetDictDataByType(dictType)
+	if err != nil {
+		return ""
+	}
+	for _, item := range list {
+		if item.Label == label {
+			return item.Value
+		}
+	}
+	return ""
+}

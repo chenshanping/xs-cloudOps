@@ -156,6 +156,86 @@ func (s *{{.ModelName}}Service) Get{{.ModelName}}List(req *request.{{.ModelName}
 	return list, total, nil
 }
 
+// GetAll{{.ModelName}} 获取所有{{.Description}}（用于导出，不分页）
+{{- if .DataIsolation}}
+func (s *{{.ModelName}}Service) GetAll{{.ModelName}}(req *request.{{.ModelName}}QueryRequest, userID uint, isAdmin bool) ([]model.{{.ModelName}}, error) {
+{{- else}}
+func (s *{{.ModelName}}Service) GetAll{{.ModelName}}(req *request.{{.ModelName}}QueryRequest) ([]model.{{.ModelName}}, error) {
+{{- end}}
+	var list []model.{{.ModelName}}
+
+	db := global.DB.Model(&model.{{.ModelName}}{})
+{{- if .DataIsolation}}
+
+	// 数据隔离：非管理员只能看到自己创建的数据
+	if !isAdmin {
+		db = db.Where("created_by = ?", userID)
+	}
+{{- end}}
+
+{{- range .SearchColumns}}
+{{- if eq .SearchType "eq"}}
+	if req.{{.FieldName}} != nil {
+		db = db.Where("{{.ColumnName}} = ?", *req.{{.FieldName}})
+	}
+{{- else if eq .SearchType "like"}}
+	if req.{{.FieldName}} != "" {
+		db = db.Where("{{.ColumnName}} LIKE ?", "%"+req.{{.FieldName}}+"%")
+	}
+{{- else}}
+{{- if eq .FieldType "string"}}
+	if req.{{.FieldName}} != "" {
+		db = db.Where("{{.ColumnName}} LIKE ?", "%"+req.{{.FieldName}}+"%")
+	}
+{{- else}}
+	if req.{{.FieldName}} != nil {
+		db = db.Where("{{.ColumnName}} = ?", *req.{{.FieldName}})
+	}
+{{- end}}
+{{- end}}
+{{- end}}
+{{- range .Relations}}
+{{- if eq .RelationType "belongsTo"}}
+	if req.{{.ForeignKey | ToPascalCase}} != nil {
+		db = db.Where("{{.ForeignKeyJson}} = ?", *req.{{.ForeignKey | ToPascalCase}})
+	}
+{{- end}}
+{{- end}}
+{{- if .HasCreatedBy}}
+	if req.CreatedBy != nil {
+		db = db.Where("created_by = ?", *req.CreatedBy)
+	}
+{{- end}}
+
+	query := db.Order("id DESC")
+{{- if .HasPreloads}}
+{{- range .Preloads}}
+	query = query.Preload("{{.}}")
+{{- end}}
+{{- end}}
+{{- range .FormColumns}}
+{{- if or (eq .FormType "image") (eq .FormType "file") (eq .FormType "upload")}}
+	query = query.Preload("{{.FieldName}}File")
+{{- end}}
+{{- end}}
+{{- if .HasCreatedBy}}
+	query = query.Preload("Creator.AvatarFile")
+{{- end}}
+	if err := query.Find(&list).Error; err != nil {
+		return nil, err
+	}
+
+	// 填充文件URL
+	for i := range list {
+		list[i].FillFileURLs()
+{{- if .HasMultiFiles}}
+		s.fillMultiFileURLs(&list[i])
+{{- end}}
+	}
+
+	return list, nil
+}
+
 // Get{{.ModelName}} 获取{{.Description}}详情
 func (s *{{.ModelName}}Service) Get{{.ModelName}}(id uint) (*model.{{.ModelName}}, error) {
 	var data model.{{.ModelName}}

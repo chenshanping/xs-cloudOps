@@ -47,7 +47,22 @@ request.interceptors.request.use(
 
 // 响应拦截器
 request.interceptors.response.use(
-  (response) => {
+  async (response) => {
+    // 如果是 blob 类型响应（文件下载）
+    if (response.config.responseType === 'blob') {
+      // 检查是否是错误响应（服务器返回JSON错误而不是文件）
+      const contentType = response.headers['content-type']
+      if (contentType && contentType.includes('application/json')) {
+        // 将 blob 转换为 JSON 读取错误信息
+        const text = await response.data.text()
+        const errorData = JSON.parse(text)
+        message.error(errorData.message || '操作失败')
+        return Promise.reject(new Error(errorData.message || '操作失败'))
+      }
+      // 正常的文件响应，直接返回
+      return response.data
+    }
+    
     const res = response.data
     const silent = response.config.silent
     

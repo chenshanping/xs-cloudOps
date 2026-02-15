@@ -122,6 +122,8 @@ func (s *GeneratorService) Generate(config *generator.GeneratorConfig) (*generat
 				{"新增", ":add", 2},
 				{"编辑", ":edit", 3},
 				{"删除", ":delete", 4},
+				{"导出", ":export", 5},
+				{"导入", ":import", 6},
 			}
 			// 如果启用了审批功能，添加审批按钮
 			if config.HasAudit {
@@ -129,7 +131,7 @@ func (s *GeneratorService) Generate(config *generator.GeneratorConfig) (*generat
 					Name string
 					Perm string
 					Sort int
-				}{"审批", ":audit", 5})
+				}{"审批", ":audit", 7})
 			}
 			for _, btn := range btnPermissions {
 				global.DB.Create(&model.SysMenu{
