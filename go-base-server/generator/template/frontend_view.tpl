@@ -122,6 +122,7 @@
           <a-button danger :disabled="selectedRowKeys.length === 0" @click="confirmBatchDelete" v-permission="'{{.MenuConfig.Permission}}:delete'">
             <DeleteOutlined /> 批量删除 {{"{{"}} selectedRowKeys.length > 0 ? `(${selectedRowKeys.length})` : '' {{"}}"}}
           </a-button>
+{{- if .EnableImportExport}}
           <a-button @click="handleExport" v-permission="'{{.MenuConfig.Permission}}:export'"><DownloadOutlined /> 导出</a-button>
           <a-upload
             :show-upload-list="false"
@@ -132,6 +133,7 @@
             <a-button><UploadOutlined /> 导入</a-button>
           </a-upload>
           <a-button @click="handleDownloadTemplate" v-permission="'{{.MenuConfig.Permission}}:import'"><FileExcelOutlined /> 下载模板</a-button>
+{{- end}}
 {{- if .HasStats}}
           <a-button @click="openStatsModal"><BarChartOutlined /> 统计图表</a-button>
 {{- end}}
@@ -140,6 +142,7 @@
           <a-button danger :disabled="selectedRowKeys.length === 0" @click="confirmBatchDelete">
             <DeleteOutlined /> 批量删除 {{"{{"}} selectedRowKeys.length > 0 ? `(${selectedRowKeys.length})` : '' {{"}}"}}
           </a-button>
+{{- if .EnableImportExport}}
           <a-button @click="handleExport"><DownloadOutlined /> 导出</a-button>
           <a-upload
             :show-upload-list="false"
@@ -149,6 +152,7 @@
             <a-button><UploadOutlined /> 导入</a-button>
           </a-upload>
           <a-button @click="handleDownloadTemplate"><FileExcelOutlined /> 下载模板</a-button>
+{{- end}}
 {{- if .HasStats}}
           <a-button @click="openStatsModal"><BarChartOutlined /> 统计图表</a-button>
 {{- end}}
@@ -354,7 +358,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted{{if or .HasTreeLayout (and .HasCreatedBy .DataIsolation) .HasDictSelect}}, computed{{end}}, createVNode } from 'vue'
 import { message, Modal } from 'ant-design-vue'
-import { PlusOutlined, DeleteOutlined, ExclamationCircleOutlined{{if .HasTreeLayout}}, FolderOutlined, AppstoreOutlined, TagOutlined{{end}}{{if and .HasAudit .LinkToUser}}, InfoCircleOutlined{{end}}{{if .HasStats}}, BarChartOutlined{{end}}, DownloadOutlined, UploadOutlined, FileExcelOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined, DeleteOutlined, ExclamationCircleOutlined{{if .HasTreeLayout}}, FolderOutlined, AppstoreOutlined, TagOutlined{{end}}{{if and .HasAudit .LinkToUser}}, InfoCircleOutlined{{end}}{{if .HasStats}}, BarChartOutlined{{end}}{{if .EnableImportExport}}, DownloadOutlined, UploadOutlined, FileExcelOutlined{{end}} } from '@ant-design/icons-vue'
 import ProTable from '@/components/ProTable.vue'
 {{- if .HasFiles}}
 import FilePreview from '@/components/FilePreview.vue'
@@ -366,7 +370,7 @@ import {{.ModelName}}Form from './components/{{.ModelName}}Form.vue'
 {{- if .HasStats}}
 import {{.ModelName}}Stats from './components/{{.ModelName}}Stats.vue'
 {{- end}}
-import { get{{.ModelName}}List, delete{{.ModelName}}, batchDelete{{.ModelName}}{{if .HasCreatedBy}}, get{{.ModelName}}CreatorOptions{{end}}{{if .HasAudit}}, audit{{.ModelName}}{{end}}, export{{.ModelName}}, import{{.ModelName}}, downloadTemplate{{.ModelName}} } from '@/api/{{.ModuleName}}'
+import { get{{.ModelName}}List, delete{{.ModelName}}, batchDelete{{.ModelName}}{{if .HasCreatedBy}}, get{{.ModelName}}CreatorOptions{{end}}{{if .HasAudit}}, audit{{.ModelName}}{{end}}{{if .EnableImportExport}}, export{{.ModelName}}, import{{.ModelName}}, downloadTemplate{{.ModelName}}{{end}} } from '@/api/{{.ModuleName}}'
 {{- range .Relations}}
 {{- if or (eq .RelationType "belongsTo") (eq .RelationType "many2many")}}
 {{- if .UseOptionsApi}}
@@ -805,6 +809,7 @@ const confirmBatchDelete = () => {
     }
   })
 }
+{{- if .EnableImportExport}}
 
 // 导出数据
 const handleExport = async () => {
@@ -879,6 +884,7 @@ const handleDownloadTemplate = async () => {
     message.error('模板下载失败')
   }
 }
+{{- end}}
 
 {{- if .HasAudit}}
 

@@ -66,7 +66,7 @@
     <a-drawer
       v-model:open="drawerVisible"
       :title="drawerTitle"
-      width="90%"
+      width="100%"
       :body-style="{ paddingBottom: '80px' }"
     >
       <a-tabs v-model:activeKey="activeTab">
@@ -99,6 +99,7 @@
                   <a-checkbox v-model:checked="config.generate_backend">生成后端代码</a-checkbox>
                   <a-checkbox v-model:checked="config.generate_frontend" style="margin-left: 16px">生成前端代码</a-checkbox>
                   <a-checkbox v-model:checked="config.generate_sql" style="margin-left: 16px">生成建表SQL</a-checkbox>
+                  <a-checkbox v-model:checked="config.enable_import_export" style="margin-left: 16px">导入导出功能</a-checkbox>
                 </a-form-item>
               </a-col>
               <a-col :span="24" v-if="config.generate_frontend">
@@ -1187,6 +1188,7 @@ const config = reactive<GeneratorConfig>({
   profile_name: '',
   profile_icon: '',
   profile_role_code: '',
+  enable_import_export: false,
   columns: [],
   relations: [],
   menu_config: null
@@ -1883,6 +1885,7 @@ const handleImportJSON = async () => {
       profile_name: parsed.profile_name || '',
       profile_icon: parsed.profile_icon || '',
       profile_role_code: parsed.profile_role_code || '',
+      enable_import_export: parsed.enable_import_export === true,
       columns: parsed.columns || [],
       relations: parsed.relations || [],
       menu_config: parsed.menu_config || null
@@ -2092,6 +2095,7 @@ const resetConfig = () => {
     created_by_profile_table: '', created_by_profile_field: '',
     data_isolation: false, admin_role_ids: '', has_audit: false, generate_frontend_api: false,
     link_to_user: false, profile_name: '', profile_icon: '', profile_role_code: '',
+    enable_import_export: false,
     columns: [], relations: [], menu_config: null, stats_config: null
   })
   Object.assign(menuConfig, { parent_id: 0, menu_name: '', menu_icon: '', menu_sort: 0, permission: '' })

@@ -299,6 +299,7 @@ func (a *{{.ModelName}}Api) SaveMy{{.ModelName}}(c *gin.Context) {
 	response.OkWithMessage(c, "保存成功")
 }
 {{- end}}
+{{- if .EnableImportExport}}
 
 // Export{{.ModelName}} 导出{{.Description}}
 func (a *{{.ModelName}}Api) Export{{.ModelName}}(c *gin.Context) {
@@ -873,3 +874,4 @@ func (a *{{.ModelName}}Api) DownloadTemplate{{.ModelName}}(c *gin.Context) {
 	c.Header("Content-Disposition", "attachment; filename={{.ModuleName}}_template.xlsx")
 	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer)
 }
+{{- end}}

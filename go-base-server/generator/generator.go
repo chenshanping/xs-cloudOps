@@ -91,6 +91,8 @@ type TemplateData struct {
 	StatsTimeColumn string                   // 时间字段（数据库列名）
 	HasStatsCharts  bool                     // 是否有分组图表
 	HasStatsTrend   bool                     // 是否有趋势图
+	// 导入导出
+	EnableImportExport bool // 是否启用导入导出功能
 }
 
 // StatsChartTemplateData 统计图表模板数据
@@ -459,6 +461,8 @@ func (g *Generator) buildTemplateData() *TemplateData {
 		StatsTimeColumn: g.getStatsTimeColumn(),
 		HasStatsCharts:  g.hasStatsCharts(),
 		HasStatsTrend:   g.hasStatsTrend(),
+		// 导入导出
+		EnableImportExport: g.Config.EnableImportExport,
 	}
 }
 

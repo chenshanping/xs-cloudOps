@@ -49,6 +49,8 @@ type GeneratorConfig struct {
 	ProfileName     string `json:"profile_name"`       // 身份显示名称（如"医生"、"商家"），默认使用 Description
 	ProfileIcon     string `json:"profile_icon"`       // 身份图标（ant-design图标名，如"UserOutlined"）
 	ProfileRoleCode string `json:"profile_role_code"` // 身份限定角色编码（为空表示不限制，任何有数据的用户都能看到）
+	// 导入导出配置
+	EnableImportExport bool `json:"enable_import_export"` // 是否启用导入导出功能
 }
 
 // ColumnConfig 字段配置

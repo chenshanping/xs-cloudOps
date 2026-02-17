@@ -16,8 +16,8 @@ INSERT INTO `sys_menu` (`parent_id`, `name`, `path`, `component`, `icon`, `sort`
 (@menu_id, '查看', '', '', '', 1, 3, '{{.MenuConfig.Permission}}:list', 1, 0, NOW(), NOW()),
 (@menu_id, '新增', '', '', '', 2, 3, '{{.MenuConfig.Permission}}:add', 1, 0, NOW(), NOW()),
 (@menu_id, '编辑', '', '', '', 3, 3, '{{.MenuConfig.Permission}}:edit', 1, 0, NOW(), NOW()),
-(@menu_id, '删除', '', '', '', 4, 3, '{{.MenuConfig.Permission}}:delete', 1, 0, NOW(), NOW()),
+(@menu_id, '删除', '', '', '', 4, 3, '{{.MenuConfig.Permission}}:delete', 1, 0, NOW(), NOW()){{if .EnableImportExport}},
 (@menu_id, '导出', '', '', '', 5, 3, '{{.MenuConfig.Permission}}:export', 1, 0, NOW(), NOW()),
-(@menu_id, '导入', '', '', '', 6, 3, '{{.MenuConfig.Permission}}:import', 1, 0, NOW(), NOW()){{if .HasAudit}},
+(@menu_id, '导入', '', '', '', 6, 3, '{{.MenuConfig.Permission}}:import', 1, 0, NOW(), NOW()){{end}}{{if .HasAudit}},
 (@menu_id, '审批', '', '', '', 7, 3, '{{.MenuConfig.Permission}}:audit', 1, 0, NOW(), NOW()){{end}};
 {{- end}}

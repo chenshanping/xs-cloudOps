@@ -122,8 +122,19 @@ func (s *GeneratorService) Generate(config *generator.GeneratorConfig) (*generat
 				{"新增", ":add", 2},
 				{"编辑", ":edit", 3},
 				{"删除", ":delete", 4},
-				{"导出", ":export", 5},
-				{"导入", ":import", 6},
+			}
+			// 如果启用了导入导出功能，添加导出导入按钮
+			if config.EnableImportExport {
+				btnPermissions = append(btnPermissions, struct {
+					Name string
+					Perm string
+					Sort int
+				}{"导出", ":export", 5})
+				btnPermissions = append(btnPermissions, struct {
+					Name string
+					Perm string
+					Sort int
+				}{"导入", ":import", 6})
 			}
 			// 如果启用了审批功能，添加审批按钮
 			if config.HasAudit {

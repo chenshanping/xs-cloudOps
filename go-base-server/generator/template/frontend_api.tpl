@@ -78,6 +78,7 @@ export function get{{.ModelName}}TrendStats(days?: number) {
 }
 {{- end}}
 {{- end}}
+{{- if .EnableImportExport}}
 
 // 导出{{.Description}}
 export function export{{.ModelName}}(params?: {{.ModelName}}Query) {
@@ -109,3 +110,4 @@ export function downloadTemplate{{.ModelName}}() {
     responseType: 'blob'
   })
 }
+{{- end}}

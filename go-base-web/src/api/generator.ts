@@ -123,6 +123,8 @@ export interface GeneratorConfig {
   profile_name?: string       // 身份显示名称（如"医生"、"商家"）
   profile_icon?: string       // 身份图标（ant-design图标名）
   profile_role_code?: string  // 身份限定角色编码（为空表示不限制）
+  // 导入导出配置
+  enable_import_export?: boolean // 是否启用导入导出功能
   columns: ColumnConfig[]
   relations: RelationConfig[]
   menu_config: MenuConfig | null

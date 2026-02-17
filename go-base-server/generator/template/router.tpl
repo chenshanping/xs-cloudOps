@@ -37,10 +37,12 @@ func (m *{{.ModelName}}Module) RegisterPrivateRoutes(rg *gin.RouterGroup) {
 	R(rg, "DELETE", "/{{.RoutePath}}/:id", m.Name(), "删除{{.Description}}", v1.{{.ModelName}}.Delete{{.ModelName}}, registry.WithAuth())
 	R(rg, "DELETE", "/{{.RoutePath}}/batch", m.Name(), "批量删除{{.Description}}", v1.{{.ModelName}}.BatchDelete{{.ModelName}},
 		registry.WithAuth(), registry.WithRequest(request.BatchDelete{{.ModelName}}Request{}))
+{{- if .EnableImportExport}}
 	// 导入导出
 	R(rg, "GET", "/{{.RoutePath}}/export", m.Name(), "导出{{.Description}}", v1.{{.ModelName}}.Export{{.ModelName}}, registry.WithAuth())
 	R(rg, "POST", "/{{.RoutePath}}/import", m.Name(), "导入{{.Description}}", v1.{{.ModelName}}.Import{{.ModelName}}, registry.WithAuth())
 	R(rg, "GET", "/{{.RoutePath}}/template", m.Name(), "下载导入模板", v1.{{.ModelName}}.DownloadTemplate{{.ModelName}}, registry.WithAuth())
+{{- end}}
 {{- if .HasAudit}}
 	R(rg, "POST", "/{{.RoutePath}}/:id/audit", m.Name(), "审批{{.Description}}", v1.{{.ModelName}}.Audit{{.ModelName}},
 		registry.WithAuth(), registry.WithRequest(request.Audit{{.ModelName}}Request{}))
