@@ -1,0 +1,47 @@
+schema: spec-driven
+context: |
+  This repository is the go-base admin platform.
+
+  Tech stack:
+  - Backend: Go 1.21+, Gin, GORM, Casbin, JWT, MySQL, Redis
+  - Frontend: Vue 3, TypeScript, Vite, Pinia, Ant Design Vue
+
+  Project structure:
+  - Backend lives in `server/`
+  - Frontend lives in `web/`
+  - OpenSpec files live in `openspec/`
+  - Superpowers design docs live in `docs/superpowers/specs/`
+  - Superpowers plans live in `docs/superpowers/plans/`
+
+  Current project decisions:
+  - Directory names are `server` and `web`, not `go-base-server` / `go-base-web`
+  - Do not reintroduce code generator workflow or generator-driven module output
+  - Admin create/edit interactions default to Drawer unless the user explicitly asks for another pattern
+  - Non-trivial drawer or popup content should be extracted into local `components/`
+  - Layout/theme changes should follow the current layout preference store in `web/src/store/ui.ts`
+
+  Verification commands:
+  - Backend: `cd server && go test ./...`
+  - Frontend build: `cd web && npm run build`
+  - Frontend type check: `cd web && npm run typecheck`
+
+  Known verification caveat:
+  - `web` typecheck may still hit a known vue-tsc environment/toolchain issue in some sessions. If that occurs, report it explicitly and still run the strongest unaffected verification available.
+
+rules:
+  proposal:
+    - Must state why the change is needed, scope boundaries, affected backend/frontend areas, and rollback approach.
+    - Must explicitly state what is out of scope.
+    - For behavior changes, mention whether current specs must be updated or archived after implementation.
+  design:
+    - Must describe how the change touches `server/`, `web/`, permissions, routing, persistence, and validation where relevant.
+    - UI designs must respect the current Ant Design Vue patterns in this repository instead of importing XTMS or Spring Boot conventions.
+    - If a popup interaction is added, default the design to Drawer unless the user explicitly requested otherwise.
+  specs:
+    - Use delta specs with `ADDED`, `MODIFIED`, and `REMOVED` sections when applicable.
+    - Describe externally observable behavior only; avoid implementation detail.
+    - Scenarios should use Given / When / Then wording.
+  tasks:
+    - Tasks must use checkbox syntax and be small, reviewable, and executable.
+    - Include concrete verification commands for backend and/or frontend as relevant.
+    - Do not include generator-only steps or placeholder tasks.

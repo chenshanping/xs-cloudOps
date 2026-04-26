@@ -83,7 +83,7 @@ case "float64":
 
 ## 修改的文件
 
-- ✅ `go-base-server/utils/excel.go` - 修复 `ParseCellValue` 函数
+- ✅ `server/utils/excel.go` - 修复 `ParseCellValue` 函数
 
 ## 影响范围
 
@@ -96,18 +96,9 @@ case "float64":
 
 ## 如何修复已生成的模块
 
-### 方法1：重新生成模块（推荐）
+### 手动修改代码
 
-1. 登录系统
-2. 进入代码生成器
-3. 找到product配置
-4. 点击"生成代码"按钮
-5. 重启服务器
-6. 测试导入功能
-
-### 方法2：手动修改代码
-
-如果不想重新生成，可以手动修改 `api/v1/product.go` 中的类型断言：
+由于项目当前采用手工维护模块，直接手动修改 `api/v1/product.go` 中的类型断言：
 
 **查找所有类似的代码：**
 ```go

@@ -2,6 +2,8 @@
 
 基于 Go + Gin + JWT + Gorm + Casbin + Vue3 + TypeScript + Ant Design Vue 的后台权限管理系统
 
+> 本仓库已接入项目级 Codex + OpenSpec + Superpowers 工作流。开始非 trivial 任务前，请先阅读 [AGENTS.md](/E:/go_project/go-base/AGENTS.md) 和 [README_AGENT.md](/E:/go_project/go-base/README_AGENT.md)。
+
 ## 技术栈
 
 ### 后端

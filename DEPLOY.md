@@ -13,12 +13,12 @@
 
 ```
 go-base/
-├── go-base-server/          # 后端 Go 服务
+├── server/          # 后端 Go 服务
 │   ├── main.go
 │   ├── go.mod
 │   ├── config.yaml
 │   ├── rbac_model.conf
-└── go-base-web/             # 前端 Vite 项目
+└── web/             # 前端 Vite 项目
 │   ├── src/
 │   ├── index.html
 │   ├── package.json
@@ -30,19 +30,19 @@ go-base/
 
 ```bash
 # 进入后端目录
-cd go-base-server
+cd server
 
 # 交叉编译为 Linux 可执行文件（如果服务器是 Linux）
 # Windows PowerShell:
-$env:GOOS="linux"; $env:GOARCH="amd64"; go build -o go-base-server main.go
+$env:GOOS="linux"; $env:GOARCH="amd64"; go build -o server main.go
 
 # Linux / macOS:
-GOOS=linux GOARCH=amd64 go build -o go-base-server main.go
+GOOS=linux GOARCH=amd64 go build -o server main.go
 ```
 
 需要上传到服务器的文件：
 
-- `go-base-server` （编译后的可执行文件）
+- `server` （编译后的可执行文件）
 - `config.yaml` （配置文件）
 - `rbac_model.conf` （Casbin 权限模型配置）
 - `sql/` （数据库初始化脚本目录）
@@ -51,7 +51,7 @@ GOOS=linux GOARCH=amd64 go build -o go-base-server main.go
 
 ```bash
 # 进入前端目录
-cd go-base-web
+cd web
 
 # 安装依赖
 npm install
@@ -70,7 +70,7 @@ npm run build:test
 
 ```
 /opt/go-base/server/
-├── go-base-server          # 编译好的二进制文件
+├── server          # 编译好的二进制文件
 ├── config-test.yaml        # 测试环境配置文件
 ├── rbac_model.conf         # Casbin 权限模型
 └── sql/                    # 数据库初始化脚本（可选）
@@ -107,7 +107,7 @@ redis:
 jwt:
   secret: your-jwt-secret
   expires: 7200
-  issuer: go-base-server
+  issuer: server
 
 casbin:
   model_path: ./rbac_model.conf
@@ -135,15 +135,15 @@ mysql -h MySQL地址 -P 3306 -u root -p数据库密码 go_rbac_admin < /opt/go-b
 
 | 配置项 | 值 |
 |--------|----|
-| 名称 | go-base-server |
+| 名称 | server |
 | 运行目录 | /opt/go-base/server |
-| 启动命令 | `./go-base-server -c config-test.yaml` |
+| 启动命令 | `./server -c config-test.yaml` |
 | 端口 | 8080 |
 
 4. 确保二进制文件有执行权限：
 
 ```bash
-chmod +x /opt/go-base/server/go-base-server
+chmod +x /opt/go-base/server/server
 ```
 
 5. 启动服务
@@ -203,7 +203,7 @@ server {
 
 ### 1. 后端 Dockerfile
 
-在 `go-base-server/` 目录下创建 `Dockerfile`：
+在 `server/` 目录下创建 `Dockerfile`：
 
 ```dockerfile
 # 构建阶段
@@ -213,7 +213,7 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o go-base-server main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o server main.go
 
 # 运行阶段
 FROM alpine:3.20
@@ -223,18 +223,18 @@ RUN apk add --no-cache ca-certificates tzdata && \
     ln -snf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
     echo "Asia/Shanghai" > /etc/timezone
 
-COPY --from=builder /app/go-base-server /app/go-base-server
+COPY --from=builder /app/server /app/server
 COPY config.docker.yaml /app/config.docker.yaml
 COPY rbac_model.conf /app/rbac_model.conf
 
 EXPOSE 8080
 
-CMD ["./go-base-server", "-c", "config.docker.yaml"]
+CMD ["./server", "-c", "config.docker.yaml"]
 ```
 
 ### 2. 后端 Docker 配置文件
 
-在 `go-base-server/` 目录下创建 `config.docker.yaml`：
+在 `server/` 目录下创建 `config.docker.yaml`：
 
 ```yaml
 server:
@@ -261,7 +261,7 @@ redis:
 jwt:
   secret: your-jwt-secret
   expires: 7200
-  issuer: go-base-server
+  issuer: server
 
 casbin:
   model_path: ./rbac_model.conf
@@ -274,7 +274,7 @@ log:
 
 ### 3. 前端 Dockerfile
 
-在 `go-base-web/` 目录下创建 `Dockerfile`：
+在 `web/` 目录下创建 `Dockerfile`：
 
 ```dockerfile
 # 构建阶段
@@ -299,7 +299,7 @@ CMD ["nginx", "-g", "daemon off;"]
 
 ### 4. 前端 Nginx 配置
 
-在 `go-base-web/` 目录下创建 `nginx.conf`：
+在 `web/` 目录下创建 `nginx.conf`：
 
 ```nginx
 server {
@@ -316,7 +316,7 @@ server {
 
     # API 反向代理
     location /api/ {
-        proxy_pass http://go-base-server:8080/;
+        proxy_pass http://server:8080/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -345,7 +345,7 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./go-base-server/sql:/docker-entrypoint-initdb.d
+      - ./server/sql:/docker-entrypoint-initdb.d
     networks:
       - go-base-net
 
@@ -359,11 +359,11 @@ services:
     networks:
       - go-base-net
 
-  go-base-server:
+  server:
     build:
-      context: ./go-base-server
+      context: ./server
       dockerfile: Dockerfile
-    container_name: go-base-server
+    container_name: server
     ports:
       - "8080:8080"
     depends_on:
@@ -372,15 +372,15 @@ services:
     networks:
       - go-base-net
 
-  go-base-web:
+  web:
     build:
-      context: ./go-base-web
+      context: ./web
       dockerfile: Dockerfile
-    container_name: go-base-web
+    container_name: web
     ports:
       - "8081:80"
     depends_on:
-      - go-base-server
+      - server
     networks:
       - go-base-net
 
@@ -404,8 +404,8 @@ docker-compose up -d
 docker-compose logs -f
 
 # 查看单个服务日志
-docker-compose logs -f go-base-server
-docker-compose logs -f go-base-web
+docker-compose logs -f server
+docker-compose logs -f web
 
 # 停止并移除容器
 docker-compose down

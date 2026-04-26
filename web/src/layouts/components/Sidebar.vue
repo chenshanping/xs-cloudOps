@@ -1,0 +1,238 @@
+<template>
+  <a-layout-sider
+    v-if="uiStore.effectiveShowSidebar"
+    :collapsed="uiStore.layout.sidebarCollapsed"
+    :collapsed-width="80"
+    :theme="sidebarTheme"
+    :trigger="null"
+    :width="uiStore.layout.sidebarWidth"
+    :class="['sider', { 'sider-dark': sidebarTheme === 'dark' }]"
+  >
+    <div class="logo" @click="router.push('/dashboard')">
+      <img :src="configStore.get('sys_logo')" alt="logo" class="logo-img" />
+      <span v-if="!uiStore.layout.sidebarCollapsed" class="logo-title">
+        {{ sidebarTitle }}
+      </span>
+    </div>
+
+    <div class="menu-wrapper">
+      <a-menu
+        :inline-collapsed="uiStore.layout.sidebarCollapsed"
+        :items="menuItems"
+        :mode="'inline'"
+        :open-keys="openKeys"
+        :selected-keys="selectedKeys"
+        :theme="sidebarTheme"
+        class="sidebar-menu"
+        @click="handleMenuClick"
+        @openChange="handleOpenChange"
+      />
+    </div>
+  </a-layout-sider>
+</template>
+
+<script setup lang="ts">
+import { computed, h, ref, watch } from 'vue'
+import type { ItemType, MenuInfo } from 'ant-design-vue/es/menu/src/interface'
+import { DashboardOutlined } from '@ant-design/icons-vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useConfigStore } from '@/store/config'
+import { useUiStore } from '@/store/ui'
+import { useUserStore } from '@/store/user'
+import type { Menu } from '@/types'
+import {
+  filterEnabledMenus,
+  findMenuTrail,
+  firstNavigablePath,
+  getMixedSidebarMenus,
+  normalizePath,
+} from './layout-menu'
+import MenuIcon from './MenuIcon.vue'
+
+const route = useRoute()
+const router = useRouter()
+const userStore = useUserStore()
+const configStore = useConfigStore()
+const uiStore = useUiStore()
+
+const openKeys = ref<string[]>([])
+
+const sidebarTheme = computed(() => (uiStore.isDark || uiStore.theme.sidebarDark ? 'dark' : 'light'))
+
+const sidebarTitle = computed(() => {
+  const base = configStore.get('sys_name') || '后台管理'
+  return uiStore.layout.mode === 'mixed' ? `${base}` : `${base}后台`
+})
+
+const normalizedMenus = computed(() => filterEnabledMenus(userStore.menus || []))
+
+const currentMenus = computed(() => {
+  if (uiStore.layout.mode === 'mixed') {
+    const mixedMenus = getMixedSidebarMenus(normalizedMenus.value, route.path)
+    return mixedMenus.length ? mixedMenus : normalizedMenus.value
+  }
+  return normalizedMenus.value
+})
+
+const selectedKeys = computed(() => [normalizePath(route.path)])
+
+const buildMenuItems = (menus: Menu[]): ItemType[] => {
+  return menus.map((menu) => {
+    const icon = menu.icon ? () => h(MenuIcon, { icon: menu.icon }) : undefined
+
+    if (menu.type === 1 && menu.children?.length) {
+      return {
+        key: `menu-${menu.id}`,
+        icon,
+        label: menu.name,
+        children: buildMenuItems(menu.children),
+      }
+    }
+
+    return {
+      key: normalizePath(menu.path),
+      icon,
+      label: menu.name,
+    }
+  })
+}
+
+const menuItems = computed<ItemType[]>(() => [
+  {
+    key: '/dashboard',
+    icon: () => h(DashboardOutlined),
+    label: '首页',
+  },
+  ...buildMenuItems(currentMenus.value),
+])
+
+watch(
+  () => [route.path, currentMenus.value, uiStore.layout.mode],
+  () => {
+    const trail = findMenuTrail(currentMenus.value, route.path)
+    openKeys.value = trail
+      .filter((menu) => menu.type === 1)
+      .map((menu) => `menu-${menu.id}`)
+  },
+  { immediate: true, deep: true },
+)
+
+const handleMenuClick = ({ key }: MenuInfo) => {
+  if (typeof key === 'string' && key.startsWith('/')) {
+    router.push(key)
+  }
+}
+
+const handleOpenChange = (keys: string[]) => {
+  openKeys.value = keys
+}
+</script>
+
+<style scoped>
+.sider {
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  inset-inline-start: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  border-inline-end: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.sider :deep(.ant-layout-sider-children) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.logo {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.logo-img {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.logo-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sider-dark .logo-title {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.menu-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 8px 12px;
+}
+
+.sidebar-menu {
+  height: 100%;
+  background: transparent;
+  border-inline-end: none;
+}
+
+.sidebar-menu :deep(.ant-menu) {
+  background: transparent !important;
+  border-inline-end: none !important;
+}
+
+.sidebar-menu :deep(.ant-menu-item),
+.sidebar-menu :deep(.ant-menu-submenu-title) {
+  border-radius: 10px;
+}
+
+.sidebar-menu :deep(.ant-menu-item),
+.sidebar-menu :deep(.ant-menu-submenu-title) {
+  margin-inline: 0;
+  width: 100%;
+}
+
+.sidebar-menu :deep(.ant-menu-sub.ant-menu-inline) {
+  background: transparent !important;
+}
+
+.sider-dark .sidebar-menu :deep(.ant-menu-item),
+.sider-dark .sidebar-menu :deep(.ant-menu-submenu-title),
+.sider-dark .sidebar-menu :deep(.ant-menu-title-content),
+.sider-dark .sidebar-menu :deep(.ant-menu-item .ant-menu-item-icon),
+.sider-dark .sidebar-menu :deep(.ant-menu-submenu-title .ant-menu-item-icon),
+.sider-dark .sidebar-menu :deep(.ant-menu-submenu-arrow) {
+  color: rgba(255, 255, 255, 0.76) !important;
+}
+
+.sider-dark .sidebar-menu :deep(.ant-menu-item:hover),
+.sider-dark .sidebar-menu :deep(.ant-menu-submenu-title:hover) {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.sider-dark .sidebar-menu :deep(.ant-menu-item-selected),
+.sider-dark .sidebar-menu :deep(.ant-menu-submenu-selected > .ant-menu-submenu-title) {
+  color: #ffffff !important;
+}
+
+.sider-dark .sidebar-menu :deep(.ant-menu-item-selected .ant-menu-item-icon),
+.sider-dark .sidebar-menu :deep(.ant-menu-submenu-selected > .ant-menu-submenu-title .ant-menu-item-icon),
+.sider-dark .sidebar-menu :deep(.ant-menu-item-selected .ant-menu-title-content),
+.sider-dark .sidebar-menu :deep(.ant-menu-submenu-selected > .ant-menu-submenu-title .ant-menu-title-content) {
+  color: #ffffff !important;
+}
+</style>
