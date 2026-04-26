@@ -116,6 +116,12 @@ type UserListRequest struct {
 	RoleId   *int   `json:"role_id" form:"role_id" comment:"角色ID"`
 }
 
+// 批量修改用户状态请求
+type BatchUserStatusRequest struct {
+	Ids    []uint `json:"ids" binding:"required" comment:"用户ID列表"`
+	Status int    `json:"status" binding:"oneof=0 1" comment:"状态(0:禁用,1:启用)"`
+}
+
 // 创建角色请求
 type CreateRoleRequest struct {
 	Name   string `json:"name" binding:"required" comment:"角色名称"`

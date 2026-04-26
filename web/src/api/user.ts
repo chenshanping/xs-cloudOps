@@ -42,6 +42,11 @@ export function updateUserStatus(id: number, status: number) {
   return request.put<any, ApiResponse>(`/users/${id}/status`, { status })
 }
 
+// 批量修改用户状态
+export function batchUpdateUserStatus(ids: number[], status: number) {
+  return request.put<any, ApiResponse>('/users/batch-status', { ids, status })
+}
+
 // 重置密码
 export function resetPassword(id: number, password: string) {
   return request.put<any, ApiResponse>(`/users/${id}/password`, { password })

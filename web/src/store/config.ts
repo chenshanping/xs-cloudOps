@@ -42,7 +42,8 @@ export const CONFIG_KEYS = [
   'frontend_url',
   'slider_captcha_bg',
   // 前台模式配置
-  'front_mode'  // 'full': 完整前台, 'profile': 仅个人中心(用于身份认证)
+  'front_mode',  // 'full': 完整前台, 'profile': 仅个人中心(用于身份认证)
+  'user_profile_button_visible'
 ] as const
 
 // 默认配置
@@ -88,7 +89,8 @@ const DEFAULT_CONFIG: Record<string, string> = {
   frontend_url: 'http://localhost:5173',
   slider_captcha_bg: '',
   // 前台模式: 'full' = 完整前台, 'profile' = 仅个人中心
-  front_mode: 'full'
+  front_mode: 'full',
+  user_profile_button_visible: 'false'
 }
 
 export type ConfigKey = typeof CONFIG_KEYS[number]

@@ -30,36 +30,59 @@
 - Non-trivial popup/drawer content should be extracted into local `components/` instead of being kept inline in a large page file.
 - Theme/layout work should follow the current Ant Design Vue + Pinia layout preference approach already present in `web/src/layouts` and `web/src/store/ui.ts`.
 
-## When To Use OpenSpec + Superpowers
+## OpenSpec Decision Rule
 
-Use the full workflow for:
+Decide whether to use `openspec-propose` based on the user's actual requirement, not by default.
+
+Default behavior:
+
+- If the requirement is clear and low risk, implement directly.
+- If the requirement is medium-sized but the scope and neighboring patterns are clear, do a short local analysis and then implement directly.
+- Only use `openspec-propose` when the change is high risk, cross-module, or changes important system behavior.
+
+Implement directly without `openspec-propose` for:
+
+- Copy changes
+- Style or layout adjustments
+- Small form field changes
+- Small CRUD changes with clear scope
+- Small frontend-only or backend-only adjustments
+- Tiny config or typo fixes with no behavior change
+
+Usually analyze briefly and then implement directly for:
+
+- Medium feature changes with clear boundaries
+- Work that has adjacent implementations to copy from
+- Changes limited to one or two modules with controllable risk
+
+Use the full OpenSpec workflow for:
 
 - New business capability
 - API behavior change
 - Permission, audit, auth, data consistency, or workflow logic changes
+- Cross-frontend/backend/SQL permission linkage
 - Cross-module refactors
 - Any task that needs reviewable specs, resumability, and traceability
+- Any request whose scope is still unclear and must be locked before coding
 
-Use a lightweight path for:
-
-- Copy changes
-- Small docs-only edits
-- Tiny config or typo fixes with no behavior change
+If the user explicitly says `直接做`, prefer direct implementation unless the change is clearly high risk.
 
 ## Required Workflow For Non-Trivial Work
 
 1. Read the relevant code and neighboring modules first. Do not invent structure from memory.
-2. If the request is unclear or has design tradeoffs, start with Superpowers exploration and planning:
+2. First decide whether this request really needs OpenSpec by using the rule above. Do not enter `openspec-propose` automatically.
+3. If the request is unclear or has design tradeoffs, start with Superpowers exploration and planning:
    - `brainstorming`
    - `writing-plans`
-3. If the work changes behavior, API, UI flow, data contract, or architecture, create or update an OpenSpec change before coding:
+4. If the work is high risk or changes core behavior, API contract, permission model, audit semantics, data consistency, or architecture, create or update an OpenSpec change before coding:
    - `openspec-explore`
    - `openspec-propose`
    - `openspec-apply-change`
    - `openspec-archive-change`
-4. Implement in small steps, preferably in an isolated branch or worktree for risky work.
-5. Run real verification commands before claiming completion.
-6. Keep code, tasks, and specs aligned. Do not archive if they diverge.
+5. Otherwise, implement directly in small steps and keep the scope tight.
+6. Prefer an isolated branch or worktree for risky work.
+7. Run real verification commands before claiming completion.
+8. Keep code, tasks, and specs aligned whenever OpenSpec is used. Do not archive if they diverge.
 
 ## Search-First Rule
 

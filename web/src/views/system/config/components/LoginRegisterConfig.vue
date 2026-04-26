@@ -35,7 +35,8 @@
             <ImageUpload 
               v-model="formData.login_bg_image" 
               :width="160" 
-              :height="90" 
+              :height="90"
+              :max-size="10 * 1024 * 1024"
               placeholder="上传背景图"
             />
           </a-form-item>

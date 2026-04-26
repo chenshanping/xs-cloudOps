@@ -1,9 +1,12 @@
 package initialize
 
 import (
+	"errors"
 	"server/global"
 	"server/model"
 	"server/utils"
+
+	"gorm.io/gorm"
 )
 
 func InitDBTables() {
@@ -37,6 +40,9 @@ func InitDBTables() {
 
 	// 单独初始化系统配置（即使已有用户数据也会执行）
 	initDefaultConfigs()
+
+	// 补齐升级场景下缺失的内置配置和 API 权限元数据
+	ensureBuiltInData()
 }
 
 func initDefaultData() {
@@ -200,7 +206,191 @@ func initDefaultConfigs() {
 		{Name: "头部文字颜色", Key: "header_text_color", Value: "#333333", ValueType: "string", Remark: "顶部栏文字颜色"},
 		{Name: "AI配置", Key: "ai_config", Value: `{"default_provider":"阿里云百炼","providers":[{"name":"阿里云百炼","api_key":"","base_url":"https://dashscope.aliyuncs.com/compatible-mode/v1","models":[{"id":"deepseek-v3.2","name":"DeepSeek-V3.2","description":"DeepSeek最新模型,支持联网和思考"},{"id":"qwen3-max","name":"通义千问3-Max","description":"通义千问3系列Max模型"}]}]}`, ValueType: "json", Remark: "AI平台配置，包含平台名称、API Key、基础URL和模型列表"},
 		{Name: "前台模式", Key: "front_mode", Value: "full", ValueType: "string", Remark: "前台模式: full=完整前台, profile=仅个人中心(用于身份认证)"},
+		{Name: "用户身份按钮显示", Key: "user_profile_button_visible", Value: "false", ValueType: "string", Remark: "后台用户管理列表是否显示身份按钮"},
 	}
 	global.DB.Create(&configs)
 	global.Log.Info("系统配置初始化成功")
+}
+
+func ensureBuiltInData() {
+	ensureConfigExists(model.SysConfig{
+		Name:      "用户身份按钮显示",
+		Key:       "user_profile_button_visible",
+		Value:     "false",
+		ValueType: "string",
+		Remark:    "后台用户管理列表是否显示身份按钮",
+	})
+
+	ensureApiAccessInheritedFrom(model.SysApi{
+		Path:        "/api/v1/users/batch-status",
+		Method:      "PUT",
+		Group:       "用户管理",
+		Description: "批量修改用户状态",
+		NeedAuth:    true,
+	}, "/api/v1/users/:id/status", "PUT")
+
+	ensureUserBatchStatusMenus()
+}
+
+func ensureConfigExists(config model.SysConfig) {
+	var existing model.SysConfig
+	err := global.DB.Where("`key` = ?", config.Key).First(&existing).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		if err := global.DB.Create(&config).Error; err != nil {
+			global.Log.Errorf("补齐系统配置失败(%s): %v", config.Key, err)
+		}
+	}
+}
+
+func ensureApiAccessInheritedFrom(api model.SysApi, sourcePath, sourceMethod string) {
+	if err := global.DB.
+		Where("path = ? AND method = ?", api.Path, api.Method).
+		Assign(model.SysApi{
+			Group:       api.Group,
+			Description: api.Description,
+			NeedAuth:    api.NeedAuth,
+		}).
+		FirstOrCreate(&api).Error; err != nil {
+		global.Log.Errorf("补齐系统API失败(%s %s): %v", api.Method, api.Path, err)
+		return
+	}
+
+	var roles []model.SysRole
+	if err := global.DB.Table("sys_role AS sr").
+		Select("sr.*").
+		Joins("JOIN sys_role_api AS sra ON sra.sys_role_id = sr.id").
+		Joins("JOIN sys_api AS sa ON sa.id = sra.sys_api_id").
+		Where("sa.path = ? AND sa.method = ?", sourcePath, sourceMethod).
+		Group("sr.id").
+		Find(&roles).Error; err != nil {
+		global.Log.Errorf("查询源API授权角色失败(%s %s): %v", sourceMethod, sourcePath, err)
+		return
+	}
+	if len(roles) == 0 {
+		if err := global.DB.Where("code IN ?", []string{"admin", "system_admin"}).Find(&roles).Error; err != nil {
+			global.Log.Errorf("查询内置角色失败: %v", err)
+			return
+		}
+	}
+
+	policyChanged := false
+	for _, role := range roles {
+		var count int64
+		if err := global.DB.Table("sys_role_api").
+			Where("sys_role_id = ? AND sys_api_id = ?", role.ID, api.ID).
+			Count(&count).Error; err == nil && count == 0 {
+			if err := global.DB.Model(&role).Association("Apis").Append(&api); err != nil {
+				global.Log.Errorf("关联角色API失败(%s): %v", role.Code, err)
+			}
+		}
+
+		if global.Enforcer != nil {
+			if ok, err := global.Enforcer.AddPolicy(role.Code, api.Path, api.Method); err != nil {
+				global.Log.Errorf("补齐Casbin策略失败(%s %s %s): %v", role.Code, api.Method, api.Path, err)
+			} else if ok {
+				policyChanged = true
+			}
+		}
+	}
+
+	if policyChanged && global.Enforcer != nil {
+		_ = global.Enforcer.SavePolicy()
+	}
+}
+
+func ensureUserBatchStatusMenus() {
+	var userMenu model.SysMenu
+	if err := global.DB.Where("permission = ? AND type = ?", "system:user:list", 2).First(&userMenu).Error; err != nil {
+		global.Log.Errorf("查询用户管理菜单失败: %v", err)
+		return
+	}
+
+	menuDefinitions := []model.SysMenu{
+		{
+			ParentID:   userMenu.ID,
+			Name:       "批量启用",
+			Path:       "",
+			Component:  "",
+			Icon:       "",
+			Sort:       5,
+			Type:       3,
+			Permission: "system:user:batchEnable",
+			Status:     1,
+			Hidden:     0,
+		},
+		{
+			ParentID:   userMenu.ID,
+			Name:       "批量禁用",
+			Path:       "",
+			Component:  "",
+			Icon:       "",
+			Sort:       6,
+			Type:       3,
+			Permission: "system:user:batchDisable",
+			Status:     1,
+			Hidden:     0,
+		},
+	}
+
+	for _, definition := range menuDefinitions {
+		menu := definition
+		if err := global.DB.
+			Where("permission = ?", menu.Permission).
+			Assign(model.SysMenu{
+				ParentID:  menu.ParentID,
+				Name:      menu.Name,
+				Path:      menu.Path,
+				Component: menu.Component,
+				Icon:      menu.Icon,
+				Sort:      menu.Sort,
+				Type:      menu.Type,
+				Status:    menu.Status,
+				Hidden:    menu.Hidden,
+			}).
+			FirstOrCreate(&menu).Error; err != nil {
+			global.Log.Errorf("补齐用户批量状态按钮失败(%s): %v", definition.Permission, err)
+			continue
+		}
+
+		grantMenuToRolesWithPermission(menu.ID, "system:user:edit")
+	}
+}
+
+func grantMenuToRolesWithPermission(menuID uint, sourcePermission string) {
+	var sourceMenus []model.SysMenu
+	if err := global.DB.Where("permission = ?", sourcePermission).Find(&sourceMenus).Error; err != nil {
+		global.Log.Errorf("查询源权限菜单失败(%s): %v", sourcePermission, err)
+		return
+	}
+	if len(sourceMenus) == 0 {
+		return
+	}
+
+	sourceMenuIDs := make([]uint, 0, len(sourceMenus))
+	for _, menu := range sourceMenus {
+		sourceMenuIDs = append(sourceMenuIDs, menu.ID)
+	}
+
+	var roleIDs []uint
+	if err := global.DB.Table("sys_role_menu").
+		Distinct("sys_role_id").
+		Where("sys_menu_id IN ?", sourceMenuIDs).
+		Pluck("sys_role_id", &roleIDs).Error; err != nil {
+		global.Log.Errorf("查询源权限角色失败(%s): %v", sourcePermission, err)
+		return
+	}
+
+	for _, roleID := range roleIDs {
+		var count int64
+		if err := global.DB.Table("sys_role_menu").
+			Where("sys_role_id = ? AND sys_menu_id = ?", roleID, menuID).
+			Count(&count).Error; err == nil && count == 0 {
+			if err := global.DB.Exec(
+				"INSERT INTO sys_role_menu (sys_role_id, sys_menu_id) VALUES (?, ?)",
+				roleID, menuID,
+			).Error; err != nil {
+				global.Log.Errorf("补齐角色菜单权限失败(role=%d, menu=%d): %v", roleID, menuID, err)
+			}
+		}
+	}
 }

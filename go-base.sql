@@ -122,7 +122,7 @@ CREATE TABLE `casbin_rule`  (
   `v5` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `idx_casbin_rule`(`ptype` ASC, `v0` ASC, `v1` ASC, `v2` ASC, `v3` ASC, `v4` ASC, `v5` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 220 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 222 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of casbin_rule
@@ -192,6 +192,7 @@ INSERT INTO `casbin_rule` VALUES (146, 'p', 'admin', '/api/v1/users/:id', 'GET',
 INSERT INTO `casbin_rule` VALUES (148, 'p', 'admin', '/api/v1/users/:id', 'PUT', '', '', '');
 INSERT INTO `casbin_rule` VALUES (151, 'p', 'admin', '/api/v1/users/:id/password', 'PUT', '', '', '');
 INSERT INTO `casbin_rule` VALUES (150, 'p', 'admin', '/api/v1/users/:id/status', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (220, 'p', 'admin', '/api/v1/users/batch-status', 'PUT', '', '', '');
 INSERT INTO `casbin_rule` VALUES (13, 'p', 'doctor', '/api/v1/ai/chat', 'POST', '', '', '');
 INSERT INTO `casbin_rule` VALUES (14, 'p', 'doctor', '/api/v1/ai/chat/stream', 'POST', '', '', '');
 INSERT INTO `casbin_rule` VALUES (6, 'p', 'doctor', '/api/v1/ai/conversations', 'GET', '', '', '');
@@ -307,6 +308,7 @@ INSERT INTO `casbin_rule` VALUES (115, 'p', 'system_admin', '/api/v1/users/:id/o
 INSERT INTO `casbin_rule` VALUES (60, 'p', 'system_admin', '/api/v1/users/:id/password', 'PUT', '', '', '');
 INSERT INTO `casbin_rule` VALUES (116, 'p', 'system_admin', '/api/v1/users/:id/profiles', 'GET', '', '', '');
 INSERT INTO `casbin_rule` VALUES (59, 'p', 'system_admin', '/api/v1/users/:id/status', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (221, 'p', 'system_admin', '/api/v1/users/batch-status', 'PUT', '', '', '');
 INSERT INTO `casbin_rule` VALUES (112, 'p', 'system_admin', '/api/v1/users/options', 'GET', '', '', '');
 INSERT INTO `casbin_rule` VALUES (139, 'p', 'user', '/api/v1/ai/chat', 'POST', '', '', '');
 INSERT INTO `casbin_rule` VALUES (140, 'p', 'user', '/api/v1/ai/chat/stream', 'POST', '', '', '');
@@ -355,7 +357,7 @@ CREATE TABLE `sys_api`  (
   `need_auth` tinyint(1) NULL DEFAULT NULL COMMENT '是否需要认证',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_sys_api_deleted_at`(`deleted_at` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 220 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 221 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_api
@@ -568,6 +570,7 @@ INSERT INTO `sys_api` VALUES (216, '2026-02-10 02:18:36.653', '2026-02-10 02:18:
 INSERT INTO `sys_api` VALUES (217, '2026-02-10 02:18:36.715', '2026-02-10 02:18:36.715', NULL, '/api/v1/captcha/slider/verify', 'POST', '验证码管理', '验证滑动验证码', '', '', 0);
 INSERT INTO `sys_api` VALUES (218, '2026-02-10 02:18:36.790', '2026-02-10 02:18:36.790', NULL, '/api/v1/files/batch', 'DELETE', '文件管理', '批量删除文件', '', '', 1);
 INSERT INTO `sys_api` VALUES (219, '2026-02-10 02:18:36.914', '2026-02-10 02:18:36.914', NULL, '/api/v1/users/batch', 'DELETE', '用户管理', '批量删除用户', '', '', 1);
+INSERT INTO `sys_api` VALUES (220, '2026-04-26 00:00:00.000', '2026-04-26 00:00:00.000', NULL, '/api/v1/users/batch-status', 'PUT', '用户管理', '批量修改用户状态', '', '', 1);
 
 -- ----------------------------
 -- Table structure for sys_config
@@ -874,7 +877,7 @@ CREATE TABLE `sys_menu`  (
   `hidden` bigint NULL DEFAULT 0 COMMENT '是否隐藏 0显示 1隐藏',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_sys_menu_deleted_at`(`deleted_at` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 369 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 371 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_menu
@@ -900,6 +903,8 @@ INSERT INTO `sys_menu` VALUES (20, '2026-01-25 15:04:03.700', '2026-01-25 15:04:
 INSERT INTO `sys_menu` VALUES (21, '2026-01-25 15:33:05.228', '2026-01-25 15:33:05.228', NULL, 3, '用户重置密码', '', '', '', 0, 3, 'system:user:resetPwd', 1, 0);
 INSERT INTO `sys_menu` VALUES (22, '2026-01-25 15:33:24.656', '2026-01-25 15:33:24.656', NULL, 3, '用户删除', '', '', '', 0, 3, 'system:user:delete', 1, 0);
 INSERT INTO `sys_menu` VALUES (23, '2026-01-25 15:33:47.058', '2026-01-25 15:33:47.058', NULL, 3, '用户新增', '', '', '', 0, 3, 'system:user:add', 1, 0);
+INSERT INTO `sys_menu` VALUES (369, '2026-04-26 00:00:00.000', '2026-04-26 00:00:00.000', NULL, 3, '批量启用', '', '', '', 5, 3, 'system:user:batchEnable', 1, 0);
+INSERT INTO `sys_menu` VALUES (370, '2026-04-26 00:00:00.000', '2026-04-26 00:00:00.000', NULL, 3, '批量禁用', '', '', '', 6, 3, 'system:user:batchDisable', 1, 0);
 INSERT INTO `sys_menu` VALUES (24, '2026-01-25 17:25:31.612', '2026-01-25 17:34:45.886', NULL, 1, '文件管理', '/system/file', 'system/file/index', 'FileProtectOutlined', 6, 2, 'system:file:list', 1, 0);
 INSERT INTO `sys_menu` VALUES (25, '2026-01-25 17:36:00.848', '2026-01-25 17:36:00.848', NULL, 1, '文件存储设置', '/system/storage', 'system/storage', 'AppstoreTwoTone', 7, 2, 'system:storage:list', 1, 0);
 INSERT INTO `sys_menu` VALUES (26, '2026-01-27 00:35:23.946', '2026-01-27 00:35:23.946', '2026-01-27 00:50:58.109', 0, '产品类型', '/product_type', 'product_type/index', 'official-ProjectFilled', 0, 2, 'poductType:list:list', 1, 0);
@@ -1567,6 +1572,8 @@ INSERT INTO `sys_role_api` VALUES (3, 173);
 INSERT INTO `sys_role_api` VALUES (3, 174);
 INSERT INTO `sys_role_api` VALUES (2, 175);
 INSERT INTO `sys_role_api` VALUES (3, 175);
+INSERT INTO `sys_role_api` VALUES (1, 220);
+INSERT INTO `sys_role_api` VALUES (3, 220);
 
 -- ----------------------------
 -- Table structure for sys_role_menu
@@ -1600,6 +1607,8 @@ INSERT INTO `sys_role_menu` VALUES (3, 16);
 INSERT INTO `sys_role_menu` VALUES (3, 21);
 INSERT INTO `sys_role_menu` VALUES (3, 22);
 INSERT INTO `sys_role_menu` VALUES (3, 23);
+INSERT INTO `sys_role_menu` VALUES (3, 369);
+INSERT INTO `sys_role_menu` VALUES (3, 370);
 INSERT INTO `sys_role_menu` VALUES (1, 24);
 INSERT INTO `sys_role_menu` VALUES (3, 24);
 INSERT INTO `sys_role_menu` VALUES (1, 25);

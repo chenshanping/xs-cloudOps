@@ -31,6 +31,16 @@
             </div>
           </a-form-item>
 
+          <a-form-item label="用户身份按钮">
+            <a-switch
+              :checked="formData.user_profile_button_visible === 'true'"
+              @change="(checked: boolean) => formData.user_profile_button_visible = checked ? 'true' : 'false'"
+            />
+            <div class="form-tip">
+              控制后台用户管理列表中的“身份”按钮是否显示，默认隐藏
+            </div>
+          </a-form-item>
+
           
 
           <!-- 主题预设 -->
@@ -271,7 +281,8 @@ const SYSTEM_CONFIG_KEYS = [
   'menu_active_bg_color',
   'header_bg_color',
   'header_text_color',
-  'front_mode'
+  'front_mode',
+  'user_profile_button_visible'
 ] as const
 
 // 直接从 store 初始化数据
@@ -285,7 +296,8 @@ const formData = reactive({
   menu_active_bg_color: configStore.get('menu_active_bg_color'),
   header_bg_color: configStore.get('header_bg_color'),
   header_text_color: configStore.get('header_text_color'),
-  front_mode: configStore.get('front_mode') || 'full'
+  front_mode: configStore.get('front_mode') || 'full',
+  user_profile_button_visible: configStore.get('user_profile_button_visible') || 'false'
 })
 const updateHeaderBgColor = (e: Event) => {
   formData.header_bg_color = (e.target as HTMLInputElement).value
@@ -360,6 +372,7 @@ const handleReset = () => {
   formData.menu_active_bg_color = '#1890ff'
   formData.header_bg_color = '#ffffff'
   formData.header_text_color = '#333333'
+  formData.user_profile_button_visible = 'false'
 }
 
 </script>

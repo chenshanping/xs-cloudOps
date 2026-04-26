@@ -28,7 +28,7 @@
           </template>
           <template v-if="column.key === 'type'">
             <a-tag :color="record.type === 1 ? 'blue' : record.type === 2 ? 'green' : 'orange'">
-              {{ record.type === 1 ? '目录' : record.type === 2 ? '菜单' : '按鑢' }}
+              {{ record.type === 1 ? '目录' : record.type === 2 ? '菜单' : '按钮' }}
             </a-tag>
           </template>
           <template v-if="column.key === 'status'">

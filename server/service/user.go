@@ -19,6 +19,59 @@ type UserService struct{}
 
 var User = new(UserService)
 
+func normalizeUserIDs(ids []uint) []uint {
+	uniqueIDs := make([]uint, 0, len(ids))
+	seen := make(map[uint]struct{}, len(ids))
+	for _, id := range ids {
+		if id == 0 {
+			continue
+		}
+		if _, exists := seen[id]; exists {
+			continue
+		}
+		seen[id] = struct{}{}
+		uniqueIDs = append(uniqueIDs, id)
+	}
+	return uniqueIDs
+}
+
+func isProtectedBatchStatusUser(user model.SysUser) bool {
+	if user.ID == 1 || user.Username == "admin" {
+		return true
+	}
+	for _, role := range user.Roles {
+		if role.ID == 1 || role.Code == "admin" || role.Code == "super_admin" {
+			return true
+		}
+	}
+	return false
+}
+
+func validateBatchUserStatusTargets(ids []uint, status int, operatorID uint, users []model.SysUser) error {
+	if len(ids) == 0 {
+		return errors.New("请选择要修改状态的用户")
+	}
+	if status != 0 && status != 1 {
+		return errors.New("状态值无效")
+	}
+
+	if status == 0 {
+		for _, id := range ids {
+			if id == operatorID {
+				return errors.New("不能批量禁用自己")
+			}
+		}
+	}
+
+	for _, user := range users {
+		if isProtectedBatchStatusUser(user) {
+			return fmt.Errorf("用户「%s」为受保护管理员，不能批量修改状态", user.Username)
+		}
+	}
+
+	return nil
+}
+
 // 获取用户选项列表（轻量级，仅返回 id/username/nickname）
 func (s *UserService) GetUserOptions() ([]map[string]interface{}, error) {
 	var results []map[string]interface{}
@@ -201,13 +254,13 @@ func (s *UserService) UpdateUser(id uint, req *request.UpdateUserRequest) error 
 	})
 	if err == nil {
 		Cache.ClearUserInfoCache(id) // 清除缓存
-		
+
 		// 检查角色是否变化，如果变化则让用户 Token 失效
 		newRoleIds := make([]uint, len(req.RoleIds))
 		copy(newRoleIds, req.RoleIds)
 		sort.Slice(oldRoleIds, func(i, j int) bool { return oldRoleIds[i] < oldRoleIds[j] })
 		sort.Slice(newRoleIds, func(i, j int) bool { return newRoleIds[i] < newRoleIds[j] })
-		
+
 		rolesChanged := len(oldRoleIds) != len(newRoleIds)
 		if !rolesChanged {
 			for i := range oldRoleIds {
@@ -217,7 +270,7 @@ func (s *UserService) UpdateUser(id uint, req *request.UpdateUserRequest) error 
 				}
 			}
 		}
-		
+
 		if rolesChanged {
 			// 角色变化，让用户 Token 失效，强制重新登录
 			_ = utils.RemoveUserToken(id)
@@ -281,6 +334,52 @@ func (s *UserService) UpdateUserStatus(id uint, status int) error {
 		Cache.ClearUserInfoCache(id)
 	}
 	return err
+}
+
+// 批量修改用户状态
+func (s *UserService) BatchUpdateUserStatus(operatorID uint, req *request.BatchUserStatusRequest) error {
+	ids := normalizeUserIDs(req.Ids)
+	if len(ids) == 0 {
+		return errors.New("请选择要修改状态的用户")
+	}
+
+	var users []model.SysUser
+	if err := global.DB.Preload("Roles").Where("id IN ?", ids).Find(&users).Error; err != nil {
+		return err
+	}
+	if len(users) != len(ids) {
+		return errors.New("部分用户不存在或已被删除")
+	}
+
+	if err := validateBatchUserStatusTargets(ids, req.Status, operatorID, users); err != nil {
+		return err
+	}
+
+	err := global.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&model.SysUser{}).
+			Where("id IN ?", ids).
+			Updates(map[string]interface{}{"status": req.Status}).Error; err != nil {
+			return err
+		}
+
+		if req.Status == 0 {
+			for _, id := range ids {
+				if err := utils.RemoveUserToken(id); err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, id := range ids {
+		Cache.ClearUserInfoCache(id)
+	}
+	return nil
 }
 
 // 重置密码

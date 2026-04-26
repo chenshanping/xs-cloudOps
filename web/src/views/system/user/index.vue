@@ -37,6 +37,14 @@
           <a-button type="primary" @click="handleAdd" v-permission="'system:user:add'">
             <PlusOutlined /> 新增
           </a-button>
+          <a-button type="primary" :disabled="selectedRowKeys.length === 0" @click="handleBatchStatusChange(1)" v-permission="'system:user:batchEnable'">
+            批量启用
+            <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
+          </a-button>
+          <a-button danger :disabled="selectedRowKeys.length === 0" @click="handleBatchStatusChange(0)" v-permission="'system:user:batchDisable'">
+            批量禁用
+            <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
+          </a-button>
           <a-button type="primary" danger :disabled="selectedRowKeys.length === 0" @click="handleBatchDelete" v-permission="'system:user:delete'">
             <DeleteOutlined /> 批量删除
             <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
@@ -66,7 +74,7 @@
         <template v-if="column.key === 'action'">
           <a-space :size="0">
             <a-button type="link" size="small" @click="handleEdit(record)" v-permission="'system:user:edit'">编辑</a-button>
-            <a-button type="link" size="small" @click="handleViewProfiles(record)">身份</a-button>
+            <a-button v-if="showProfileButton" type="link" size="small" @click="handleViewProfiles(record)">身份</a-button>
             <a-dropdown>
               <a-button type="link" size="small">更多 <DownOutlined /></a-button>
               <template #overlay>
@@ -190,20 +198,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { message, Modal, type FormInstance } from 'ant-design-vue'
 import { ExclamationCircleOutlined } from '@ant-design/icons-vue'
 import { createVNode } from 'vue'
 import { PlusOutlined, UserOutlined, DownOutlined, DeleteOutlined } from '@ant-design/icons-vue'
 import AvatarUpload from '@/components/AvatarUpload.vue'
 import ProTable from '@/components/ProTable.vue'
-import { getUserList, createUser, updateUser, deleteUser, batchDeleteUsers, updateUserStatus, resetPassword, forceUserOffline, getUserProfilesById, type UserProfile } from '@/api/user'
+import { getUserList, createUser, updateUser, deleteUser, batchDeleteUsers, updateUserStatus, batchUpdateUserStatus, resetPassword, forceUserOffline, getUserProfilesById, type UserProfile } from '@/api/user'
 import { getRoleList } from '@/api/role'
 import { formatTime } from '@/utils/format'
 import { useTableColumns } from '@/utils/permission'
+import { useConfigStore } from '@/store/config'
+import { useUserStore } from '@/store/user'
 import type { User, Role } from '@/types'
 import type { Rule } from 'ant-design-vue/es/form'
 const formRef = ref<FormInstance>()
+const configStore = useConfigStore()
+const userStore = useUserStore()
 const loading = ref(false)
 const tableData = ref<User[]>([])
 const roleList = ref<Role[]>([])
@@ -212,6 +224,14 @@ const modalTitle = ref('新增用户')
 const isEdit = ref(false)
 const currentId = ref(0)
 const selectedRowKeys = ref<number[]>([])
+const showProfileButton = computed(() => {
+  const value = configStore.get('user_profile_button_visible')
+  return value === 'true' || value === '1'
+})
+const selectedUsers = computed(() =>
+  tableData.value.filter(item => selectedRowKeys.value.includes(item.id))
+)
+const currentUserId = computed(() => userStore.user?.id ?? 0)
 
 // 用户身份弹窗
 const profilesVisible = ref(false)
@@ -446,6 +466,59 @@ const confirmDelete = (record: User) => {
 
 const onSelectChange = (keys: number[]) => {
   selectedRowKeys.value = keys
+}
+
+const isProtectedBatchStatusRecord = (record: User) => {
+  if (record.id === 1 || record.username === 'admin') {
+    return true
+  }
+  return (record.roles || []).some(role => role.id === 1 || role.code === 'admin' || role.code === 'super_admin')
+}
+
+const getBatchStatusTargetIds = (status: number) => {
+  if (selectedRowKeys.value.length === 0) {
+    message.warning('请选择要修改状态的用户')
+    return null
+  }
+
+  if (selectedUsers.value.some(user => isProtectedBatchStatusRecord(user))) {
+    message.warning('当前选择包含受保护管理员账号，无法批量修改状态')
+    return null
+  }
+
+  if (status === 0 && selectedUsers.value.some(user => user.id === currentUserId.value)) {
+    message.warning('不能批量禁用自己')
+    return null
+  }
+
+  return [...selectedRowKeys.value]
+}
+
+const handleBatchStatusChange = (status: number) => {
+  const targetIds = getBatchStatusTargetIds(status)
+  if (!targetIds || targetIds.length === 0) {
+    return
+  }
+
+  const actionText = status === 1 ? '启用' : '禁用'
+  Modal.confirm({
+    title: `确认批量${actionText}`,
+    icon: createVNode(ExclamationCircleOutlined),
+    content: `确定要批量${actionText}选中的 ${targetIds.length} 个用户吗？`,
+    okText: `批量${actionText}`,
+    okType: status === 0 ? 'danger' : 'primary',
+    cancelText: '取消',
+    async onOk() {
+      try {
+        await batchUpdateUserStatus(targetIds, status)
+        message.success(`批量${actionText}成功`)
+        selectedRowKeys.value = []
+        fetchData()
+      } catch {
+        // 错误已由 request 拦截器处理
+      }
+    }
+  })
 }
 
 // 批量删除用户

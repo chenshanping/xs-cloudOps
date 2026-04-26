@@ -169,6 +169,23 @@ func (a *UserApi) UpdateUserStatus(c *gin.Context) {
 	response.OkWithMessage(c, "修改成功")
 }
 
+// 批量修改用户状态
+func (a *UserApi) BatchUpdateUserStatus(c *gin.Context) {
+	var req request.BatchUserStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	operatorID := middleware.GetUserID(c)
+	if err := service.User.BatchUpdateUserStatus(operatorID, &req); err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+
+	response.OkWithMessage(c, "修改成功")
+}
+
 // 重置密码
 func (a *UserApi) ResetPassword(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
@@ -284,7 +301,7 @@ func (a *UserApi) ForceOffline(c *gin.Context) {
 // 获取当前用户所有身份信息
 func (a *UserApi) GetUserProfiles(c *gin.Context) {
 	userID := middleware.GetUserID(c)
-	
+
 	// 获取用户角色编码列表
 	var userRoles []string
 	user, err := service.User.GetUserInfo(userID)
@@ -293,7 +310,7 @@ func (a *UserApi) GetUserProfiles(c *gin.Context) {
 			userRoles = append(userRoles, role.Code)
 		}
 	}
-	
+
 	profiles := global.Profiles.GetUserProfiles(userID, userRoles)
 	response.OkWithData(c, profiles)
 }
