@@ -83,6 +83,7 @@ type CreateUserRequest struct {
 	Avatar       string `json:"avatar" comment:"头像地址"`
 	AvatarFileID uint   `json:"avatar_file_id" comment:"头像文件ID"`
 	Status       int    `json:"status" comment:"状态(0:禁用,1:启用)"`
+	DeptID       uint   `json:"dept_id" comment:"部门ID"`
 	RoleIds      []uint `json:"role_ids" comment:"角色ID列表"`
 }
 
@@ -94,6 +95,7 @@ type UpdateUserRequest struct {
 	Avatar       string `json:"avatar" comment:"头像地址"`
 	AvatarFileID uint   `json:"avatar_file_id" comment:"头像文件ID"`
 	Status       int    `json:"status" comment:"状态(0:禁用,1:启用)"`
+	DeptID       uint   `json:"dept_id" comment:"部门ID"`
 	RoleIds      []uint `json:"role_ids" comment:"角色ID列表"`
 }
 
@@ -111,9 +113,11 @@ type ResetPasswordRequest struct {
 // 用户列表请求
 type UserListRequest struct {
 	PageRequest
-	Username string `json:"username" form:"username" comment:"用户名"`
-	Status   *int   `json:"status" form:"status" comment:"状态"`
-	RoleId   *int   `json:"role_id" form:"role_id" comment:"角色ID"`
+	Username       string `json:"username" form:"username" comment:"用户名"`
+	Status         *int   `json:"status" form:"status" comment:"状态"`
+	RoleId         *int   `json:"role_id" form:"role_id" comment:"角色ID"`
+	DeptId         *int   `json:"dept_id" form:"dept_id" comment:"部门ID"`
+	UnassignedDept bool   `json:"unassigned_dept" form:"unassigned_dept" comment:"是否筛选未绑定部门用户"`
 }
 
 // 批量修改用户状态请求
@@ -124,20 +128,42 @@ type BatchUserStatusRequest struct {
 
 // 创建角色请求
 type CreateRoleRequest struct {
-	Name   string `json:"name" binding:"required" comment:"角色名称"`
-	Code   string `json:"code" binding:"required" comment:"角色编码"`
-	Sort   int    `json:"sort" comment:"排序"`
-	Status int    `json:"status" comment:"状态(0:禁用,1:启用)"`
-	Remark string `json:"remark" comment:"备注"`
+	Name      string `json:"name" binding:"required" comment:"角色名称"`
+	Code      string `json:"code" binding:"required" comment:"角色编码"`
+	Sort      int    `json:"sort" comment:"排序"`
+	Status    int    `json:"status" comment:"状态(0:禁用,1:启用)"`
+	DataScope int    `json:"data_scope" comment:"数据范围"`
+	Remark    string `json:"remark" comment:"备注"`
+	DeptIds   []uint `json:"dept_ids" comment:"自定义数据范围部门ID列表"`
 }
 
 // 更新角色请求
 type UpdateRoleRequest struct {
-	Name   string `json:"name" comment:"角色名称"`
-	Code   string `json:"code" comment:"角色编码"`
-	Sort   int    `json:"sort" comment:"排序"`
-	Status int    `json:"status" comment:"状态(0:禁用,1:启用)"`
-	Remark string `json:"remark" comment:"备注"`
+	Name      string `json:"name" comment:"角色名称"`
+	Code      string `json:"code" comment:"角色编码"`
+	Sort      int    `json:"sort" comment:"排序"`
+	Status    int    `json:"status" comment:"状态(0:禁用,1:启用)"`
+	DataScope int    `json:"data_scope" comment:"数据范围"`
+	Remark    string `json:"remark" comment:"备注"`
+	DeptIds   []uint `json:"dept_ids" comment:"自定义数据范围部门ID列表"`
+}
+
+// 创建部门请求
+type CreateDeptRequest struct {
+	ParentID uint   `json:"parent_id" comment:"父部门ID"`
+	Name     string `json:"name" binding:"required" comment:"部门名称"`
+	Sort     int    `json:"sort" comment:"排序"`
+	Status   int    `json:"status" comment:"状态(0:禁用,1:启用)"`
+	Remark   string `json:"remark" comment:"备注"`
+}
+
+// 更新部门请求
+type UpdateDeptRequest struct {
+	ParentID uint   `json:"parent_id" comment:"父部门ID"`
+	Name     string `json:"name" binding:"required" comment:"部门名称"`
+	Sort     int    `json:"sort" comment:"排序"`
+	Status   int    `json:"status" comment:"状态(0:禁用,1:启用)"`
+	Remark   string `json:"remark" comment:"备注"`
 }
 
 // 分配菜单请求

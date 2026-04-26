@@ -24,9 +24,35 @@ export interface User {
   avatar_file_id?: number
   avatar_file_url?: string
   status: number
+  dept_id: number
+  dept?: Dept
   roles: Role[]
   created_at: string
   updated_at: string
+}
+
+// 部门
+export interface Dept {
+  id: number
+  parent_id: number
+  ancestors: string
+  name: string
+  sort: number
+  status: number
+  remark: string
+  direct_user_count?: number
+  total_user_count?: number
+  has_children?: boolean
+  bindable?: boolean
+  manageable?: boolean
+  children?: Dept[]
+  created_at: string
+  updated_at: string
+}
+
+export interface ManageableDeptTreeData {
+  tree: Dept[]
+  unassigned_user_count: number
 }
 
 // 角色
@@ -36,9 +62,11 @@ export interface Role {
   code: string
   sort: number
   status: number
+  data_scope: number
   remark: string
   menus?: Menu[]
   apis?: Api[]
+  depts?: Dept[]
   created_at: string
   updated_at: string
 }

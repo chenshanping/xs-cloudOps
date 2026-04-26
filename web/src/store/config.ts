@@ -43,7 +43,8 @@ export const CONFIG_KEYS = [
   'slider_captcha_bg',
   // 前台模式配置
   'front_mode',  // 'full': 完整前台, 'profile': 仅个人中心(用于身份认证)
-  'user_profile_button_visible'
+  'user_profile_button_visible',
+  'dept_module_enabled'
 ] as const
 
 // 默认配置
@@ -90,7 +91,8 @@ const DEFAULT_CONFIG: Record<string, string> = {
   slider_captcha_bg: '',
   // 前台模式: 'full' = 完整前台, 'profile' = 仅个人中心
   front_mode: 'full',
-  user_profile_button_visible: 'false'
+  user_profile_button_visible: 'false',
+  dept_module_enabled: 'true'
 }
 
 export type ConfigKey = typeof CONFIG_KEYS[number]

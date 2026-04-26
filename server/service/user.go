@@ -73,9 +73,16 @@ func validateBatchUserStatusTargets(ids []uint, status int, operatorID uint, use
 }
 
 // 获取用户选项列表（轻量级，仅返回 id/username/nickname）
-func (s *UserService) GetUserOptions() ([]map[string]interface{}, error) {
+func (s *UserService) GetUserOptions(operatorID uint) ([]map[string]interface{}, error) {
 	var results []map[string]interface{}
-	err := global.DB.Model(&model.SysUser{}).
+	scope, err := ResolveUserDataScope(operatorID)
+	if err != nil {
+		return nil, err
+	}
+
+	db := global.DB.Model(&model.SysUser{})
+	db = ApplyUserDataScope(db, scope, "sys_user")
+	err = db.
 		Select("id, username, nickname").
 		Where("status = ?", 1).
 		Order("id ASC").
@@ -107,25 +114,48 @@ func (s *UserService) Login(username, password string) (*model.SysUser, error) {
 // 获取用户信息
 func (s *UserService) GetUserInfo(userID uint) (*model.SysUser, error) {
 	var user model.SysUser
-	if err := global.DB.Preload("Roles").Preload("AvatarFile").First(&user, userID).Error; err != nil {
+	if err := global.DB.Preload("Roles").Preload("Dept").Preload("AvatarFile").First(&user, userID).Error; err != nil {
 		return nil, err
 	}
 	user.FillAvatarURL()
 	return &user, nil
 }
 
+// 获取当前操作者可访问的用户详情
+func (s *UserService) GetManagedUserInfo(operatorID, targetUserID uint) (*model.SysUser, error) {
+	return EnsureUserManageable(operatorID, targetUserID)
+}
+
 // 获取用户列表
-func (s *UserService) GetUserList(req *request.UserListRequest) ([]model.SysUser, int64, error) {
+func (s *UserService) GetUserList(operatorID uint, req *request.UserListRequest) ([]model.SysUser, int64, error) {
 	var users []model.SysUser
 	var total int64
 
+	scope, err := ResolveUserDataScope(operatorID)
+	if err != nil {
+		return nil, 0, err
+	}
+
 	db := global.DB.Model(&model.SysUser{})
+	db = ApplyUserDataScope(db, scope, "sys_user")
 
 	if req.Username != "" {
 		db = db.Where("username LIKE ?", "%"+req.Username+"%")
 	}
 	if req.Status != nil {
 		db = db.Where("status = ?", *req.Status)
+	}
+	if req.UnassignedDept {
+		db = db.Where("sys_user.dept_id IS NULL OR sys_user.dept_id = 0")
+	} else if req.DeptId != nil && *req.DeptId > 0 {
+		deptIDs, err := getDeptAndDescendantIDs([]uint{uint(*req.DeptId)})
+		if err != nil {
+			return nil, 0, err
+		}
+		if len(deptIDs) == 0 {
+			return []model.SysUser{}, 0, nil
+		}
+		db = db.Where("sys_user.dept_id IN ?", deptIDs)
 	}
 	// 按角色ID过滤
 	if req.RoleId != nil && *req.RoleId > 0 {
@@ -137,7 +167,7 @@ func (s *UserService) GetUserList(req *request.UserListRequest) ([]model.SysUser
 	}
 
 	offset := req.GetOffset()
-	if err := db.Preload("Roles").Preload("AvatarFile").Offset(offset).Limit(req.PageSize).Order("id DESC").Find(&users).Error; err != nil {
+	if err := db.Preload("Roles").Preload("Dept").Preload("AvatarFile").Offset(offset).Limit(req.PageSize).Order("id DESC").Find(&users).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -150,7 +180,11 @@ func (s *UserService) GetUserList(req *request.UserListRequest) ([]model.SysUser
 }
 
 // 创建用户
-func (s *UserService) CreateUser(req *request.CreateUserRequest) error {
+func (s *UserService) CreateUser(operatorID uint, req *request.CreateUserRequest) error {
+	if err := EnsureDeptManageable(operatorID, req.DeptID); err != nil {
+		return err
+	}
+
 	// 检查用户名是否存在
 	var count int64
 	global.DB.Model(&model.SysUser{}).Where("username = ?", req.Username).Count(&count)
@@ -171,6 +205,7 @@ func (s *UserService) CreateUser(req *request.CreateUserRequest) error {
 		Email:    req.Email,
 		Phone:    req.Phone,
 		Status:   req.Status,
+		DeptID:   req.DeptID,
 	}
 
 	// 头像：优先使用文件ID，其次兼容直接传URL
@@ -205,10 +240,24 @@ func (s *UserService) CreateUser(req *request.CreateUserRequest) error {
 }
 
 // 更新用户
-func (s *UserService) UpdateUser(id uint, req *request.UpdateUserRequest) error {
-	var user model.SysUser
-	if err := global.DB.First(&user, id).Error; err != nil {
-		return errors.New("用户不存在")
+func (s *UserService) UpdateUser(operatorID, id uint, req *request.UpdateUserRequest) error {
+	user, err := EnsureUserManageable(operatorID, id)
+	if err != nil {
+		return err
+	}
+
+	allowLegacyDeptRetain := false
+	if req.DeptID == user.DeptID {
+		isLeaf, err := IsDeptLeaf(user.DeptID)
+		if err != nil {
+			return err
+		}
+		allowLegacyDeptRetain = !isLeaf
+	}
+	if !allowLegacyDeptRetain {
+		if err := EnsureDeptManageable(operatorID, req.DeptID); err != nil {
+			return err
+		}
 	}
 
 	updates := map[string]interface{}{
@@ -216,13 +265,16 @@ func (s *UserService) UpdateUser(id uint, req *request.UpdateUserRequest) error 
 		"email":    req.Email,
 		"phone":    req.Phone,
 		"status":   req.Status,
+		"dept_id":  req.DeptID,
 	}
 
 	// 获取用户当前角色ID列表（用于判断角色是否变化）
 	var oldRoleIds []uint
 	global.DB.Table("sys_user_role").Where("sys_user_id = ?", id).Pluck("sys_role_id", &oldRoleIds)
 
-	err := global.DB.Transaction(func(tx *gorm.DB) error {
+	err = global.DB.Transaction(func(tx *gorm.DB) error {
+		targetUser := model.SysUser{BaseModel: model.BaseModel{ID: id}}
+
 		// 头像：优先使用文件ID
 		if req.AvatarFileID > 0 {
 			var file model.SysFile
@@ -235,7 +287,7 @@ func (s *UserService) UpdateUser(id uint, req *request.UpdateUserRequest) error 
 			updates["avatar_file_id"] = 0
 		}
 
-		if err := tx.Model(&user).Updates(updates).Error; err != nil {
+		if err := tx.Model(&model.SysUser{}).Where("id = ?", id).Updates(updates).Error; err != nil {
 			return err
 		}
 
@@ -246,7 +298,7 @@ func (s *UserService) UpdateUser(id uint, req *request.UpdateUserRequest) error 
 				return err
 			}
 		}
-		if err := tx.Model(&user).Association("Roles").Replace(roles); err != nil {
+		if err := tx.Model(&targetUser).Association("Roles").Replace(roles); err != nil {
 			return err
 		}
 
@@ -280,7 +332,14 @@ func (s *UserService) UpdateUser(id uint, req *request.UpdateUserRequest) error 
 }
 
 // 删除用户
-func (s *UserService) DeleteUser(id uint) error {
+func (s *UserService) DeleteUser(operatorID, id uint) error {
+	if _, err := EnsureUserManageable(operatorID, id); err != nil {
+		return err
+	}
+	return s.deleteUserByID(id)
+}
+
+func (s *UserService) deleteUserByID(id uint) error {
 	var user model.SysUser
 	if err := global.DB.First(&user, id).Error; err != nil {
 		return errors.New("用户不存在")
@@ -312,12 +371,17 @@ func (s *UserService) DeleteUser(id uint) error {
 }
 
 // 批量删除用户
-func (s *UserService) BatchDeleteUsers(ids []uint) (int, []string) {
+func (s *UserService) BatchDeleteUsers(operatorID uint, ids []uint) (int, []string) {
 	var successCount int
 	var failedMsgs []string
 
-	for _, id := range ids {
-		if err := s.DeleteUser(id); err != nil {
+	normalized := normalizeUserIDs(ids)
+	if _, err := EnsureUsersManageable(operatorID, normalized); err != nil {
+		return 0, []string{err.Error()}
+	}
+
+	for _, id := range normalized {
+		if err := s.deleteUserByID(id); err != nil {
 			failedMsgs = append(failedMsgs, fmt.Sprintf("ID %d: %s", id, err.Error()))
 		} else {
 			successCount++
@@ -328,7 +392,14 @@ func (s *UserService) BatchDeleteUsers(ids []uint) (int, []string) {
 }
 
 // 修改用户状态
-func (s *UserService) UpdateUserStatus(id uint, status int) error {
+func (s *UserService) UpdateUserStatus(operatorID, id uint, status int) error {
+	if status != 0 && status != 1 {
+		return errors.New("状态值无效")
+	}
+	if _, err := EnsureUserManageable(operatorID, id); err != nil {
+		return err
+	}
+
 	err := global.DB.Model(&model.SysUser{}).Where("id = ?", id).Update("status", status).Error
 	if err == nil {
 		Cache.ClearUserInfoCache(id)
@@ -343,19 +414,16 @@ func (s *UserService) BatchUpdateUserStatus(operatorID uint, req *request.BatchU
 		return errors.New("请选择要修改状态的用户")
 	}
 
-	var users []model.SysUser
-	if err := global.DB.Preload("Roles").Where("id IN ?", ids).Find(&users).Error; err != nil {
+	users, err := EnsureUsersManageable(operatorID, ids)
+	if err != nil {
 		return err
-	}
-	if len(users) != len(ids) {
-		return errors.New("部分用户不存在或已被删除")
 	}
 
 	if err := validateBatchUserStatusTargets(ids, req.Status, operatorID, users); err != nil {
 		return err
 	}
 
-	err := global.DB.Transaction(func(tx *gorm.DB) error {
+	err = global.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Model(&model.SysUser{}).
 			Where("id IN ?", ids).
 			Updates(map[string]interface{}{"status": req.Status}).Error; err != nil {
@@ -380,6 +448,25 @@ func (s *UserService) BatchUpdateUserStatus(operatorID uint, req *request.BatchU
 		Cache.ClearUserInfoCache(id)
 	}
 	return nil
+}
+
+// 管理端重置密码
+func (s *UserService) ResetManagedUserPassword(operatorID, id uint, password string) error {
+	if _, err := EnsureUserManageable(operatorID, id); err != nil {
+		return err
+	}
+	return s.ResetPassword(id, password)
+}
+
+// 管理端强制用户下线
+func (s *UserService) ForceOffline(operatorID, id uint) error {
+	if operatorID == id {
+		return errors.New("不能强制下线自己")
+	}
+	if _, err := EnsureUserManageable(operatorID, id); err != nil {
+		return err
+	}
+	return utils.RemoveUserToken(id)
 }
 
 // 重置密码

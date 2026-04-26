@@ -5,19 +5,20 @@
       :data-source="tableData"
       :loading="loading"
     >
-      <!-- 工具栏 -->
       <template #toolbar>
         <a-button type="primary" @click="handleAdd" v-permission="'system:role:add'">
           <PlusOutlined /> 新增
         </a-button>
       </template>
 
-      <!-- 表格单元格 -->
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'status'">
           <a-tag :color="record.status === 1 ? 'green' : 'red'">
             {{ record.status === 1 ? '启用' : '禁用' }}
           </a-tag>
+        </template>
+        <template v-if="column.key === 'data_scope'">
+          {{ formatDataScope(record.data_scope) }}
         </template>
         <template v-if="column.key === 'action'">
           <a-button type="link" size="small" @click="handleEdit(record)" v-permission="'system:role:edit'">编辑</a-button>
@@ -29,28 +30,15 @@
       </template>
     </ProTable>
 
-    <!-- 新增/编辑弹窗 -->
-    <a-modal v-model:open="modalVisible" :title="modalTitle" @ok="handleModalOk">
-      <a-form :model="formState" :label-col="{ span: 5 }">
-        <a-form-item label="角色名称" required>
-          <a-input v-model:value="formState.name" />
-        </a-form-item>
-        <a-form-item label="角色编码" required>
-          <a-input v-model:value="formState.code" :disabled="isEdit" />
-        </a-form-item>
-        <a-form-item label="排序">
-          <a-input-number v-model:value="formState.sort" :min="0" />
-        </a-form-item>
-        <a-form-item label="状态">
-          <a-switch v-model:checked="formState.statusChecked" />
-        </a-form-item>
-        <a-form-item label="备注">
-          <a-textarea v-model:value="formState.remark" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+    <RoleFormDrawer
+      v-model:open="drawerVisible"
+      :title="drawerTitle"
+      :is-edit="isEdit"
+      :dept-options="deptSelectOptions"
+      :initial-value="drawerInitialValue"
+      @submit="handleDrawerSubmit"
+    />
 
-    <!-- 分配权限组件 -->
     <AssignPermission
       v-model:open="permissionDrawerVisible"
       :role-id="currentId"
@@ -60,33 +48,36 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import ProTable from '@/components/ProTable.vue'
 import AssignPermission from './AssignPermission.vue'
-import { getRoleList, createRole, updateRole, deleteRole } from '@/api/role'
+import RoleFormDrawer from './components/RoleFormDrawer.vue'
+import { getRoleList, getRole, createRole, updateRole, deleteRole } from '@/api/role'
+import { getManageableDeptTree } from '@/api/dept'
 import { useTableColumns } from '@/utils/permission'
-import type { Role } from '@/types'
+import type { Dept, Role } from '@/types'
+
+interface TreeSelectOption {
+  key: string | number
+  title: string
+  value: number
+  disabled?: boolean
+  children?: TreeSelectOption[]
+}
 
 const loading = ref(false)
 const tableData = ref<Role[]>([])
-const modalVisible = ref(false)
-const modalTitle = ref('新增角色')
+const deptTree = ref<Dept[]>([])
+const drawerVisible = ref(false)
+const drawerTitle = ref('新增角色')
 const isEdit = ref(false)
 const currentId = ref(0)
 const currentRoleName = ref('')
 const permissionDrawerVisible = ref(false)
+const drawerInitialValue = ref<Record<string, any>>({})
 
-const formState = reactive({
-  name: '',
-  code: '',
-  sort: 0,
-  statusChecked: true,
-  remark: ''
-})
-
-// 使用工具函数动态生成列配置
 const columns = useTableColumns(
   [
     { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
@@ -94,11 +85,14 @@ const columns = useTableColumns(
     { title: '角色编码', dataIndex: 'code', key: 'code' },
     { title: '排序', dataIndex: 'sort', key: 'sort', width: 80 },
     { title: '状态', key: 'status', width: 80 },
-    { title: '备注', dataIndex: 'remark', key: 'remark' },
+    { title: '数据范围', key: 'data_scope', width: 140 },
+    { title: '备注', dataIndex: 'remark', key: 'remark' }
   ],
   { title: '操作', key: 'action', width: 200 },
   ['system:role:edit', 'system:role:delete', 'system:role:assign']
 )
+
+const deptSelectOptions = computed<TreeSelectOption[]>(() => buildDeptSelectOptions(deptTree.value))
 
 const fetchData = async () => {
   loading.value = true
@@ -110,43 +104,54 @@ const fetchData = async () => {
   }
 }
 
+const fetchDepts = async () => {
+  const res = await getManageableDeptTree()
+  deptTree.value = res.data.tree
+}
+
 const handleAdd = () => {
   isEdit.value = false
-  modalTitle.value = '新增角色'
-  Object.assign(formState, { name: '', code: '', sort: 0, statusChecked: true, remark: '' })
-  modalVisible.value = true
-}
-
-const handleEdit = (record: Role) => {
-  isEdit.value = true
-  modalTitle.value = '编辑角色'
-  currentId.value = record.id
-  Object.assign(formState, {
-    name: record.name,
-    code: record.code,
-    sort: record.sort,
-    statusChecked: record.status === 1,
-    remark: record.remark
-  })
-  modalVisible.value = true
-}
-
-const handleModalOk = async () => {
-  const data = {
-    name: formState.name,
-    code: formState.code,
-    sort: formState.sort,
-    status: formState.statusChecked ? 1 : 0,
-    remark: formState.remark
+  drawerTitle.value = '新增角色'
+  currentId.value = 0
+  drawerInitialValue.value = {
+    name: '',
+    code: '',
+    sort: 0,
+    statusChecked: true,
+    data_scope: 1,
+    dept_ids: [],
+    remark: ''
   }
+  drawerVisible.value = true
+}
+
+const handleEdit = async (record: Role) => {
+  isEdit.value = true
+  drawerTitle.value = '编辑角色'
+  currentId.value = record.id
+  const res = await getRole(record.id)
+  const role = res.data
+  drawerInitialValue.value = {
+    name: role.name,
+    code: role.code,
+    sort: role.sort,
+    statusChecked: role.status === 1,
+    data_scope: role.data_scope || 1,
+    dept_ids: role.depts?.map(item => item.id) || [],
+    remark: role.remark
+  }
+  drawerVisible.value = true
+}
+
+const handleDrawerSubmit = async (values: any) => {
   if (isEdit.value) {
-    await updateRole(currentId.value, data)
+    await updateRole(currentId.value, values)
     message.success('更新成功')
   } else {
-    await createRole(data)
+    await createRole(values)
     message.success('创建成功')
   }
-  modalVisible.value = false
+  drawerVisible.value = false
   fetchData()
 }
 
@@ -162,11 +167,33 @@ const handleAssignPermissions = (record: Role) => {
   permissionDrawerVisible.value = true
 }
 
-onMounted(() => {
-  fetchData()
+const formatDataScope = (value: number) => {
+  switch (value) {
+    case 1:
+      return '全部数据'
+    case 2:
+      return '自定义部门'
+    case 3:
+      return '本部门'
+    case 4:
+      return '本部门及下级'
+    case 5:
+      return '仅本人'
+    default:
+      return '-'
+  }
+}
+
+const buildDeptSelectOptions = (depts: Dept[]): TreeSelectOption[] =>
+  depts.map(dept => ({
+    key: `role-dept-${dept.id}`,
+    title: dept.name,
+    value: dept.id,
+    disabled: dept.manageable === false,
+    children: dept.children ? buildDeptSelectOptions(dept.children) : undefined
+  }))
+
+onMounted(async () => {
+  await Promise.all([fetchData(), fetchDepts()])
 })
 </script>
-
-<style scoped>
-/* 角色页面样式 */
-</style>
