@@ -1,10 +1,14 @@
 package v1
 
 import (
+{{- if .EnableImportExport}}
 	"fmt"
+{{- end}}
 	"strconv"
+{{- if .EnableImportExport}}
 	"time"
 	"strings"
+{{- end}}
 
 	"github.com/gin-gonic/gin"
 {{- if or .HasRelations .HasCreatedBy}}
@@ -18,7 +22,9 @@ import (
 	"go-base-server/model/request"
 	"go-base-server/model/response"
 	"go-base-server/service"
+{{- if .EnableImportExport}}
 	"go-base-server/utils"
+{{- end}}
 )
 
 type {{.ModelName}}Api struct{}

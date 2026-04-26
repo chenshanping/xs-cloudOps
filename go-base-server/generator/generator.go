@@ -712,6 +712,8 @@ func (g *Generator) addSqlType(col ColumnConfig) ColumnConfig {
 		default:
 			col.SqlType = strings.ToUpper(col.DbType)
 		}
+		// 处理默认值引号
+		col.DefaultValue = g.formatDefaultValue(col)
 		return col
 	}
 
@@ -721,6 +723,7 @@ func (g *Generator) addSqlType(col ColumnConfig) ColumnConfig {
 		// 富文本编辑器默认使用 LONGTEXT
 		if col.FormType == "editor" {
 			col.SqlType = "LONGTEXT"
+			col.DefaultValue = g.formatDefaultValue(col)
 			return col
 		}
 		length := col.DbLength
@@ -762,10 +765,38 @@ func (g *Generator) addSqlType(col ColumnConfig) ColumnConfig {
 		// 默认类型
 		col.SqlType = "VARCHAR(255)"
 	}
-
+	// 处理默认值引号
+	col.DefaultValue = g.formatDefaultValue(col)
 	return col
 }
+// formatDefaultValue 格式化默认值，字符串类型需要加引号
+func (g *Generator) formatDefaultValue(col ColumnConfig) string {
+	if col.DefaultValue == "" {
+		return ""
+	}
 
+	// 数字类型不需要引号
+	switch col.FieldType {
+	case "int", "int8", "int16", "int32", "int64",
+		"uint", "uint8", "uint16", "uint32", "uint64",
+		"float32", "float64", "bool":
+		return col.DefaultValue
+	}
+
+	// 已经有引号的不再添加
+	if strings.HasPrefix(col.DefaultValue, "'") && strings.HasSuffix(col.DefaultValue, "'") {
+		return col.DefaultValue
+	}
+
+	// 特殊SQL关键字不加引号
+	upper := strings.ToUpper(col.DefaultValue)
+	if upper == "NULL" || upper == "CURRENT_TIMESTAMP" || upper == "NOW()" {
+		return col.DefaultValue
+	}
+
+	// 字符串类型加引号
+	return fmt.Sprintf("'%s'", col.DefaultValue)
+}
 // DeleteModule 删除模块生成的代码
 func DeleteModule(moduleName, serverPath, webPath string) error {
 	return DeleteModuleWithParentPath(moduleName, "", serverPath, webPath)

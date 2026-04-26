@@ -292,7 +292,7 @@
             :pagination="false"
             size="small"
             :row-key="(_, index) => index"
-            :scroll="{ x: 1600 }"
+            :scroll="{ x: 2000 }"
             :custom-row="customRow"
             class="draggable-table"
           >
@@ -1338,7 +1338,7 @@ const columnTableColumns = [
   { title: 'DB类型', key: 'db_type', width: 100 },
   { title: '长度', key: 'db_length', width: 70 },
   { title: '注释', key: 'comment', width: 110 },
-  { title: '关联表', key: 'related_table', width: 120 },
+  { title: '关联表', key: 'related_table', width: 200 },
   { title: '必填', key: 'is_required', width: 50 },
   { title: '搜索', key: 'is_searchable', width: 50 },
   { title: '搜索类型', key: 'search_type', width: 80 },
@@ -1348,7 +1348,7 @@ const columnTableColumns = [
   { title: '唯一', key: 'is_unique', width: 50 },
   { title: '表单', key: 'is_form_visible', width: 50 },
   { title: '组件', key: 'form_type', width: 100 },
-  { title: '选项', key: 'options', width: 80 },
+  { title: '选项', key: 'options', width: 150 },
   { title: '操作', key: 'action', width: 100, fixed: 'right' }
 ]
 
