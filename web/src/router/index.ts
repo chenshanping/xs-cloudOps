@@ -3,6 +3,7 @@ import { useConfigStore } from '@/store/config';
 import { useUserStore } from '@/store/user';
 import { message } from 'ant-design-vue';
 import type { Menu } from '@/types';
+import { resolveViewModulePath } from './view-resolver';
 
 
 // 动态导入视图组件的映射
@@ -49,25 +50,25 @@ const constantRoutes: RouteRecordRaw[] = [
   {
     path: '/login',
     name: 'Login',
-    component: () => import('@/views/login/index.vue'),
+    component: () => import('@/views/auth/login/index.vue'),
     meta: { title: '登录' }
   },
   {
     path: '/register',
     name: 'Register',
-    component: () => import('@/views/register/index.vue'),
+    component: () => import('@/views/auth/register/index.vue'),
     meta: { title: '注册' }
   },
   {
     path: '/forgot-password',
     name: 'ForgotPassword',
-    component: () => import('@/views/forgot-password/index.vue'),
+    component: () => import('@/views/auth/forgot-password/index.vue'),
     meta: { title: '忘记密码' }
   },
   {
     path: '/reset-password',
     name: 'ResetPassword',
-    component: () => import('@/views/reset-password/index.vue'),
+    component: () => import('@/views/auth/reset-password/index.vue'),
     meta: { title: '重置密码' }
   },
   {
@@ -79,19 +80,19 @@ const constantRoutes: RouteRecordRaw[] = [
       {
         path: 'dashboard',
         name: 'Dashboard',
-        component: () => import('@/views/dashboard/index.vue'),
+        component: () => import('@/views/admin/dashboard/index.vue'),
         meta: { title: '首页' }
       },
       {
         path: 'profile',
         name: 'Profile',
-        component: () => import('@/views/profile/index.vue'),
+        component: () => import('@/views/admin/profile/index.vue'),
         meta: { title: '个人中心' }
       },
       {
         path: 'ai',
         name: 'AIChat',
-        component: () => import('@/views/ai/index.vue'),
+        component: () => import('@/views/admin/ai/index.vue'),
         meta: { title: 'AI对话' }
       }
     ]
@@ -121,12 +122,10 @@ function generateRoutes(menus: Menu[]): RouteRecordRaw[] {
   const processMenu = (menu: Menu) => {
     // 只处理页面类型的菜单（type=2）
     if (menu.type === 2 && menu.component && menu.path) {
-      const componentPath = menu.component.endsWith('/index')
-        ? `../views/${menu.component}.vue`
-        : `../views/${menu.component}/index.vue`
+      const componentPath = resolveViewModulePath(menu.component)
       
       // 查找组件
-      const component = viewModules[componentPath]
+      const component = componentPath ? viewModules[componentPath] : undefined
       
       if (component) {
         routes.push({

@@ -52,7 +52,7 @@ import { PlusOutlined } from '@ant-design/icons-vue'
 import ProTable from '@/components/ProTable.vue'
 import RolePermissionDrawer from './components/RolePermissionDrawer.vue'
 import RoleFormDrawer from './components/RoleFormDrawer.vue'
-import { useRolePage } from './useRolePage'
+import { useRolePage } from './hooks/useRolePage'
 
 const {
   columns,

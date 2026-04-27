@@ -227,7 +227,7 @@ const handleEditIdentity = async (profile: UserProfile) => {
     const moduleName = profile.key
     const formName = toPascalCase(moduleName)
     identityFormComponent.value = defineAsyncComponent(
-      () => import(`@/views/system/${moduleName}/components/${formName}Form.vue`)
+      () => import(`@/views/admin/system/${moduleName}/components/${formName}Form.vue`)
     )
     // 等待组件加载后打开抽屉
     await nextTick()

@@ -326,7 +326,7 @@ const handleEditIdentity = async (profile: UserProfile) => {
   try {
     const formName = toPascalCase(profile.key)
     identityFormComponent.value = defineAsyncComponent(() => 
-      import(`@/views/system/${profile.key}/components/${formName}Form.vue`)
+      import(`@/views/admin/system/${profile.key}/components/${formName}Form.vue`)
     )
     await nextTick()
     identityDrawerVisible.value = true
