@@ -201,7 +201,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { useConfigStore } from '@/store/config'
 import { 
@@ -219,8 +219,12 @@ import {
   TeamOutlined
 } from '@ant-design/icons-vue'
 import ImageUpload from '@/components/ImageUpload.vue'
+import { cloneFromSnapshot, createSnapshot, isSnapshotDirty } from '../config-tab-guard'
 
 const configStore = useConfigStore()
+const emit = defineEmits<{
+  (e: 'dirty-change', value: boolean): void
+}>()
 const saving = ref(false)
 const advancedDrawerVisible = ref(false)
 
@@ -342,34 +346,89 @@ try {
   imageList.value = []
 }
 
+const getConfigState = () => ({
+  register_logo: formData.register_logo || '',
+  login_bg_image: formData.login_bg_image,
+  login_title: formData.login_title,
+  login_subtitle: formData.login_subtitle,
+  login_bg_color: formData.login_bg_color,
+  login_slogan: formData.login_slogan,
+  login_desc: formData.login_desc,
+  login_features: JSON.stringify(featureList.value),
+  login_features_max: formData.login_features_max,
+  login_images: JSON.stringify(imageList.value),
+  login_images_max: formData.login_images_max,
+  enable_register: enableRegister.value ? 'true' : 'false',
+})
+
+const applyConfigState = (state: ReturnType<typeof getConfigState>) => {
+  enableRegister.value = state.enable_register === 'true'
+  formData.register_logo = state.register_logo
+  formData.login_bg_image = state.login_bg_image
+  formData.login_title = state.login_title
+  formData.login_subtitle = state.login_subtitle
+  formData.login_bg_color = state.login_bg_color
+  formData.login_slogan = state.login_slogan
+  formData.login_desc = state.login_desc
+  formData.login_features_max = Number(state.login_features_max) || 4
+  formData.login_images_max = Number(state.login_images_max) || 4
+  try {
+    featureList.value = state.login_features ? JSON.parse(state.login_features) : []
+  } catch {
+    featureList.value = []
+  }
+  try {
+    imageList.value = state.login_images ? JSON.parse(state.login_images) : []
+  } catch {
+    imageList.value = []
+  }
+}
+
+const baselineSnapshot = ref(createSnapshot(getConfigState()))
+const hasUnsavedChanges = computed(() => isSnapshotDirty(baselineSnapshot.value, getConfigState()))
+
+watch(hasUnsavedChanges, (value) => {
+  emit('dirty-change', value)
+}, { immediate: true })
+
 // 保存配置
-const handleSave = async () => {
+const save = async () => {
   // 验证：开启注册功能时需要填写默认头像
   if (enableRegister.value && !formData.register_logo) {
     message.warning('开启注册功能时，请上传注册用户默认头像')
-    return
+    return false
   }
   
   saving.value = true
   try {
     const configs: Record<string, string> = {}
-    for (const key of LOGIN_CONFIG_KEYS) {
-      if (key === 'enable_register') {
-        configs[key] = enableRegister.value ? 'true' : 'false'
-      } else {
-        const val = (formData as any)[key]
-        configs[key] = typeof val === 'number' ? String(val) : val
-      }
+    for (const [key, value] of Object.entries(getConfigState())) {
+      configs[key] = typeof value === 'number' ? String(value) : value
     }
-    // 添加 register_logo
-    configs['register_logo'] = formData.register_logo || ''
     await configStore.updateConfigs(configs)
+    baselineSnapshot.value = createSnapshot(getConfigState())
     message.success('配置保存成功')
+    return true
   } catch (e) {
     message.error('保存失败')
+    return false
   } finally {
     saving.value = false
   }
+}
+
+const discardChanges = () => {
+  const restored = cloneFromSnapshot<ReturnType<typeof getConfigState>>(baselineSnapshot.value)
+  applyConfigState(restored)
+  advancedDrawerVisible.value = false
+}
+
+const closeTransientUi = () => {
+  advancedDrawerVisible.value = false
+}
+
+const handleSave = async () => {
+  await save()
 }
 
 // 恢复默认
@@ -391,6 +450,13 @@ const handleReset = () => {
   ]
   imageList.value = []
 }
+
+defineExpose({
+  isDirty: () => hasUnsavedChanges.value,
+  save,
+  discardChanges,
+  closeTransientUi,
+})
 
 </script>
 

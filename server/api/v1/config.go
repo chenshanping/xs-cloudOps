@@ -161,7 +161,7 @@ func (a *ConfigApi) TestStorageConfig(c *gin.Context) {
 		return
 	}
 	if err := service.Storage.TestStorage(storage); err != nil {
-		response.Fail(c, "测试失败: "+err.Error())
+		response.Fail(c, err.Error())
 		return
 	}
 

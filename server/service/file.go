@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -16,6 +17,12 @@ import (
 type FileService struct{}
 
 var File = new(FileService)
+
+const (
+	FileDeleteModeConfigKey = "file_delete_mode"
+	FileDeleteModeLogical   = "logical"
+	FileDeleteModePhysical  = "physical"
+)
 
 // GetFileList 获取文件列表
 func (s *FileService) GetFileList(page, pageSize int, name, ext string) ([]model.SysFile, int64, error) {
@@ -86,6 +93,101 @@ func (s *FileService) createFileRecord(filename, key, url, md5 string, fileSize 
 	}
 }
 
+func (s *FileService) getDeleteMode() string {
+	config, err := Config.GetConfigByKey(FileDeleteModeConfigKey)
+	if err != nil || strings.TrimSpace(config.Value) == "" {
+		return FileDeleteModeLogical
+	}
+	if config.Value == FileDeleteModePhysical {
+		return FileDeleteModePhysical
+	}
+	return FileDeleteModeLogical
+}
+
+func (s *FileService) ensureFileNotReferenced(file model.SysFile) error {
+	var avatarCount int64
+	if err := global.DB.Model(&model.SysUser{}).Where("avatar_file_id = ?", file.ID).Count(&avatarCount).Error; err != nil {
+		return err
+	}
+	if avatarCount > 0 {
+		return errors.New("文件正在被引用：用户头像正在使用，无法删除")
+	}
+
+	var messages []model.AIMessage
+	if err := global.DB.Select("id", "file_ids").Where("file_ids IS NOT NULL AND file_ids <> ''").Find(&messages).Error; err != nil {
+		return err
+	}
+	for _, msg := range messages {
+		var fileIDs []uint
+		if err := json.Unmarshal([]byte(msg.FileIDs), &fileIDs); err != nil {
+			continue
+		}
+		for _, fileID := range fileIDs {
+			if fileID == file.ID {
+				return errors.New("文件正在被引用：AI对话附件正在使用，无法删除")
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s *FileService) cleanupChunkArtifacts(file model.SysFile) error {
+	query := global.DB.Model(&model.SysFileChunk{})
+	if strings.TrimSpace(file.MD5) != "" {
+		query = query.Where("file_hash = ? OR storage_path = ?", file.MD5, file.Path)
+	} else {
+		query = query.Where("storage_path = ?", file.Path)
+	}
+
+	var chunks []model.SysFileChunk
+	if err := query.Find(&chunks).Error; err != nil {
+		return err
+	}
+	if len(chunks) == 0 {
+		return nil
+	}
+
+	seenUploads := make(map[string]struct{})
+	for _, chunk := range chunks {
+		if strings.TrimSpace(chunk.UploadID) == "" {
+			continue
+		}
+
+		storageType := model.StorageType(chunk.StorageType)
+		var storage *model.StorageProfile
+		var err error
+		if storageType != "" {
+			storage, err = Storage.GetStorageByType(storageType)
+		} else {
+			storage, err = s.resolveFileStorage(file)
+		}
+		if err != nil {
+			return err
+		}
+
+		cacheKey := strings.Join([]string{string(storage.Type), chunk.UploadID, chunk.StoragePath}, "|")
+		if _, ok := seenUploads[cacheKey]; ok {
+			continue
+		}
+		seenUploads[cacheKey] = struct{}{}
+
+		client, err := oss.GetClient(storage)
+		if err != nil {
+			return err
+		}
+		if err := client.AbortMultipartUpload(context.Background(), chunk.StoragePath, chunk.UploadID); err != nil {
+			return err
+		}
+	}
+
+	chunkIDs := make([]uint, 0, len(chunks))
+	for _, chunk := range chunks {
+		chunkIDs = append(chunkIDs, chunk.ID)
+	}
+	return global.DB.Unscoped().Where("id IN ?", chunkIDs).Delete(&model.SysFileChunk{}).Error
+}
+
 // DeleteFile 删除文件
 func (s *FileService) DeleteFile(id uint) error {
 	var file model.SysFile
@@ -93,10 +195,16 @@ func (s *FileService) DeleteFile(id uint) error {
 		return err
 	}
 
-	var userCount int64
-	global.DB.Model(&model.SysUser{}).Where("avatar_file_id = ?", id).Count(&userCount)
-	if userCount > 0 {
-		return errors.New("文件正在被使用，无法删除")
+	if err := s.ensureFileNotReferenced(file); err != nil {
+		return err
+	}
+
+	if s.getDeleteMode() == FileDeleteModeLogical {
+		return global.DB.Model(&model.SysFile{}).Where("id = ?", id).Update("status", 0).Error
+	}
+
+	if err := s.cleanupChunkArtifacts(file); err != nil {
+		return err
 	}
 
 	storage, err := s.resolveFileStorage(file)
@@ -105,11 +213,14 @@ func (s *FileService) DeleteFile(id uint) error {
 	}
 
 	client, err := oss.GetClient(storage)
-	if err == nil {
-		_ = client.Delete(context.Background(), file.Path)
+	if err != nil {
+		return err
+	}
+	if err := client.Delete(context.Background(), file.Path); err != nil {
+		return err
 	}
 
-	return global.DB.Model(&model.SysFile{}).Where("id = ?", id).Update("status", 0).Error
+	return global.DB.Unscoped().Delete(&model.SysFile{}, id).Error
 }
 
 // BatchDeleteFiles 批量删除文件

@@ -8,6 +8,8 @@
     "build": "npm run icons && vite build",
     "build:dev": "npm run icons && vite build --mode development",
     "build:test": "npm run icons && vite build --mode test",
+    "test:config-component-imports": "node scripts/test-config-component-imports.mjs",
+    "test:config-tab-guard": "node scripts/test-config-tab-guard.mjs",
     "test:tabs-state": "node scripts/test-tabs-state.mjs",
     "test:storage-config-state": "node scripts/test-storage-config-state.mjs",
     "test:view-resolver": "node scripts/test-view-resolver.mjs",

@@ -215,6 +215,7 @@ func initDefaultConfigs() {
 		{Name: "AI配置", Key: "ai_config", Value: `{"default_provider":"阿里云百炼","providers":[{"name":"阿里云百炼","api_key":"","base_url":"https://dashscope.aliyuncs.com/compatible-mode/v1","models":[{"id":"deepseek-v3.2","name":"DeepSeek-V3.2","description":"DeepSeek最新模型,支持联网和思考"},{"id":"qwen3-max","name":"通义千问3-Max","description":"通义千问3系列Max模型"}]}]}`, ValueType: "json", Remark: "AI平台配置，包含平台名称、API Key、基础URL和模型列表"},
 		{Name: "前台模式", Key: "front_mode", Value: "full", ValueType: "string", Remark: "前台模式: full=完整前台, profile=仅个人中心(用于身份认证)"},
 		{Name: "用户身份按钮显示", Key: "user_profile_button_visible", Value: "false", ValueType: "string", Remark: "后台用户管理列表是否显示身份按钮"},
+		{Name: "文件删除方式", Key: service.FileDeleteModeConfigKey, Value: service.FileDeleteModeLogical, ValueType: "string", Remark: "文件删除方式: logical=逻辑删除, physical=物理删除"},
 		{Name: "存储类型", Key: service.StorageTypeConfigKey, Value: string(service.Storage.DefaultStorageType()), ValueType: "string", Remark: "当前文件上传使用的存储类型"},
 	}
 	for _, storageType := range service.Storage.SupportedStorageTypes() {
@@ -239,6 +240,13 @@ func ensureBuiltInData() {
 		Value:     "false",
 		ValueType: "string",
 		Remark:    "后台用户管理列表是否显示身份按钮",
+	})
+	ensureConfigExists(model.SysConfig{
+		Name:      "文件删除方式",
+		Key:       service.FileDeleteModeConfigKey,
+		Value:     service.FileDeleteModeLogical,
+		ValueType: "string",
+		Remark:    "文件删除方式: logical=逻辑删除, physical=物理删除",
 	})
 
 	rootDept := ensureRootDeptExists()

@@ -127,14 +127,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, createVNode } from 'vue'
+import { computed, createVNode, reactive, ref, watch } from 'vue'
 import { message, Modal, Input } from 'ant-design-vue'
 import { MailOutlined, SettingOutlined } from '@ant-design/icons-vue'
 import { useConfigStore } from '@/store/config'
 import { sendTestEmail } from '@/api/config'
 import ImageUpload from '@/components/ImageUpload.vue'
+import { cloneFromSnapshot, createSnapshot, isSnapshotDirty } from '../config-tab-guard'
 
 const configStore = useConfigStore()
+const emit = defineEmits<{
+  (e: 'dirty-change', value: boolean): void
+}>()
 const saving = ref(false)
 const testing = ref(false)
 const smtpDrawerVisible = ref(false)
@@ -166,22 +170,75 @@ const registerEmailVerify = computed({
   set: (val) => { formData.register_email_verify = val ? '1' : '0' }
 })
 
+const getConfigState = () => ({
+  email_smtp_host: formData.email_smtp_host,
+  email_smtp_port: formData.email_smtp_port,
+  email_username: formData.email_username,
+  email_password: formData.email_password,
+  email_from_name: formData.email_from_name,
+  login_captcha_enabled: formData.login_captcha_enabled,
+  login_captcha_type: formData.login_captcha_type,
+  login_max_retry: formData.login_max_retry,
+  login_lock_time: formData.login_lock_time,
+  register_email_verify: formData.register_email_verify,
+  frontend_url: formData.frontend_url,
+  slider_captcha_bg: formData.slider_captcha_bg,
+})
+
+const applyConfigState = (state: ReturnType<typeof getConfigState>) => {
+  formData.email_smtp_host = state.email_smtp_host
+  formData.email_smtp_port = Number(state.email_smtp_port) || 587
+  formData.email_username = state.email_username
+  formData.email_password = state.email_password
+  formData.email_from_name = state.email_from_name
+  formData.login_captcha_enabled = state.login_captcha_enabled
+  formData.login_captcha_type = state.login_captcha_type
+  formData.login_max_retry = Number(state.login_max_retry) || 5
+  formData.login_lock_time = Number(state.login_lock_time) || 15
+  formData.register_email_verify = state.register_email_verify
+  formData.frontend_url = state.frontend_url
+  formData.slider_captcha_bg = state.slider_captcha_bg
+}
+
+const baselineSnapshot = ref(createSnapshot(getConfigState()))
+const hasUnsavedChanges = computed(() => isSnapshotDirty(baselineSnapshot.value, getConfigState()))
+
+watch(hasUnsavedChanges, (value) => {
+  emit('dirty-change', value)
+}, { immediate: true })
+
 // 保存配置
-const handleSave = async () => {
+const save = async () => {
   saving.value = true
   try {
     const configs: Record<string, string> = {}
-    for (const key in formData) {
-      const val = (formData as any)[key]
+    for (const [key, val] of Object.entries(getConfigState())) {
       configs[key] = typeof val === 'number' ? String(val) : val
     }
     await configStore.updateConfigs(configs)
+    baselineSnapshot.value = createSnapshot(getConfigState())
     message.success('配置保存成功')
+    return true
   } catch (e) {
     message.error('保存失败')
+    return false
   } finally {
     saving.value = false
   }
+}
+
+const discardChanges = () => {
+  const restored = cloneFromSnapshot<ReturnType<typeof getConfigState>>(baselineSnapshot.value)
+  applyConfigState(restored)
+  smtpDrawerVisible.value = false
+}
+
+const closeTransientUi = () => {
+  smtpDrawerVisible.value = false
+}
+
+const handleSave = async () => {
+  await save()
 }
 
 // 恢复默认
@@ -243,6 +300,13 @@ const testEmail = () => {
     }
   })
 }
+
+defineExpose({
+  isDirty: () => hasUnsavedChanges.value,
+  save,
+  discardChanges,
+  closeTransientUi,
+})
 
 </script>
 

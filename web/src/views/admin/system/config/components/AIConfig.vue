@@ -106,10 +106,7 @@
 
         <!-- 操作按钮 -->
         <a-form-item :wrapper-col="{ offset: 4, span: 18 }" style="margin-top: 24px">
-          <a-space>
-            <a-button type="primary" :loading="saving" @click="handleSave">保存配置</a-button>
-            <span v-if="hasUnsavedChanges" class="unsaved-tip">有未保存的更改</span>
-          </a-space>
+          <a-button type="primary" :loading="saving" @click="handleSave">保存配置</a-button>
         </a-form-item>
       </a-form>
     </a-spin>
@@ -117,10 +114,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { DeleteOutlined, PlusOutlined, UpOutlined, DownOutlined, ThunderboltOutlined } from '@ant-design/icons-vue'
 import { getConfigByKey, updateConfig, createConfig, aiTest } from '@/api/config'
+import { cloneFromSnapshot, createSnapshot, isSnapshotDirty } from '../config-tab-guard'
 
 interface AIModel {
   id: string
@@ -144,13 +142,34 @@ const loading = ref(true)
 const saving = ref(false)
 const configId = ref<number | null>(null)
 const activeProviders = ref<number[]>([0])
-const hasUnsavedChanges = ref(false)
 const testingModel = ref<string | null>(null)
+const initialized = ref(false)
+const emit = defineEmits<{
+  (e: 'dirty-change', value: boolean): void
+}>()
 
 const formData = reactive<AIConfig>({
   default_provider: '',
   providers: []
 })
+
+const getConfigState = (): AIConfig => ({
+  default_provider: formData.default_provider,
+  providers: formData.providers,
+})
+
+const applyConfigState = (state: AIConfig) => {
+  formData.default_provider = state.default_provider || ''
+  formData.providers = state.providers || []
+  activeProviders.value = formData.providers.length > 0 ? [0] : []
+}
+
+const baselineSnapshot = ref(createSnapshot(getConfigState()))
+const hasUnsavedChanges = computed(() => initialized.value && isSnapshotDirty(baselineSnapshot.value, getConfigState()))
+
+watch(hasUnsavedChanges, (value) => {
+  emit('dirty-change', value)
+}, { immediate: true })
 
 // 加载配置
 const loadConfig = async () => {
@@ -161,8 +180,7 @@ const loadConfig = async () => {
       configId.value = res.data.id
       if (res.data.value) {
         const config = JSON.parse(res.data.value) as AIConfig
-        formData.default_provider = config.default_provider || ''
-        formData.providers = config.providers || []
+        applyConfigState(config)
       }
     }
   } catch (e: any) {
@@ -171,6 +189,8 @@ const loadConfig = async () => {
       message.error('加载配置失败')
     }
   } finally {
+    baselineSnapshot.value = createSnapshot(getConfigState())
+    initialized.value = true
     loading.value = false
   }
 }
@@ -199,7 +219,6 @@ const removeProvider = (index: number) => {
 // 设置默认平台
 const setDefaultProvider = (index: number) => {
   formData.default_provider = formData.providers[index].name
-  hasUnsavedChanges.value = true
   message.info('已设为默认，请记得保存配置')
 }
 
@@ -215,13 +234,11 @@ const addModel = (providerIndex: number) => {
     name: '',
     description: ''
   })
-  hasUnsavedChanges.value = true
 }
 
 // 删除模型
 const removeModel = (providerIndex: number, modelIndex: number) => {
   formData.providers[providerIndex].models.splice(modelIndex, 1)
-  hasUnsavedChanges.value = true
 }
 
 // 移动模型顺序
@@ -232,7 +249,6 @@ const moveModel = (providerIndex: number, modelIndex: number, direction: number)
   const temp = models[modelIndex]
   models[modelIndex] = models[newIndex]
   models[newIndex] = temp
-  hasUnsavedChanges.value = true
 }
 
 // 测试模型
@@ -272,22 +288,22 @@ const testModel = async (providerIndex: number, modelIndex: number) => {
 }
 
 // 保存配置
-const handleSave = async () => {
+const save = async () => {
   // 验证
   for (const p of formData.providers) {
     if (!p.name) {
       message.warning('请填写平台名称')
-      return
+      return false
     }
     if (!p.base_url) {
       message.warning(`请填写 ${p.name} 的 Base URL`)
-      return
+      return false
     }
   }
 
   saving.value = true
   try {
-    const value = JSON.stringify(formData)
+    const value = JSON.stringify(getConfigState())
     if (configId.value) {
       await updateConfig(configId.value, { value })
     } else {
@@ -300,17 +316,37 @@ const handleSave = async () => {
       })
       configId.value = res.data.id
     }
-    hasUnsavedChanges.value = false
+    baselineSnapshot.value = createSnapshot(getConfigState())
     message.success('保存成功')
+    return true
   } catch (e) {
     message.error('保存失败')
+    return false
   } finally {
     saving.value = false
   }
 }
 
+const discardChanges = () => {
+  const restored = cloneFromSnapshot<AIConfig>(baselineSnapshot.value)
+  applyConfigState(restored)
+}
+
+const closeTransientUi = () => {}
+
+const handleSave = async () => {
+  await save()
+}
+
 onMounted(() => {
   loadConfig()
+})
+
+defineExpose({
+  isDirty: () => hasUnsavedChanges.value,
+  save,
+  discardChanges,
+  closeTransientUi,
 })
 </script>
 
@@ -373,11 +409,6 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 2px;
-}
-
-.unsaved-tip {
-  color: #faad14;
-  font-size: 13px;
 }
 
 :deep(.ant-collapse-header) {
