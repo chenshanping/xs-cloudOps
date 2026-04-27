@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, rmSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
-const distDir = new URL('../dist-tests-view-resolver', import.meta.url)
+const distDir = new URL('../dist-tests-tabs-state', import.meta.url)
 const nodeCommand = process.execPath
 const tscScript = fileURLToPath(
   new URL('../node_modules/typescript/bin/tsc', import.meta.url),
@@ -21,7 +21,7 @@ try {
     nodeCommand,
     [
       tscScript,
-      'src/router/view-resolver.ts',
+      'src/store/tabs-state.ts',
       '--module',
       'ESNext',
       '--moduleResolution',
@@ -29,14 +29,14 @@ try {
       '--target',
       'ES2020',
       '--outDir',
-      'dist-tests-view-resolver',
+      'dist-tests-tabs-state',
       '--rootDir',
       '.',
     ],
     { stdio: 'inherit' },
   )
 
-  execFileSync(nodeCommand, ['--test', 'tests/view-resolver.test.mjs'], {
+  execFileSync(nodeCommand, ['--test', 'tests/tabs-state.test.mjs'], {
     stdio: 'inherit',
   })
 } finally {

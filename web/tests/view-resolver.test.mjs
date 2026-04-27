@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { resolveViewModulePath } from '../dist-tests/src/router/view-resolver.js'
+import { resolveViewModulePath } from '../dist-tests-view-resolver/src/router/view-resolver.js'
 
 test('maps auth views to the auth directory', () => {
   assert.equal(

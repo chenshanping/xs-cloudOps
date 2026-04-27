@@ -4,7 +4,7 @@
 
     <a-layout class="main-layout">
       <Header v-if="uiStore.effectiveShowHeader" />
-      <TabsBar v-if="uiStore.effectiveShowTabs" ref="tabsBarRef" />
+      <TabsBar v-if="uiStore.effectiveShowTabs" />
 
       <a-layout-content :style="contentStyle" class="content">
         <ErrorBoundary>
@@ -43,16 +43,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { SettingOutlined } from '@ant-design/icons-vue'
 import ErrorBoundary from '@/components/ErrorBoundary.vue'
+import { useTabsStore } from '@/store/tabs'
 import { useUiStore } from '@/store/ui'
 import { Header, LayoutSettingsDrawer, Sidebar, TabsBar } from './components'
 
 const uiStore = useUiStore()
-
-const tabsBarRef = ref<InstanceType<typeof TabsBar> | null>(null)
-const cachedViews = computed(() => tabsBarRef.value?.cachedViews || [])
+const tabsStore = useTabsStore()
+const cachedViews = computed(() => tabsStore.cachedViews)
 
 const contentStyle = computed(() => {
   const padding = `${uiStore.contentPadding}px`

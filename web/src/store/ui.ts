@@ -91,21 +91,21 @@ export const THEME_PRESETS: ThemePresetOption[] = [
 const STORAGE_KEY = 'go-base-ui-preferences'
 
 const DEFAULT_LAYOUT: LayoutPreferences = {
-  mode: 'sidebar',
+  mode: 'top',
   showHeader: true,
-  showSidebar: true,
+  showSidebar: false,
   showTabs: true,
   sidebarCollapsed: false,
-  sidebarWidth: 220
+  sidebarWidth: 228
 }
 
 const DEFAULT_THEME: ThemePreferences = {
   mode: 'light',
-  preset: 'default',
-  primaryColor: '#006be6',
+  preset: 'deep-blue',
+  primaryColor: '#0960be',
   headerDark: false,
-  sidebarDark: true,
-  compactContent: false
+  sidebarDark: false,
+  compactContent: true
 }
 
 function normalizeHexColor(color?: string) {
@@ -272,8 +272,8 @@ export const useUiStore = defineStore('ui', () => {
   }
 
   function resetPreferences() {
-    layout.value = { ...DEFAULT_LAYOUT }
-    theme.value = { ...DEFAULT_THEME }
+    layout.value = normalizeLayoutPreferences({ ...DEFAULT_LAYOUT })
+    theme.value = normalizeThemePreferences({ ...DEFAULT_THEME })
   }
 
   function toggleSettings(open?: boolean) {

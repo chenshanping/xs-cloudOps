@@ -8,12 +8,6 @@ export const CONFIG_KEYS = [
   'sys_name',
   'sys_logo',
   'register_logo',
-  'menu_bg_color',
-  'menu_text_color',
-  'menu_active_text_color',
-  'menu_active_bg_color',
-  'header_bg_color',
-  'header_text_color',
   // 登录页配置
   'login_bg_image',
   'login_title',
@@ -43,20 +37,13 @@ export const CONFIG_KEYS = [
   'slider_captcha_bg',
   // 前台模式配置
   'front_mode',  // 'full': 完整前台, 'profile': 仅个人中心(用于身份认证)
-  'user_profile_button_visible',
-  'dept_module_enabled'
+  'user_profile_button_visible'
 ] as const
 
 // 默认配置
 const DEFAULT_CONFIG: Record<string, string> = {
   sys_name: 'Go RBAC Admin',
   sys_logo: '/src/assets/logo.svg',
-  menu_bg_color: '#001529',
-  menu_text_color: 'rgba(255, 255, 255, 0.65)',
-  menu_active_text_color: '#ffffff',
-  menu_active_bg_color: '#1890ff',
-  header_bg_color: '#ffffff',
-  header_text_color: '#333333',
   // 登录页默认配置
   login_bg_image: '',
   login_title: '欢迎回来',
@@ -91,8 +78,7 @@ const DEFAULT_CONFIG: Record<string, string> = {
   slider_captcha_bg: '',
   // 前台模式: 'full' = 完整前台, 'profile' = 仅个人中心
   front_mode: 'full',
-  user_profile_button_visible: 'false',
-  dept_module_enabled: 'true'
+  user_profile_button_visible: 'false'
 }
 
 export type ConfigKey = typeof CONFIG_KEYS[number]

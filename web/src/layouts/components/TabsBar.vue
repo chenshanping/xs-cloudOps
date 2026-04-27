@@ -8,10 +8,24 @@
       @change="onTabChange"
       @edit="onTabEdit"
     >
+      <template #rightExtra>
+        <a-dropdown placement="bottomRight">
+          <a-button size="small" type="text">标签操作</a-button>
+          <template #overlay>
+            <a-menu @click="handleBatchAction">
+              <a-menu-item key="close-left">关闭左侧</a-menu-item>
+              <a-menu-item key="close-right">关闭右侧</a-menu-item>
+              <a-menu-item key="close-other">关闭其他</a-menu-item>
+              <a-menu-item key="close-all">关闭全部</a-menu-item>
+            </a-menu>
+          </template>
+        </a-dropdown>
+      </template>
+
       <a-tab-pane
         v-for="tab in tabs"
-        :key="tab.path"
-        :closable="tab.path !== '/dashboard'"
+        :key="tab.key"
+        :closable="!tab.affix"
         :tab="tab.title"
       />
     </a-tabs>
@@ -19,59 +33,66 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import type { MenuInfo } from 'ant-design-vue/es/menu/src/interface'
+import { useTabsStore } from '@/store/tabs'
 import { useUiStore } from '@/store/ui'
 import { useUserStore } from '@/store/user'
-
-interface Tab {
-  path: string
-  title: string
-  name?: string
-}
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const uiStore = useUiStore()
+const tabsStore = useTabsStore()
 const tabsDark = computed(() => uiStore.isDark || uiStore.theme.headerDark)
 
-const tabs = ref<Tab[]>([{ path: '/dashboard', title: '首页', name: 'Dashboard' }])
-const activeTab = ref('/dashboard')
+const tabs = computed(() => tabsStore.tabs)
+const activeTab = computed({
+  get: () => tabsStore.activeKey,
+  set: (value: string) => tabsStore.setActiveKey(value)
+})
 
-const cachedViews = computed(() => tabs.value.map((tab) => tab.name).filter(Boolean) as string[])
-defineExpose({ cachedViews })
-
-const getPageTitle = (path: string): string => {
-  if (path === '/dashboard') return '首页'
-  if (path === '/profile') return '个人中心'
-  if (path === '/ai') return 'AI助手'
-
-  const menus = userStore.menus || []
+const findMenuTitle = (path: string, menus = userStore.menus || []): string | null => {
   for (const menu of menus) {
-    if (menu.path === path) return menu.name
-    if (menu.children) {
-      for (const child of menu.children) {
-        if (child.path === path) return child.name
+    if (menu.path === path) {
+      return menu.name
+    }
+    if (menu.children?.length) {
+      const title = findMenuTitle(path, menu.children)
+      if (title) {
+        return title
       }
     }
   }
-  return '未命名页面'
+  return null
+}
+
+const getPageTitle = () => {
+  if (typeof route.meta.title === 'string' && route.meta.title) {
+    return route.meta.title
+  }
+
+  if (route.path === '/dashboard') return '首页'
+  if (route.path === '/profile') return '个人中心'
+  if (route.path === '/ai') return 'AI助手'
+
+  return findMenuTitle(route.path) || '未命名页面'
 }
 
 watch(
-  () => route.path,
-  (path) => {
-    activeTab.value = path
-    if (!tabs.value.find((tab) => tab.path === path)) {
-      tabs.value.push({
-        path,
-        title: getPageTitle(path),
-        name: route.name as string,
-      })
-    }
+  () => [route.fullPath, route.path, route.name, route.meta.title, userStore.menus],
+  () => {
+    tabsStore.openTab({
+      key: route.fullPath,
+      path: route.path,
+      fullPath: route.fullPath,
+      title: getPageTitle(),
+      name: typeof route.name === 'string' ? route.name : undefined,
+      affix: route.path === '/dashboard'
+    })
   },
-  { immediate: true },
+  { immediate: true, deep: true },
 )
 
 const onTabChange = (key: string) => {
@@ -83,16 +104,34 @@ const onTabEdit = (targetKey: string | MouseEvent, action: string) => {
     return
   }
 
-  const index = tabs.value.findIndex((tab) => tab.path === targetKey)
-  if (index === -1) {
+  const nextKey = tabsStore.removeTab(targetKey)
+  if (nextKey) {
+    router.push(nextKey)
+  }
+}
+
+const handleBatchAction = ({ key }: MenuInfo) => {
+  const currentKey = activeTab.value
+
+  if (key === 'close-left') {
+    tabsStore.removeLeftTabs(currentKey)
     return
   }
 
-  tabs.value.splice(index, 1)
-  if (activeTab.value === targetKey) {
-    const nextTab = tabs.value[index] || tabs.value[index - 1]
-    if (nextTab) {
-      router.push(nextTab.path)
+  if (key === 'close-right') {
+    tabsStore.removeRightTabs(currentKey)
+    return
+  }
+
+  if (key === 'close-other') {
+    tabsStore.removeOtherTabs(currentKey)
+    return
+  }
+
+  if (key === 'close-all') {
+    tabsStore.removeAllTabs()
+    if (route.fullPath !== '/dashboard') {
+      router.push('/dashboard')
     }
   }
 }
@@ -116,6 +155,11 @@ const onTabEdit = (targetKey: string | MouseEvent, action: string) => {
 
 .tabs-wrapper :deep(.ant-tabs-nav) {
   margin-bottom: 0;
+}
+
+.tabs-wrapper :deep(.ant-tabs-extra-content) {
+  display: flex;
+  align-items: center;
 }
 
 .tabs-wrapper :deep(.ant-tabs-tab) {

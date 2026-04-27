@@ -8,6 +8,7 @@
     "build": "npm run icons && vite build",
     "build:dev": "npm run icons && vite build --mode development",
     "build:test": "npm run icons && vite build --mode test",
+    "test:tabs-state": "node scripts/test-tabs-state.mjs",
     "test:view-resolver": "node scripts/test-view-resolver.mjs",
     "typecheck": "vue-tsc --noEmit",
     "preview": "vite preview --mode development"
