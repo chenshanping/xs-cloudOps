@@ -2,9 +2,12 @@ package initialize
 
 import (
 	"errors"
+	"fmt"
 	"server/global"
 	"server/model"
+	"server/service"
 	"server/utils"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -20,7 +23,6 @@ func InitDBTables() {
 		&model.SysLoginLog{},
 		&model.SysSlowLog{},
 		&model.SysConfig{},
-		&model.SysStorage{},
 		&model.SysFile{},
 		&model.SysFileChunk{},
 		// 数据字典
@@ -101,8 +103,7 @@ func initDefaultData() {
 		{ParentID: sysMgmt.ID, Name: "菜单管理", Path: "/system/menu", Component: "system/menu/index", Icon: "menu", Sort: 4, Type: 2, Permission: "system:menu:list", Status: 1},
 		{ParentID: sysMgmt.ID, Name: "API管理", Path: "/system/api", Component: "system/api/index", Icon: "api", Sort: 5, Type: 2, Permission: "system:api:list", Status: 1},
 		{ParentID: sysMgmt.ID, Name: "参数配置", Path: "/system/config", Component: "system/config/index", Icon: "setting", Sort: 6, Type: 2, Permission: "system:config:list", Status: 1},
-		{ParentID: sysMgmt.ID, Name: "存储管理", Path: "/system/storage", Component: "system/storage/index", Icon: "cloud-server", Sort: 7, Type: 2, Permission: "system:storage:list", Status: 1},
-		{ParentID: sysMgmt.ID, Name: "文件管理", Path: "/system/file", Component: "system/file/index", Icon: "folder", Sort: 8, Type: 2, Permission: "system:file:list", Status: 1},
+		{ParentID: sysMgmt.ID, Name: "文件管理", Path: "/system/file", Component: "system/file/index", Icon: "folder", Sort: 7, Type: 2, Permission: "system:file:list", Status: 1},
 		{ParentID: monitor.ID, Name: "操作日志", Path: "/monitor/operation-log", Component: "monitor/operation-log/index", Icon: "file-text", Sort: 1, Type: 2, Permission: "monitor:operation-log:list", Status: 1},
 		{ParentID: monitor.ID, Name: "登录日志", Path: "/monitor/login-log", Component: "monitor/login-log/index", Icon: "login", Sort: 2, Type: 2, Permission: "monitor:login-log:list", Status: 1},
 		{ParentID: monitor.ID, Name: "慢查询日志", Path: "/monitor/show-log", Component: "monitor/show-log/index", Icon: "login", Sort: 2, Type: 2, Permission: "monitor:show-log:list", Status: 1},
@@ -163,14 +164,7 @@ func initDefaultData() {
 		{Path: "/api/v1/configs/:id", Method: "PUT", Group: "配置管理", Description: "更新配置"},
 		{Path: "/api/v1/configs/batch", Method: "PUT", Group: "配置管理", Description: "批量更新配置"},
 		{Path: "/api/v1/configs/:id", Method: "DELETE", Group: "配置管理", Description: "删除配置"},
-		// 存储管理
-		{Path: "/api/v1/storages", Method: "GET", Group: "存储管理", Description: "存储配置列表"},
-		{Path: "/api/v1/storages/:id", Method: "GET", Group: "存储管理", Description: "存储配置详情"},
-		{Path: "/api/v1/storages", Method: "POST", Group: "存储管理", Description: "创建存储配置"},
-		{Path: "/api/v1/storages/:id", Method: "PUT", Group: "存储管理", Description: "更新存储配置"},
-		{Path: "/api/v1/storages/:id", Method: "DELETE", Group: "存储管理", Description: "删除存储配置"},
-		{Path: "/api/v1/storages/:id/default", Method: "PUT", Group: "存储管理", Description: "设置默认存储"},
-		{Path: "/api/v1/storages/test", Method: "POST", Group: "存储管理", Description: "测试存储配置"},
+		{Path: "/api/v1/configs/storage/test", Method: "POST", Group: "配置管理", Description: "测试存储配置"},
 		// 文件管理
 		{Path: "/api/v1/files", Method: "GET", Group: "文件管理", Description: "文件列表"},
 		{Path: "/api/v1/files/:id", Method: "GET", Group: "文件管理", Description: "文件详情"},
@@ -218,22 +212,27 @@ func initDefaultConfigs() {
 	configs := []model.SysConfig{
 		{Name: "系统名称", Key: "sys_name", Value: "Go RBAC Admin", ValueType: "string", Remark: "显示在侧边栏顶部"},
 		{Name: "系统Logo", Key: "sys_logo", Value: "/src/assets/logo.svg", ValueType: "string", Remark: "系统Logo图片地址"},
-		{Name: "菜单背景色", Key: "menu_bg_color", Value: "#001529", ValueType: "string", Remark: "侧边栏菜单背景色"},
-		{Name: "菜单文字颜色", Key: "menu_text_color", Value: "rgba(255, 255, 255, 0.65)", ValueType: "string", Remark: "菜单文字颜色"},
-		{Name: "菜单激活文字颜色", Key: "menu_active_text_color", Value: "#ffffff", ValueType: "string", Remark: "菜单选中时文字颜色"},
-		{Name: "菜单激活背景色", Key: "menu_active_bg_color", Value: "#1890ff", ValueType: "string", Remark: "菜单选中时背景色"},
-		{Name: "头部背景色", Key: "header_bg_color", Value: "#ffffff", ValueType: "string", Remark: "顶部栏背景色"},
-		{Name: "头部文字颜色", Key: "header_text_color", Value: "#333333", ValueType: "string", Remark: "顶部栏文字颜色"},
 		{Name: "AI配置", Key: "ai_config", Value: `{"default_provider":"阿里云百炼","providers":[{"name":"阿里云百炼","api_key":"","base_url":"https://dashscope.aliyuncs.com/compatible-mode/v1","models":[{"id":"deepseek-v3.2","name":"DeepSeek-V3.2","description":"DeepSeek最新模型,支持联网和思考"},{"id":"qwen3-max","name":"通义千问3-Max","description":"通义千问3系列Max模型"}]}]}`, ValueType: "json", Remark: "AI平台配置，包含平台名称、API Key、基础URL和模型列表"},
 		{Name: "前台模式", Key: "front_mode", Value: "full", ValueType: "string", Remark: "前台模式: full=完整前台, profile=仅个人中心(用于身份认证)"},
 		{Name: "用户身份按钮显示", Key: "user_profile_button_visible", Value: "false", ValueType: "string", Remark: "后台用户管理列表是否显示身份按钮"},
-		{Name: "部门模块显示", Key: "dept_module_enabled", Value: "true", ValueType: "string", Remark: "后台菜单中是否显示部门管理模块"},
+		{Name: "存储类型", Key: service.StorageTypeConfigKey, Value: string(service.Storage.DefaultStorageType()), ValueType: "string", Remark: "当前文件上传使用的存储类型"},
+	}
+	for _, storageType := range service.Storage.SupportedStorageTypes() {
+		configs = append(configs, model.SysConfig{
+			Name:      storageConfigName(storageType),
+			Key:       service.StorageConfigKey(storageType),
+			Value:     service.Storage.DefaultStorageConfig(storageType),
+			ValueType: "json",
+			Remark:    fmt.Sprintf("%s的已保存配置(JSON)", storageConfigLabel(storageType)),
+		})
 	}
 	global.DB.Create(&configs)
 	global.Log.Info("系统配置初始化成功")
 }
 
 func ensureBuiltInData() {
+	ensureSystemStorageConfigs()
+	ensureFileStorageSnapshots()
 	ensureConfigExists(model.SysConfig{
 		Name:      "用户身份按钮显示",
 		Key:       "user_profile_button_visible",
@@ -241,19 +240,13 @@ func ensureBuiltInData() {
 		ValueType: "string",
 		Remark:    "后台用户管理列表是否显示身份按钮",
 	})
-	ensureConfigExists(model.SysConfig{
-		Name:      "部门模块显示",
-		Key:       "dept_module_enabled",
-		Value:     "true",
-		ValueType: "string",
-		Remark:    "后台菜单中是否显示部门管理模块",
-	})
 
 	rootDept := ensureRootDeptExists()
 	backfillDepartmentFoundation(rootDept.ID)
 
 	ensureDeptApiAccess()
 	ensureDeptMenus()
+	cleanupStorageBuiltInData()
 
 	ensureApiAccessInheritedFrom(model.SysApi{
 		Path:        "/api/v1/users/batch-status",
@@ -273,6 +266,167 @@ func ensureConfigExists(config model.SysConfig) {
 		if err := global.DB.Create(&config).Error; err != nil {
 			global.Log.Errorf("补齐系统配置失败(%s): %v", config.Key, err)
 		}
+	}
+}
+
+func ensureSystemStorageConfigs() {
+	keys := []string{service.StorageTypeConfigKey, service.LegacyStorageConfigConfigKey}
+	for _, storageType := range service.Storage.SupportedStorageTypes() {
+		keys = append(keys, service.StorageConfigKey(storageType))
+	}
+
+	configs, err := service.Config.GetConfigsByKeys(keys)
+	if err != nil {
+		global.Log.Errorf("查询系统存储配置失败: %v", err)
+		return
+	}
+
+	storageType := service.Storage.DefaultStorageType()
+	typeConfigured := false
+	if typeConfig, ok := configs[service.StorageTypeConfigKey]; ok && strings.TrimSpace(typeConfig.Value) != "" {
+		storageType = model.StorageType(typeConfig.Value)
+		typeConfigured = true
+	}
+
+	typeConfigs := make(map[model.StorageType]string)
+	for _, itemType := range service.Storage.SupportedStorageTypes() {
+		typeConfigs[itemType] = service.Storage.DefaultStorageConfig(itemType)
+		if config, ok := configs[service.StorageConfigKey(itemType)]; ok && strings.TrimSpace(config.Value) != "" {
+			typeConfigs[itemType] = config.Value
+		}
+	}
+
+	if global.DB.Migrator().HasTable((&model.LegacyStorageRecord{}).TableName()) {
+		var legacyStorages []model.LegacyStorageRecord
+		if err := global.DB.Where("status = ?", 1).Order("is_default DESC, id ASC").Find(&legacyStorages).Error; err == nil {
+			for _, legacy := range legacyStorages {
+				if current, ok := configs[service.StorageConfigKey(legacy.Type)]; !ok || strings.TrimSpace(current.Value) == "" {
+					typeConfigs[legacy.Type] = legacy.Config
+				}
+				if !typeConfigured {
+					storageType = legacy.Type
+					typeConfigured = true
+				}
+			}
+		}
+	}
+
+	if config, ok := configs[service.LegacyStorageConfigConfigKey]; ok && strings.TrimSpace(config.Value) != "" {
+		if current, ok := configs[service.StorageConfigKey(storageType)]; !ok || strings.TrimSpace(current.Value) == "" {
+			typeConfigs[storageType] = config.Value
+		}
+	}
+
+	upsertConfigValue(model.SysConfig{
+		Name:      "存储类型",
+		Key:       service.StorageTypeConfigKey,
+		Value:     string(storageType),
+		ValueType: "string",
+		Remark:    "当前文件上传使用的存储类型",
+	})
+	for _, itemType := range service.Storage.SupportedStorageTypes() {
+		upsertConfigValue(model.SysConfig{
+			Name:      storageConfigName(itemType),
+			Key:       service.StorageConfigKey(itemType),
+			Value:     typeConfigs[itemType],
+			ValueType: "json",
+			Remark:    fmt.Sprintf("%s的已保存配置(JSON)", storageConfigLabel(itemType)),
+		})
+	}
+}
+
+func ensureFileStorageSnapshots() {
+	hasLegacyTable := global.DB.Migrator().HasTable((&model.LegacyStorageRecord{}).TableName())
+	hasFileStorageID := global.DB.Migrator().HasColumn(&model.SysFile{}, "storage_id")
+	hasChunkStorageID := global.DB.Migrator().HasColumn(&model.SysFileChunk{}, "storage_id")
+	if hasLegacyTable && (hasFileStorageID || hasChunkStorageID) {
+		var legacyStorages []model.LegacyStorageRecord
+		if err := global.DB.Where("status = ?", 1).Find(&legacyStorages).Error; err != nil {
+			global.Log.Errorf("查询历史存储配置失败: %v", err)
+			return
+		}
+
+		for _, legacy := range legacyStorages {
+			if hasFileStorageID {
+				if err := global.DB.Model(&model.SysFile{}).
+					Where("storage_id = ? AND (storage_type IS NULL OR storage_type = '')", legacy.ID).
+					Update("storage_type", string(legacy.Type)).Error; err != nil {
+					global.Log.Errorf("回填文件存储快照失败(storage_id=%d): %v", legacy.ID, err)
+				}
+			}
+			if hasChunkStorageID {
+				if err := global.DB.Model(&model.SysFileChunk{}).
+					Where("storage_id = ? AND (storage_type IS NULL OR storage_type = '')", legacy.ID).
+					Update("storage_type", string(legacy.Type)).Error; err != nil {
+					global.Log.Errorf("回填分片存储快照失败(storage_id=%d): %v", legacy.ID, err)
+				}
+			}
+		}
+	}
+
+	systemStorage, err := service.Storage.GetDefaultStorage()
+	if err != nil {
+		global.Log.Errorf("查询系统存储配置失败: %v", err)
+		return
+	}
+
+	if err := global.DB.Model(&model.SysFile{}).
+		Where("(storage_type IS NULL OR storage_type = '')").
+		Update("storage_type", string(systemStorage.Type)).Error; err != nil {
+		global.Log.Errorf("回填文件存储快照失败(默认配置): %v", err)
+	}
+
+	if err := global.DB.Model(&model.SysFileChunk{}).
+		Where("(storage_type IS NULL OR storage_type = '')").
+		Update("storage_type", string(systemStorage.Type)).Error; err != nil {
+		global.Log.Errorf("回填分片存储快照失败(默认配置): %v", err)
+	}
+}
+
+func storageConfigLabel(storageType model.StorageType) string {
+	switch storageType {
+	case model.StorageTypeLocal:
+		return "本地存储"
+	case model.StorageTypeAliyun:
+		return "阿里云 OSS"
+	case model.StorageTypeTencent:
+		return "腾讯云 COS"
+	case model.StorageTypeMinio:
+		return "MinIO"
+	default:
+		return string(storageType)
+	}
+}
+
+func storageConfigName(storageType model.StorageType) string {
+	return fmt.Sprintf("%s配置", storageConfigLabel(storageType))
+}
+
+func upsertConfigValue(config model.SysConfig) {
+	var existing model.SysConfig
+	err := global.DB.Where("`key` = ?", config.Key).First(&existing).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		if err := global.DB.Create(&config).Error; err != nil {
+			global.Log.Errorf("补齐系统配置失败(%s): %v", config.Key, err)
+		}
+		return
+	}
+	if err != nil {
+		global.Log.Errorf("查询系统配置失败(%s): %v", config.Key, err)
+		return
+	}
+	if strings.TrimSpace(existing.Value) != "" {
+		return
+	}
+	if err := global.DB.Model(&model.SysConfig{}).
+		Where("id = ?", existing.ID).
+		Updates(map[string]interface{}{
+			"name":       config.Name,
+			"value":      config.Value,
+			"value_type": config.ValueType,
+			"remark":     config.Remark,
+		}).Error; err != nil {
+		global.Log.Errorf("回填系统配置失败(%s): %v", config.Key, err)
 	}
 }
 
@@ -542,6 +696,92 @@ func ensureUserBatchStatusMenus() {
 		}
 
 		grantMenuToRolesWithPermission(menu.ID, "system:user:edit")
+	}
+}
+
+func cleanupStorageBuiltInData() {
+	tx := global.DB.Begin()
+	if tx.Error != nil {
+		global.Log.Errorf("初始化存储内置数据清理事务失败: %v", tx.Error)
+		return
+	}
+
+	var menuIDs []uint
+	if err := tx.Model(&model.SysMenu{}).
+		Where("path = ? OR permission = ?", "/system/storage", "system:storage:list").
+		Pluck("id", &menuIDs).Error; err != nil {
+		tx.Rollback()
+		global.Log.Errorf("查询旧存储菜单失败: %v", err)
+		return
+	}
+	if len(menuIDs) > 0 {
+		if err := tx.Exec("DELETE FROM sys_role_menu WHERE sys_menu_id IN ?", menuIDs).Error; err != nil {
+			tx.Rollback()
+			global.Log.Errorf("清理旧存储菜单角色关联失败: %v", err)
+			return
+		}
+		if err := tx.Where("id IN ?", menuIDs).Delete(&model.SysMenu{}).Error; err != nil {
+			tx.Rollback()
+			global.Log.Errorf("删除旧存储菜单失败: %v", err)
+			return
+		}
+	}
+
+	type apiPolicy struct {
+		Path   string
+		Method string
+	}
+
+	storageApis := []apiPolicy{
+		{Path: "/api/v1/storages", Method: "GET"},
+		{Path: "/api/v1/storages/:id", Method: "GET"},
+		{Path: "/api/v1/storages", Method: "POST"},
+		{Path: "/api/v1/storages/:id", Method: "PUT"},
+		{Path: "/api/v1/storages/:id", Method: "DELETE"},
+		{Path: "/api/v1/storages/:id/default", Method: "PUT"},
+		{Path: "/api/v1/storages/test", Method: "POST"},
+	}
+	apiPaths := make([]string, 0, len(storageApis))
+	for _, api := range storageApis {
+		apiPaths = append(apiPaths, api.Path)
+	}
+
+	var apiIDs []uint
+	if err := tx.Model(&model.SysApi{}).Where("path IN ?", apiPaths).Pluck("id", &apiIDs).Error; err != nil {
+		tx.Rollback()
+		global.Log.Errorf("查询旧存储 API 失败: %v", err)
+		return
+	}
+	if len(apiIDs) > 0 {
+		if err := tx.Exec("DELETE FROM sys_role_api WHERE sys_api_id IN ?", apiIDs).Error; err != nil {
+			tx.Rollback()
+			global.Log.Errorf("清理旧存储 API 角色关联失败: %v", err)
+			return
+		}
+		if err := tx.Where("id IN ?", apiIDs).Delete(&model.SysApi{}).Error; err != nil {
+			tx.Rollback()
+			global.Log.Errorf("删除旧存储 API 失败: %v", err)
+			return
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		global.Log.Errorf("提交旧存储内置数据清理失败: %v", err)
+		return
+	}
+
+	if global.Enforcer != nil {
+		policyChanged := false
+		for _, api := range storageApis {
+			if ok, err := global.Enforcer.RemoveFilteredPolicy(1, api.Path, api.Method); err != nil {
+				global.Log.Errorf("清理旧存储 Casbin 策略失败(%s %s): %v", api.Method, api.Path, err)
+			} else if ok {
+				policyChanged = true
+			}
+		}
+		if policyChanged {
+			_ = global.Enforcer.SavePolicy()
+		}
 	}
 }
 

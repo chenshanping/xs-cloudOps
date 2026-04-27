@@ -2,10 +2,12 @@ package service
 
 import (
 	"encoding/json"
+	"strings"
 
 	"server/config"
 	"server/global"
 	"server/model"
+	"server/service/oss"
 )
 
 type ConfigService struct{}
@@ -86,7 +88,18 @@ func (s *ConfigService) BatchUpdateConfigs(configs map[string]string) error {
 			}
 		}
 	}
-	return tx.Commit().Error
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	for key := range configs {
+		if key == StorageTypeConfigKey || key == LegacyStorageConfigConfigKey || strings.HasPrefix(key, "storage_") && strings.HasSuffix(key, "_config") {
+			oss.ClearClients()
+			break
+		}
+	}
+
+	return nil
 }
 
 // DeleteConfig 删除配置

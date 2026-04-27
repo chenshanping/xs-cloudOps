@@ -143,3 +143,27 @@ func (a *ConfigApi) SendTestEmail(c *gin.Context) {
 
 	response.OkWithMessage(c, "测试邮件发送成功")
 }
+
+// TestStorageConfig 测试系统存储配置
+func (a *ConfigApi) TestStorageConfig(c *gin.Context) {
+	var req struct {
+		Type   model.StorageType `json:"type" binding:"required"`
+		Config string            `json:"config"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	storage, err := service.Storage.BuildStorageProfile(req.Type, req.Config)
+	if err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+	if err := service.Storage.TestStorage(storage); err != nil {
+		response.Fail(c, "测试失败: "+err.Error())
+		return
+	}
+
+	response.OkWithMessage(c, "测试成功")
+}

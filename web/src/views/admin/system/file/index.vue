@@ -1,118 +1,86 @@
 <template>
   <div class="file-page">
-    <a-row :gutter="16">
-      <!-- 左侧存储分组 -->
-      <a-col :span="4">
-        <a-card title="存储分组" size="small" :loading="storageLoading">
-          <a-menu
-            v-model:selectedKeys="selectedStorageKeys"
-            mode="inline"
-            @click="handleStorageClick"
+    <a-card>
+      <a-tabs v-model:activeKey="activeTab">
+        <a-tab-pane key="list" tab="文件列表">
+          <ProTable
+            :title="'文件列表'"
+            :columns="columns"
+            :data-source="fileList"
+            :loading="loading"
+            :pagination="pagination"
+            row-key="id"
+            :row-selection="{ selectedRowKeys, onChange: onSelectChange }"
+            @search="handleSearch"
+            @reset="handleReset"
+            @change="handleTableChange"
           >
-            <a-menu-item key="all">
-              <template #icon><DatabaseOutlined /></template>
-              全部存储
-            </a-menu-item>
-            <a-menu-item v-for="item in storageList" :key="String(item.id)">
-              <template #icon>
-                <CloudServerOutlined v-if="item.type === 'aliyun' || item.type === 'tencent'" />
-                <HddOutlined v-else-if="item.type === 'local'" />
-                <CloudOutlined v-else />
+            <template #search>
+              <a-form-item>
+                <a-input v-model:value="searchForm.name" placeholder="文件名" allowClear style="width: 200px" />
+              </a-form-item>
+              <a-form-item>
+                <a-select v-model:value="searchForm.ext" placeholder="文件类型" allowClear style="width: 120px">
+                  <a-select-option value="">全部</a-select-option>
+                  <a-select-option v-for="item in FILE_TYPES" :key="item.value" :value="item.value">
+                    {{ item.label }}
+                  </a-select-option>
+                </a-select>
+              </a-form-item>
+            </template>
+
+            <template #toolbar>
+              <a-button type="primary" danger :disabled="selectedRowKeys.length === 0" @click="handleBatchDelete">
+                <DeleteOutlined /> 批量删除
+                <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
+              </a-button>
+            </template>
+
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'name'">
+                <div class="file-name-cell">
+                  <img v-if="isExtImg(record.ext)" :src="record.url" style="width: 50px;height: 50px;" />
+                  <component v-else :is="getFileIconComponent(record.ext)" class="file-icon" />
+                  <a-tooltip :title="record.name">
+                    <span class="file-name">{{ record.name }}</span>
+                  </a-tooltip>
+                </div>
               </template>
-              {{ item.name }}
-              <a-tag v-if="item.is_default === 1" color="green" size="small" style="margin-left: 4px;">默认</a-tag>
-            </a-menu-item>
-          </a-menu>
-        </a-card>
-      </a-col>
+              <template v-if="column.key === 'size'">
+                {{ formatFileSize(record.size) }}
+              </template>
+              <template v-if="column.key === 'ext'">
+                <a-tag :color="getFileTypeInfo(record.ext)?.color">{{ getFileTypeInfo(record.ext)?.label || record.ext?.toUpperCase() }}</a-tag>
+              </template>
+              <template v-if="column.key === 'storage'">
+                <a-tag color="blue">
+                  {{ getStorageLabel(record) }}
+                </a-tag>
+              </template>
+              <template v-if="column.key === 'created_at'">
+                {{ formatTime(record.created_at) }}
+              </template>
+              <template v-if="column.key === 'action'">
+                <a-button type="link" size="small" @click="handlePreview(record)">预览</a-button>
+                <a-button type="link" size="small" @click="handleCopyUrl(record)">复制链接</a-button>
+                <a-popconfirm title="确定删除吗？" @confirm="handleDelete(record)">
+                  <a-button type="link" size="small" danger>删除</a-button>
+                </a-popconfirm>
+              </template>
+            </template>
+          </ProTable>
+        </a-tab-pane>
 
-      <!-- 右侧内容 -->
-      <a-col :span="20">
-        <a-card>
-          <a-tabs v-model:activeKey="activeTab">
-            <a-tab-pane key="list" tab="文件列表">
-              <ProTable
-                :title="'文件列表'"
-                :columns="columns"
-                :data-source="fileList"
-                :loading="loading"
-                :pagination="pagination"
-                row-key="id"
-                :row-selection="{ selectedRowKeys, onChange: onSelectChange }"
-                @search="handleSearch"
-                @reset="handleReset"
-                @change="handleTableChange"
-              >
-                <template #search>
-                  <a-form-item>
-                    <a-input v-model:value="searchForm.name" placeholder="文件名" allowClear style="width: 200px" />
-                  </a-form-item>
-                  <a-form-item>
-                    <a-select v-model:value="searchForm.ext" placeholder="文件类型" allowClear style="width: 120px">
-                      <a-select-option value="">全部</a-select-option>
-                      <a-select-option v-for="item in FILE_TYPES" :key="item.value" :value="item.value">
-                        {{ item.label }}
-                      </a-select-option>
-                    </a-select>
-                  </a-form-item>
-                </template>
+        <a-tab-pane key="upload" tab="上传文件">
+          <FileUpload
+            ref="fileUploadRef"
+            :multiple="true"
+            @success="handleUploadSuccess"
+          />
+        </a-tab-pane>
+      </a-tabs>
+    </a-card>
 
-                <template #toolbar>
-                  <a-button type="primary" danger :disabled="selectedRowKeys.length === 0" @click="handleBatchDelete">
-                    <DeleteOutlined /> 批量删除
-                    <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
-                  </a-button>
-                </template>
-
-                <template #bodyCell="{ column, record }">
-                  <template v-if="column.key === 'name'">
-                    <div class="file-name-cell">
-                      <img v-if="isExtImg(record.ext)" :src="record.url" style="width: 50px;height: 50px;" />
-                      <component v-else :is="getFileIconComponent(record.ext)" class="file-icon" />
-                      <a-tooltip :title="record.name">
-                        <span class="file-name">{{ record.name }}</span>
-                      </a-tooltip>
-                    </div>
-                  </template>
-                  <template v-if="column.key === 'size'">
-                    {{ formatFileSize(record.size) }}
-                  </template>
-                  <template v-if="column.key === 'ext'">
-                    <a-tag :color="getFileTypeInfo(record.ext)?.color">{{ getFileTypeInfo(record.ext)?.label || record.ext?.toUpperCase() }}</a-tag>
-                  </template>
-                  <template v-if="column.key === 'storage'">
-                    <a-tag v-if="record.storage" color="blue">
-                      {{ record.storage.name }}({{record.storage.type}})
-                    </a-tag>
-                    <span v-else>默认存储</span>
-                  </template>
-                  <template v-if="column.key === 'created_at'">
-                    {{ formatTime(record.created_at) }}
-                  </template>
-                  <template v-if="column.key === 'action'">
-                    <a-button type="link" size="small" @click="handlePreview(record)">预览</a-button>
-                    <a-button type="link" size="small" @click="handleCopyUrl(record)">复制链接</a-button>
-                    <a-popconfirm title="确定删除吗？" @confirm="handleDelete(record)">
-                      <a-button type="link" size="small" danger>删除</a-button>
-                    </a-popconfirm>
-                  </template>
-                </template>
-              </ProTable>
-            </a-tab-pane>
-
-            <a-tab-pane key="upload" tab="上传文件">
-              <FileUpload
-                ref="fileUploadRef"
-                :multiple="true"
-                @success="handleUploadSuccess"
-              />
-            </a-tab-pane>
-          </a-tabs>
-        </a-card>
-      </a-col>
-    </a-row>
-
-    <!-- 文件预览 -->
     <FilePreview
       v-model:open="previewVisible"
       :url="previewFile?.url || ''"
@@ -125,8 +93,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { message } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
+import { message, Modal } from 'ant-design-vue'
 import ProTable from '@/components/ProTable.vue'
 import {
   FileImageOutlined,
@@ -139,32 +107,26 @@ import {
   VideoCameraOutlined,
   AudioOutlined,
   FileOutlined,
+  DeleteOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons-vue'
+import { createVNode } from 'vue'
 import FileUpload from '@/components/FileUpload.vue'
 import FilePreview from '@/components/FilePreview.vue'
 import type { FileInfo } from '@/types/file'
-import type { Storage } from '@/types/storage'
 import { getFileList, deleteFile, batchDeleteFiles } from '@/api/file'
-import { getStorageList } from '@/api/storage'
+import { useConfigStore } from '@/store/config'
 import { formatFileSize } from '@/utils/upload'
 import { formatTime } from '@/utils/format'
-import { DeleteOutlined, DatabaseOutlined, CloudServerOutlined, HddOutlined, CloudOutlined } from '@ant-design/icons-vue'
-import { Modal } from 'ant-design-vue'
-import { createVNode } from 'vue'
-import { ExclamationCircleOutlined } from '@ant-design/icons-vue'
+import { storageTypeOptions } from '@/types/storage'
+
+const configStore = useConfigStore()
 
 const activeTab = ref('list')
 const loading = ref(false)
 const fileList = ref<FileInfo[]>([])
 const fileUploadRef = ref()
 const selectedRowKeys = ref<number[]>([])
-
-// 存储分组
-const storageLoading = ref(false)
-const storageList = ref<Storage[]>([])
-const selectedStorageKeys = ref<string[]>(['all'])
-const currentStorageId = ref<number | undefined>(undefined)
-
 const previewVisible = ref(false)
 const previewFile = ref<FileInfo | null>(null)
 
@@ -179,7 +141,11 @@ const pagination = reactive({
   total: 0,
 })
 
-// 文件类型配置
+const currentStorageLabel = computed(() => {
+  const currentType = configStore.get('storage_type') || 'local'
+  return storageTypeOptions.find((item) => item.value === currentType)?.label || currentType
+})
+
 const FILE_TYPES = [
   { label: '图片', value: 'jpg,jpeg,png,gif,webp,bmp,svg', color: 'green' },
   { label: 'PDF', value: 'pdf', color: 'red' },
@@ -189,26 +155,26 @@ const FILE_TYPES = [
   { label: '音频', value: 'mp3,wav,flac,aac', color: 'cyan' },
 ]
 
-// 根据扩展名获取文件类型信息
+const columns = [
+  { title: '文件名', key: 'name', ellipsis: true },
+  { title: '大小', key: 'size', width: 100 },
+  { title: '类型', key: 'ext', width: 80 },
+  { title: '存储', key: 'storage', width: 160 },
+  { title: '上传时间', key: 'created_at', width: 180 },
+  { title: '操作', key: 'action', width: 200 },
+]
+
 const getFileTypeInfo = (ext: string) => {
   if (!ext) return null
   const lowerExt = ext.toLowerCase()
   return FILE_TYPES.find(type => type.value.split(',').includes(lowerExt))
 }
 
-const columns = [
-  { title: '文件名', key: 'name', ellipsis: true },
-  { title: '大小', key: 'size', width: 100 },
-  { title: '类型', key: 'ext', width: 80 },
-  { title: '存储', key: 'storage', width: 120 },
-  { title: '上传时间', key: 'created_at', width: 180 },
-  { title: '操作', key: 'action', width: 200 },
-]
-
 const isExtImg = (ext: string) => {
   const imgType = FILE_TYPES.find(t => t.label === '图片')
   return imgType ? imgType.value.split(',').includes(ext?.toLowerCase()) : false
 }
+
 const getFileIconComponent = (ext: string) => {
   const iconMap: Record<string, any> = {
     jpg: FileImageOutlined,
@@ -238,25 +204,11 @@ const getFileIconComponent = (ext: string) => {
   return iconMap[ext?.toLowerCase()] || FileOutlined
 }
 
-const fetchStorageList = async () => {
-  storageLoading.value = true
-  try {
-    const res = await getStorageList()
-    storageList.value = res.data || []
-  } finally {
-    storageLoading.value = false
+const getStorageLabel = (record: FileInfo) => {
+  if (record.storage_type) {
+    return storageTypeOptions.find((item) => item.value === record.storage_type)?.label || record.storage_type
   }
-}
-
-const handleStorageClick = ({ key }: { key: string }) => {
-  if (key === 'all') {
-    currentStorageId.value = undefined
-  } else {
-    currentStorageId.value = Number(key)
-  }
-  pagination.current = 1
-  selectedRowKeys.value = []
-  fetchList()
+  return `系统配置(${currentStorageLabel.value})`
 }
 
 const fetchList = async () => {
@@ -267,7 +219,6 @@ const fetchList = async () => {
       page_size: pagination.pageSize,
       name: searchForm.name,
       ext: searchForm.ext,
-      storage_id: currentStorageId.value,
     })
     fileList.value = res.data.list
     pagination.total = res.data.total
@@ -349,24 +300,16 @@ const handleBatchDelete = () => {
 
 const handleUploadSuccess = (file: FileInfo) => {
   message.success(`${file.name} 上传成功`)
-  // 切换到列表并刷新
   activeTab.value = 'list'
   fetchList()
 }
 
-onMounted(() => {
-  fetchStorageList()
-  fetchList()
-})
+fetchList()
 </script>
 
 <style scoped>
 .file-page {
   height: 100%;
-}
-
-.search-bar {
-  margin-bottom: 16px;
 }
 
 .file-name-cell {
@@ -384,14 +327,5 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* 存储分组侧边栏样式 */
-:deep(.ant-menu-inline) {
-  border-right: none;
-}
-
-:deep(.ant-card-body) {
-  padding: 12px;
 }
 </style>

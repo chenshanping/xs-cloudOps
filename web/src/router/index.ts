@@ -94,6 +94,15 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'AIChat',
         component: () => import('@/views/admin/ai/index.vue'),
         meta: { title: 'AI对话' }
+      },
+      {
+        path: 'system/storage',
+        name: 'StorageRedirect',
+        redirect: () => ({
+          path: '/system/config',
+          query: { tab: 'storage' }
+        }),
+        meta: { title: '存储设置' }
       }
     ]
   }

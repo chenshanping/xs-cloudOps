@@ -65,8 +65,6 @@ interface Props {
   maxSize?: number
   /** 占位文字 */
   placeholder?: string
-  /** 存储ID */
-  storageId?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -128,7 +126,7 @@ const handleUpload: UploadProps['customRequest'] = async (options) => {
     })
 
     // 上传文件
-    const result = await multipartUpload(file, md5, props.storageId, (p) => {
+    const result = await multipartUpload(file, md5, (p) => {
       progress.value = 10 + Math.round(p * 0.9)
     })
 

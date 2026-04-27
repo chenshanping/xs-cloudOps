@@ -8,8 +8,7 @@ export interface FileInfo {
   ext: string
   mime_type: string
   md5: string
-  storage_id: number
-  storage?: import('./storage').Storage
+  storage_type: string
   uploader_id: number
   status: number
   created_at: string
@@ -55,7 +54,6 @@ export interface InitMultipartUploadResponse {
   file?: FileInfo
   upload_id?: string
   key?: string
-  storage_id?: number
   chunk_size?: number
   total_parts?: number
   upload_urls?: string[]

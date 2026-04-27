@@ -55,7 +55,7 @@ func (s *AIService) buildContextMessages(conversationID uint, newMessage string,
 // 构建带文件的消息内容
 func (s *AIService) buildMessageWithFiles(message string, fileIDs []uint) (interface{}, error) {
 	var files []model.SysFile
-	if err := global.DB.Preload("Storage").Where("id IN ? AND status = 1", fileIDs).Find(&files).Error; err != nil {
+	if err := global.DB.Where("id IN ? AND status = 1", fileIDs).Find(&files).Error; err != nil {
 		return nil, err
 	}
 	if len(files) == 0 {
@@ -71,7 +71,7 @@ func (s *AIService) buildMessageWithFiles(message string, fileIDs []uint) (inter
 
 		if imageFileExts[ext] {
 			imageURL := file.URL
-			if file.Storage != nil && file.Storage.Type == model.StorageTypeLocal {
+			if file.StorageType == string(model.StorageTypeLocal) {
 				base64URL, err := s.localFileToBase64(file)
 				if err == nil {
 					imageURL = base64URL

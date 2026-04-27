@@ -90,7 +90,6 @@ interface Props {
   accept?: string
   maxSize?: number // 最大文件大小（字节）
   hint?: string
-  storageId?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -145,7 +144,7 @@ const handleCustomUpload: UploadProps['customRequest'] = async (options) => {
     uploadList.value[index].status = 'uploading'
 
     // 执行上传
-    const result = await multipartUpload(file, md5, props.storageId, (progress, stage) => {
+    const result = await multipartUpload(file, md5, (progress) => {
       uploadList.value[index].progress = 10 + Math.round(progress * 0.9) // 上传占90%
     })
 
@@ -180,7 +179,7 @@ const retryUpload = async (index: number) => {
       item.status = 'uploading'
     }
 
-    const result = await multipartUpload(item.file, md5, props.storageId, (progress) => {
+    const result = await multipartUpload(item.file, md5, (progress) => {
       item.progress = progress
     })
 

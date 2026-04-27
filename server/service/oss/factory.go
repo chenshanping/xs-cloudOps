@@ -8,12 +8,12 @@ import (
 )
 
 var (
-	clientCache = make(map[uint]Client)
+	clientCache = make(map[string]Client)
 	cacheMutex  sync.RWMutex
 )
 
 // NewClient 根据存储配置创建客户端
-func NewClient(storage *model.SysStorage) (Client, error) {
+func NewClient(storage *model.StorageProfile) (Client, error) {
 	switch model.StorageType(storage.Type) {
 	case model.StorageTypeLocal:
 		return NewLocalClient(storage.Config)
@@ -29,38 +29,31 @@ func NewClient(storage *model.SysStorage) (Client, error) {
 }
 
 // GetClient 获取缓存的客户端，如果不存在则创建
-func GetClient(storage *model.SysStorage) (Client, error) {
+func GetClient(storage *model.StorageProfile) (Client, error) {
+	cacheKey := storage.CacheKey()
+
 	cacheMutex.RLock()
-	if client, ok := clientCache[storage.ID]; ok {
+	if client, ok := clientCache[cacheKey]; ok {
 		cacheMutex.RUnlock()
 		return client, nil
 	}
 	cacheMutex.RUnlock()
 
-	// 创建新客户端
 	client, err := NewClient(storage)
 	if err != nil {
 		return nil, err
 	}
 
-	// 缓存客户端
 	cacheMutex.Lock()
-	clientCache[storage.ID] = client
+	clientCache[cacheKey] = client
 	cacheMutex.Unlock()
 
 	return client, nil
 }
 
-// RemoveClient 从缓存中移除客户端
-func RemoveClient(storageID uint) {
-	cacheMutex.Lock()
-	delete(clientCache, storageID)
-	cacheMutex.Unlock()
-}
-
 // ClearClients 清除所有缓存的客户端
 func ClearClients() {
 	cacheMutex.Lock()
-	clientCache = make(map[uint]Client)
+	clientCache = make(map[string]Client)
 	cacheMutex.Unlock()
 }

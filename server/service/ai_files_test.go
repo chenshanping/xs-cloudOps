@@ -14,6 +14,8 @@ import (
 )
 
 func TestAIServiceReadFileContentReadsLocalTextFile(t *testing.T) {
+	db := setupStorageServiceTestDB(t)
+
 	dir := t.TempDir()
 	filePath := filepath.Join(dir, "notes.txt")
 	if err := os.WriteFile(filePath, []byte("hello local file"), 0o600); err != nil {
@@ -25,13 +27,18 @@ func TestAIServiceReadFileContentReadsLocalTextFile(t *testing.T) {
 		t.Fatalf("marshal config: %v", err)
 	}
 
+	configs := []model.SysConfig{
+		{Key: StorageTypeConfigKey, Value: string(model.StorageTypeLocal)},
+		{Key: StorageConfigKey(model.StorageTypeLocal), Value: string(configJSON)},
+	}
+	if err := db.Create(&configs).Error; err != nil {
+		t.Fatalf("create configs: %v", err)
+	}
+
 	content, err := AI.readFileContent(model.SysFile{
-		Name: "notes.txt",
-		Path: "notes.txt",
-		Storage: &model.SysStorage{
-			Type:   model.StorageTypeLocal,
-			Config: string(configJSON),
-		},
+		Name:        "notes.txt",
+		Path:        "notes.txt",
+		StorageType: string(model.StorageTypeLocal),
 	})
 	if err != nil {
 		t.Fatalf("readFileContent returned error: %v", err)
@@ -57,6 +64,8 @@ func TestAIServiceHttpGetFileContentReadsRemoteContent(t *testing.T) {
 }
 
 func TestAIServiceLocalFileToBase64ConvertsImage(t *testing.T) {
+	db := setupStorageServiceTestDB(t)
+
 	dir := t.TempDir()
 	filePath := filepath.Join(dir, "avatar.png")
 	if err := os.WriteFile(filePath, []byte("png-bytes"), 0o600); err != nil {
@@ -68,14 +77,19 @@ func TestAIServiceLocalFileToBase64ConvertsImage(t *testing.T) {
 		t.Fatalf("marshal config: %v", err)
 	}
 
+	configs := []model.SysConfig{
+		{Key: StorageTypeConfigKey, Value: string(model.StorageTypeLocal)},
+		{Key: StorageConfigKey(model.StorageTypeLocal), Value: string(configJSON)},
+	}
+	if err := db.Create(&configs).Error; err != nil {
+		t.Fatalf("create configs: %v", err)
+	}
+
 	dataURL, err := AI.localFileToBase64(model.SysFile{
-		Name:     "avatar.png",
-		Path:     "avatar.png",
-		MimeType: "image/png",
-		Storage: &model.SysStorage{
-			Type:   model.StorageTypeLocal,
-			Config: string(configJSON),
-		},
+		Name:        "avatar.png",
+		Path:        "avatar.png",
+		MimeType:    "image/png",
+		StorageType: string(model.StorageTypeLocal),
 	})
 	if err != nil {
 		t.Fatalf("localFileToBase64 returned error: %v", err)

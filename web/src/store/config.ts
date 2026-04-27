@@ -37,7 +37,12 @@ export const CONFIG_KEYS = [
   'slider_captcha_bg',
   // 前台模式配置
   'front_mode',  // 'full': 完整前台, 'profile': 仅个人中心(用于身份认证)
-  'user_profile_button_visible'
+  'user_profile_button_visible',
+  'storage_type',
+  'storage_local_config',
+  'storage_aliyun_config',
+  'storage_tencent_config',
+  'storage_minio_config'
 ] as const
 
 // 默认配置
@@ -78,7 +83,33 @@ const DEFAULT_CONFIG: Record<string, string> = {
   slider_captcha_bg: '',
   // 前台模式: 'full' = 完整前台, 'profile' = 仅个人中心
   front_mode: 'full',
-  user_profile_button_visible: 'false'
+  user_profile_button_visible: 'false',
+  storage_type: 'local',
+  storage_local_config: JSON.stringify({
+    base_path: 'uploads',
+    base_url: '/api/v1/upload'
+  }),
+  storage_aliyun_config: JSON.stringify({
+    endpoint: '',
+    access_key_id: '',
+    access_key_secret: '',
+    bucket_name: '',
+    region: ''
+  }),
+  storage_tencent_config: JSON.stringify({
+    region: '',
+    secret_id: '',
+    secret_key: '',
+    bucket: '',
+    app_id: ''
+  }),
+  storage_minio_config: JSON.stringify({
+    endpoint: '',
+    access_key_id: '',
+    secret_access_key: '',
+    bucket_name: '',
+    use_ssl: false
+  })
 }
 
 export type ConfigKey = typeof CONFIG_KEYS[number]

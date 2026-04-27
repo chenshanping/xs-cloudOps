@@ -1,4 +1,5 @@
 import request from '@/utils/request';
+import type { StorageType } from '@/types/storage'
 
 
 export interface SysConfig {
@@ -50,6 +51,10 @@ export function deleteConfig(id: number) {
 // 发送测试邮件
 export function sendTestEmail(email: string) {
   return request.post('/configs/test-email', { email }, { silent: true })
+}
+
+export function testStorageConfig(data: { type: StorageType; config: string }) {
+  return request.post('/configs/storage/test', data, { silent: true })
 }
 
 export interface AITestRequest {

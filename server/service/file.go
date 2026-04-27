@@ -18,13 +18,11 @@ type FileService struct{}
 var File = new(FileService)
 
 // GetFileList 获取文件列表
-func (s *FileService) GetFileList(page, pageSize int, name, ext string, storageID uint) ([]model.SysFile, int64, error) {
+func (s *FileService) GetFileList(page, pageSize int, name, ext string) ([]model.SysFile, int64, error) {
 	var files []model.SysFile
 	var total int64
 
-	db := global.DB.Model(&model.SysFile{}).
-		Where("status = ?", 1).
-		Preload("Storage")
+	db := global.DB.Model(&model.SysFile{}).Where("status = ?", 1)
 	if name != "" {
 		db = db.Where("name LIKE ?", "%"+name+"%")
 	}
@@ -36,20 +34,16 @@ func (s *FileService) GetFileList(page, pageSize int, name, ext string, storageI
 			db = db.Where("ext IN ?", exts)
 		}
 	}
-	if storageID > 0 {
-		db = db.Where("storage_id = ?", storageID)
-	}
 
 	db.Count(&total)
-	err := db.Order("id desc").Offset((page - 1) * pageSize).Limit(pageSize).Find(&files).Error
+	err := db.Order("id desc").Offset((page-1)*pageSize).Limit(pageSize).Find(&files).Error
 	return files, total, err
 }
 
 // GetFileByID 根据ID获取文件
 func (s *FileService) GetFileByID(id uint) (*model.SysFile, error) {
 	var file model.SysFile
-	err := global.DB.First(&file, id).Error
-	if err != nil {
+	if err := global.DB.First(&file, id).Error; err != nil {
 		return nil, err
 	}
 	return &file, nil
@@ -58,8 +52,7 @@ func (s *FileService) GetFileByID(id uint) (*model.SysFile, error) {
 // GetFileByMD5 根据MD5获取文件（用于秒传）
 func (s *FileService) GetFileByMD5(md5 string) (*model.SysFile, error) {
 	var file model.SysFile
-	err := global.DB.Where("md5 = ? AND status = ?", md5, 1).First(&file).Error
-	if err != nil {
+	if err := global.DB.Where("md5 = ? AND status = ?", md5, 1).First(&file).Error; err != nil {
 		return nil, err
 	}
 	return &file, nil
@@ -70,36 +63,52 @@ func (s *FileService) CreateFile(file *model.SysFile) error {
 	return global.DB.Create(file).Error
 }
 
+func (s *FileService) resolveFileStorage(file model.SysFile) (*model.StorageProfile, error) {
+	if strings.TrimSpace(file.StorageType) != "" {
+		return Storage.GetStorageByType(model.StorageType(file.StorageType))
+	}
+	return Storage.GetDefaultStorage()
+}
+
+func (s *FileService) createFileRecord(filename, key, url, md5 string, fileSize int64, uploaderID uint, storage *model.StorageProfile) *model.SysFile {
+	ext := strings.TrimPrefix(filepath.Ext(filename), ".")
+	return &model.SysFile{
+		Name:          filename,
+		Path:          key,
+		URL:           url,
+		Size:          fileSize,
+		Ext:           ext,
+		MimeType:      getMimeType(ext),
+		MD5:           md5,
+		StorageType:   string(storage.Type),
+		UploaderID:    uploaderID,
+		Status:        1,
+	}
+}
+
 // DeleteFile 删除文件
 func (s *FileService) DeleteFile(id uint) error {
 	var file model.SysFile
-
 	if err := global.DB.First(&file, id).Error; err != nil {
 		return err
 	}
-	// DELETE FROM sys_user WHERE deleted_at IS  not  NULL
-	// DELETE FROM sys_file WHERE status=0
-	// 检查是否有用户正在使用该文件作为头像
+
 	var userCount int64
 	global.DB.Model(&model.SysUser{}).Where("avatar_file_id = ?", id).Count(&userCount)
 	if userCount > 0 {
-
 		return errors.New("文件正在被使用，无法删除")
 	}
 
-	// 获取存储配置
-	storage, err := Storage.GetStorageByID(file.StorageID)
+	storage, err := s.resolveFileStorage(file)
 	if err != nil {
 		return err
 	}
 
-	// 获取客户端并删除文件
 	client, err := oss.GetClient(storage)
 	if err == nil {
 		_ = client.Delete(context.Background(), file.Path)
 	}
 
-	// 软删除数据库记录
 	return global.DB.Model(&model.SysFile{}).Where("id = ?", id).Update("status", 0).Error
 }
 
@@ -120,25 +129,15 @@ func (s *FileService) BatchDeleteFiles(ids []uint) (int, []string) {
 }
 
 // GenerateFilePath 生成文件存储路径
-// 注意：这里返回的是相对于存储根目录的 key，不再带 "uploads/" 前缀，
-// 方便通过 base_path = "uploads" + Gin 静态路由 /uploads 直接访问。
 func (s *FileService) GenerateFilePath(filename string) string {
 	ext := filepath.Ext(filename)
 	now := time.Now()
-	// 按日期组织目录，例如：2026/01/25/xxx.png
 	return fmt.Sprintf("%d/%02d/%02d/%d%s", now.Year(), now.Month(), now.Day(), now.UnixNano(), ext)
 }
 
 // GetUploadCredential 获取上传凭证
-func (s *FileService) GetUploadCredential(filename string, storageID uint) (*oss.UploadCredential, error) {
-	var storage *model.SysStorage
-	var err error
-
-	if storageID > 0 {
-		storage, err = Storage.GetStorageByID(storageID)
-	} else {
-		storage, err = Storage.GetDefaultStorage()
-	}
+func (s *FileService) GetUploadCredential(filename string) (*oss.UploadCredential, error) {
+	storage, err := Storage.GetDefaultStorage()
 	if err != nil {
 		return nil, fmt.Errorf("获取存储配置失败: %v", err)
 	}
@@ -167,15 +166,8 @@ func (s *FileService) CheckFileMD5(md5 string) (*model.SysFile, bool) {
 }
 
 // InitMultipartUpload 初始化分片上传
-func (s *FileService) InitMultipartUpload(filename, md5 string, fileSize int64, storageID uint) (*oss.MultipartUpload, *model.SysStorage, error) {
-	var storage *model.SysStorage
-	var err error
-
-	if storageID > 0 {
-		storage, err = Storage.GetStorageByID(storageID)
-	} else {
-		storage, err = Storage.GetDefaultStorage()
-	}
+func (s *FileService) InitMultipartUpload(filename, md5 string, fileSize int64) (*oss.MultipartUpload, *model.StorageProfile, error) {
+	storage, err := Storage.GetDefaultStorage()
 	if err != nil {
 		return nil, nil, fmt.Errorf("获取存储配置失败: %v", err)
 	}
@@ -195,12 +187,7 @@ func (s *FileService) InitMultipartUpload(filename, md5 string, fileSize int64, 
 }
 
 // GetMultipartUploadURLs 获取分片上传URL列表
-func (s *FileService) GetMultipartUploadURLs(uploadID, key string, totalParts int, storageID uint) ([]string, error) {
-	storage, err := Storage.GetStorageByID(storageID)
-	if err != nil {
-		return nil, fmt.Errorf("获取存储配置失败: %v", err)
-	}
-
+func (s *FileService) GetMultipartUploadURLs(uploadID, key string, totalParts int, storage *model.StorageProfile) ([]string, error) {
 	client, err := oss.GetClient(storage)
 	if err != nil {
 		return nil, fmt.Errorf("创建存储客户端失败: %v", err)
@@ -212,17 +199,6 @@ func (s *FileService) GetMultipartUploadURLs(uploadID, key string, totalParts in
 		if err != nil {
 			return nil, fmt.Errorf("获取分片上传URL失败: %v", err)
 		}
-
-		// 本地存储和 MinIO 的分片上传走后端代理，需要在 URL 上携带 storage_id，
-		// 远程 OSS/COS 使用预签名直传，URL 不能再追加参数，否则会导致签名失效。
-		if storage.Type == model.StorageTypeLocal || storage.Type == model.StorageTypeMinio {
-			if strings.Contains(url, "?") {
-				url = fmt.Sprintf("%s&storage_id=%d", url, storageID)
-			} else {
-				url = fmt.Sprintf("%s?storage_id=%d", url, storageID)
-			}
-		}
-
 		urls[i-1] = url
 	}
 
@@ -230,8 +206,8 @@ func (s *FileService) GetMultipartUploadURLs(uploadID, key string, totalParts in
 }
 
 // CompleteMultipartUpload 完成分片上传
-func (s *FileService) CompleteMultipartUpload(uploadID, key, filename, md5 string, fileSize int64, storageID, uploaderID uint, parts []oss.Part) (*model.SysFile, error) {
-	storage, err := Storage.GetStorageByID(storageID)
+func (s *FileService) CompleteMultipartUpload(uploadID, key, filename, md5 string, fileSize int64, uploaderID uint, parts []oss.Part) (*model.SysFile, error) {
+	storage, err := Storage.GetDefaultStorage()
 	if err != nil {
 		return nil, fmt.Errorf("获取存储配置失败: %v", err)
 	}
@@ -241,26 +217,11 @@ func (s *FileService) CompleteMultipartUpload(uploadID, key, filename, md5 strin
 		return nil, fmt.Errorf("创建存储客户端失败: %v", err)
 	}
 
-	// 完成分片上传
 	if err := client.CompleteMultipartUpload(context.Background(), key, uploadID, parts); err != nil {
 		return nil, fmt.Errorf("完成分片上传失败: %v", err)
 	}
 
-	// 创建文件记录
-	ext := strings.TrimPrefix(filepath.Ext(filename), ".")
-	file := &model.SysFile{
-		Name:       filename,
-		Path:       key,
-		URL:        client.GetURL(key),
-		Size:       fileSize,
-		Ext:        ext,
-		MimeType:   getMimeType(ext),
-		MD5:        md5,
-		StorageID:  storageID,
-		UploaderID: uploaderID,
-		Status:     1,
-	}
-
+	file := s.createFileRecord(filename, key, client.GetURL(key), md5, fileSize, uploaderID, storage)
 	if err := s.CreateFile(file); err != nil {
 		return nil, fmt.Errorf("保存文件记录失败: %v", err)
 	}
@@ -269,8 +230,8 @@ func (s *FileService) CompleteMultipartUpload(uploadID, key, filename, md5 strin
 }
 
 // GetUploadedParts 获取已上传的分片列表
-func (s *FileService) GetUploadedParts(uploadID, key string, storageID uint) ([]oss.Part, error) {
-	storage, err := Storage.GetStorageByID(storageID)
+func (s *FileService) GetUploadedParts(uploadID, key string) ([]oss.Part, error) {
+	storage, err := Storage.GetDefaultStorage()
 	if err != nil {
 		return nil, fmt.Errorf("获取存储配置失败: %v", err)
 	}
@@ -284,8 +245,8 @@ func (s *FileService) GetUploadedParts(uploadID, key string, storageID uint) ([]
 }
 
 // AbortMultipartUpload 取消分片上传
-func (s *FileService) AbortMultipartUpload(uploadID, key string, storageID uint) error {
-	storage, err := Storage.GetStorageByID(storageID)
+func (s *FileService) AbortMultipartUpload(uploadID, key string) error {
+	storage, err := Storage.GetDefaultStorage()
 	if err != nil {
 		return fmt.Errorf("获取存储配置失败: %v", err)
 	}
@@ -299,21 +260,13 @@ func (s *FileService) AbortMultipartUpload(uploadID, key string, storageID uint)
 }
 
 // SaveUploadedFile 保存已上传的文件记录
-func (s *FileService) SaveUploadedFile(filename, key, url, md5 string, fileSize int64, storageID, uploaderID uint) (*model.SysFile, error) {
-	ext := strings.TrimPrefix(filepath.Ext(filename), ".")
-	file := &model.SysFile{
-		Name:       filename,
-		Path:       key,
-		URL:        url,
-		Size:       fileSize,
-		Ext:        ext,
-		MimeType:   getMimeType(ext),
-		MD5:        md5,
-		StorageID:  storageID,
-		UploaderID: uploaderID,
-		Status:     1,
+func (s *FileService) SaveUploadedFile(filename, key, url, md5 string, fileSize int64, uploaderID uint) (*model.SysFile, error) {
+	storage, err := Storage.GetDefaultStorage()
+	if err != nil {
+		return nil, fmt.Errorf("获取存储配置失败: %v", err)
 	}
 
+	file := s.createFileRecord(filename, key, url, md5, fileSize, uploaderID, storage)
 	if err := s.CreateFile(file); err != nil {
 		return nil, fmt.Errorf("保存文件记录失败: %v", err)
 	}

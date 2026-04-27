@@ -28,14 +28,12 @@ interface Props {
   modelValue?: string
   placeholder?: string
   disabled?: boolean
-  storageId?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: '',
   placeholder: '请输入内容...',
   disabled: false,
-  storageId: 0
 })
 
 const emit = defineEmits<{
@@ -57,7 +55,7 @@ const toolbarConfig: Partial<IToolbarConfig> = {
 async function customUploadImage(file: File, insertFn: (url: string, alt?: string, href?: string) => void) {
   try {
     const md5 = await calculateMD5(file)
-    const result = await multipartUpload(file, md5, props.storageId)
+    const result = await multipartUpload(file, md5)
     insertFn(result.url, result.name || '', result.url)
   } catch (error) {
     message.error('图片上传失败: ' + (error as Error).message)
@@ -68,7 +66,7 @@ async function customUploadImage(file: File, insertFn: (url: string, alt?: strin
 async function customUploadVideo(file: File, insertFn: (url: string, poster?: string) => void) {
   try {
     const md5 = await calculateMD5(file)
-    const result = await multipartUpload(file, md5, props.storageId)
+    const result = await multipartUpload(file, md5)
     insertFn(result.url, '')
   } catch (error) {
     message.error('视频上传失败: ' + (error as Error).message)

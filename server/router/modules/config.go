@@ -32,4 +32,5 @@ func (m *SysConfigModule) RegisterPrivateRoutes(rg *gin.RouterGroup) {
 	R(rg, "PUT", "/configs/batch", m.Name(), "批量更新配置", v1.Config.BatchUpdateConfigs, registry.WithAuth())
 	R(rg, "DELETE", "/configs/:id", m.Name(), "删除配置", v1.Config.DeleteConfig, registry.WithAuth())
 	R(rg, "POST", "/configs/test-email", m.Name(), "发送测试邮件", v1.Config.SendTestEmail, registry.WithAuth(), registry.WithRequest(request.TestEmailRequest{}))
+	R(rg, "POST", "/configs/storage/test", m.Name(), "测试存储配置", v1.Config.TestStorageConfig, registry.WithAuth())
 }

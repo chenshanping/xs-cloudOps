@@ -14,6 +14,13 @@ import (
 	"server/model"
 )
 
+func (s *AIService) resolveFileStorage(file model.SysFile) (*model.StorageProfile, error) {
+	if strings.TrimSpace(file.StorageType) != "" {
+		return Storage.GetStorageByType(model.StorageType(file.StorageType))
+	}
+	return Storage.GetDefaultStorage()
+}
+
 // 读取文件内容
 func (s *AIService) readFileContent(file model.SysFile) (string, error) {
 	const maxSize = 100 * 1024 // 100KB
@@ -21,9 +28,10 @@ func (s *AIService) readFileContent(file model.SysFile) (string, error) {
 	var data []byte
 	var err error
 
-	if file.Storage != nil && file.Storage.Type == model.StorageTypeLocal {
+	storage, storageErr := s.resolveFileStorage(file)
+	if storageErr == nil && storage != nil && storage.Type == model.StorageTypeLocal {
 		var config model.LocalConfig
-		if jsonErr := json.Unmarshal([]byte(file.Storage.Config), &config); jsonErr != nil {
+		if jsonErr := json.Unmarshal([]byte(storage.Config), &config); jsonErr != nil {
 			return "", fmt.Errorf("解析存储配置失败: %v", jsonErr)
 		}
 		fullPath := filepath.Join(config.BasePath, file.Path)
@@ -46,8 +54,13 @@ func (s *AIService) readFileContent(file model.SysFile) (string, error) {
 func (s *AIService) localFileToBase64(file model.SysFile) (string, error) {
 	const maxImageSize = 5 * 1024 * 1024 // 5MB
 
+	storage, err := s.resolveFileStorage(file)
+	if err != nil {
+		return "", err
+	}
+
 	var config model.LocalConfig
-	if err := json.Unmarshal([]byte(file.Storage.Config), &config); err != nil {
+	if err := json.Unmarshal([]byte(storage.Config), &config); err != nil {
 		return "", err
 	}
 	fullPath := filepath.Join(config.BasePath, file.Path)

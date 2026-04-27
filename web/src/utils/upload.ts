@@ -12,7 +12,6 @@ const UPLOAD_CACHE_PREFIX = 'upload_progress_'
 interface UploadCache {
   uploadId: string
   key: string
-  storageId: number
   filename: string
   fileSize: number
   md5: string
@@ -229,7 +228,6 @@ function clearUploadCache(md5: string) {
 export async function multipartUpload(
   file: File,
   md5: string,
-  storageId?: number,
   onProgress?: (progress: number, stage: string) => void
 ): Promise<FileInfo> {
   // 1. 检查是否可以秒传
@@ -242,7 +240,6 @@ export async function multipartUpload(
   // 2. 检查是否有缓存的上传进度
   let uploadId: string
   let key: string
-  let uploadStorageId: number
   let chunkSize: number
   let uploadedParts: Part[] = []
   let uploadUrls: string[]
@@ -252,14 +249,13 @@ export async function multipartUpload(
     // 恢复上传
     uploadId = cache.uploadId
     key = cache.key
-    uploadStorageId = cache.storageId
     chunkSize = cache.chunkSize
     uploadedParts = cache.uploadedParts
     uploadUrls = cache.uploadUrls
     onProgress?.(0, '恢复上传')
   } else {
     // 初始化新上传
-    const initResult = await initMultipartUpload(file.name, file.size, md5, storageId)
+    const initResult = await initMultipartUpload(file.name, file.size, md5)
     const data = initResult.data
 
     // 如果服务端返回秒传结果
@@ -270,7 +266,6 @@ export async function multipartUpload(
 
     uploadId = data.upload_id!
     key = data.key!
-    uploadStorageId = data.storage_id!
     chunkSize = data.chunk_size!
     uploadUrls = data.upload_urls!
   }
@@ -307,7 +302,6 @@ export async function multipartUpload(
       saveUploadCache(md5, {
         uploadId,
         key,
-        storageId: uploadStorageId,
         filename: file.name,
         fileSize: file.size,
         md5,
@@ -328,7 +322,6 @@ export async function multipartUpload(
     filename: file.name,
     file_size: file.size,
     md5,
-    storage_id: uploadStorageId,
     parts: allParts.sort((a, b) => a.part_number - b.part_number),
   })
 
@@ -358,7 +351,6 @@ export async function simpleUpload(
     url: credential.preview_url,
     file_size: file.size,
     md5,
-    storage_id: 0, // 使用默认存储
   })
 
   return result.data

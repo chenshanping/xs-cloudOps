@@ -3,7 +3,7 @@ import type { FileInfo, UploadCredential, InitMultipartUploadResponse, Part } fr
 import type { PageResponse } from '@/types'
 
 // 获取文件列表
-export function getFileList(params: { page: number; page_size: number; name?: string; ext?: string; storage_id?: number }) {
+export function getFileList(params: { page: number; page_size: number; name?: string; ext?: string }) {
   return request.get<PageResponse<FileInfo>>('/files', { params })
 }
 
@@ -23,8 +23,8 @@ export function batchDeleteFiles(ids: number[]) {
 }
 
 // 获取上传凭证
-export function getUploadCredential(filename: string, storageId?: number) {
-  return request.post<UploadCredential>('/files/credential', { filename, storage_id: storageId })
+export function getUploadCredential(filename: string) {
+  return request.post<UploadCredential>('/files/credential', { filename })
 }
 
 // 检查MD5（秒传）
@@ -33,19 +33,18 @@ export function checkFileMD5(md5: string) {
 }
 
 // 初始化分片上传
-export function initMultipartUpload(filename: string, fileSize: number, md5: string, storageId?: number) {
+export function initMultipartUpload(filename: string, fileSize: number, md5: string) {
   return request.post<InitMultipartUploadResponse>('/files/multipart/init', {
     filename,
     file_size: fileSize,
     md5,
-    storage_id: storageId,
   })
 }
 
 // 获取已上传的分片列表
-export function getUploadedParts(uploadId: string, key: string, storageId: number) {
+export function getUploadedParts(uploadId: string, key: string) {
   return request.get<Part[]>('/files/multipart/parts', {
-    params: { upload_id: uploadId, key, storage_id: storageId },
+    params: { upload_id: uploadId, key },
   })
 }
 
@@ -56,18 +55,16 @@ export function completeMultipartUpload(data: {
   filename: string
   file_size: number
   md5: string
-  storage_id: number
   parts: Part[]
 }) {
   return request.post<FileInfo>('/files/multipart/complete', data)
 }
 
 // 取消分片上传
-export function abortMultipartUpload(uploadId: string, key: string, storageId: number) {
+export function abortMultipartUpload(uploadId: string, key: string) {
   return request.post('/files/multipart/abort', {
     upload_id: uploadId,
     key,
-    storage_id: storageId,
   })
 }
 
@@ -78,7 +75,6 @@ export function saveUploadedFile(data: {
   url: string
   file_size: number
   md5: string
-  storage_id: number
 }) {
   return request.post<FileInfo>('/files/save', data)
 }

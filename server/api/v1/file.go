@@ -21,9 +21,8 @@ func (a *FileApi) GetFileList(c *gin.Context) {
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
 	name := c.Query("name")
 	ext := c.Query("ext")
-	storageID, _ := strconv.ParseUint(c.Query("storage_id"), 10, 32)
 
-	files, total, err := service.File.GetFileList(page, pageSize, name, ext, uint(storageID))
+	files, total, err := service.File.GetFileList(page, pageSize, name, ext)
 	if err != nil {
 		response.Fail(c, "获取文件列表失败")
 		return
@@ -61,39 +60,38 @@ func (a *FileApi) BatchDeleteFiles(c *gin.Context) {
 		response.BadRequest(c, "参数错误")
 		return
 	}
-
 	if len(req.Ids) == 0 {
 		response.BadRequest(c, "请选择要删除的文件")
 		return
 	}
 
 	successCount, failedMsgs := service.File.BatchDeleteFiles(req.Ids)
-
 	if len(failedMsgs) == 0 {
 		response.OkWithMessage(c, "batch_delete_success")
-	} else if successCount > 0 {
+		return
+	}
+	if successCount > 0 {
 		response.OkWithData(c, gin.H{
 			"success_count": successCount,
 			"failed_count":  len(failedMsgs),
 			"failed_msgs":   failedMsgs,
 		})
-	} else {
-		response.Fail(c, "删除失败")
+		return
 	}
+	response.Fail(c, "删除失败")
 }
 
 // GetUploadCredential 获取上传凭证
 func (a *FileApi) GetUploadCredential(c *gin.Context) {
 	var req struct {
-		Filename  string `json:"filename" binding:"required"`
-		StorageID uint   `json:"storage_id"`
+		Filename string `json:"filename" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "参数错误")
 		return
 	}
 
-	credential, err := service.File.GetUploadCredential(req.Filename, req.StorageID)
+	credential, err := service.File.GetUploadCredential(req.Filename)
 	if err != nil {
 		response.Fail(c, err.Error())
 		return
@@ -113,31 +111,24 @@ func (a *FileApi) CheckFileMD5(c *gin.Context) {
 
 	file, exists := service.File.CheckFileMD5(req.MD5)
 	if exists {
-		response.OkWithData(c, gin.H{
-			"exists": true,
-			"file":   file,
-		})
-	} else {
-		response.OkWithData(c, gin.H{
-			"exists": false,
-		})
+		response.OkWithData(c, gin.H{"exists": true, "file": file})
+		return
 	}
+	response.OkWithData(c, gin.H{"exists": false})
 }
 
 // InitMultipartUpload 初始化分片上传
 func (a *FileApi) InitMultipartUpload(c *gin.Context) {
 	var req struct {
-		Filename  string `json:"filename" binding:"required"`
-		FileSize  int64  `json:"file_size" binding:"required"`
-		MD5       string `json:"md5" binding:"required"`
-		StorageID uint   `json:"storage_id"`
+		Filename string `json:"filename" binding:"required"`
+		FileSize int64  `json:"file_size" binding:"required"`
+		MD5      string `json:"md5" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "参数错误")
 		return
 	}
 
-	// 先检查是否可以秒传
 	if file, exists := service.File.CheckFileMD5(req.MD5); exists {
 		response.OkWithData(c, gin.H{
 			"instant_upload": true,
@@ -146,21 +137,19 @@ func (a *FileApi) InitMultipartUpload(c *gin.Context) {
 		return
 	}
 
-	upload, storage, err := service.File.InitMultipartUpload(req.Filename, req.MD5, req.FileSize, req.StorageID)
+	upload, storage, err := service.File.InitMultipartUpload(req.Filename, req.MD5, req.FileSize)
 	if err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
 
-	// 计算分片数量
 	chunkSize := upload.ChunkSize
 	totalParts := int(req.FileSize / chunkSize)
 	if req.FileSize%chunkSize > 0 {
 		totalParts++
 	}
 
-	// 获取所有分片的上传URL
-	urls, err := service.File.GetMultipartUploadURLs(upload.UploadID, upload.Key, totalParts, storage.ID)
+	urls, err := service.File.GetMultipartUploadURLs(upload.UploadID, upload.Key, totalParts, storage)
 	if err != nil {
 		response.Fail(c, err.Error())
 		return
@@ -170,7 +159,6 @@ func (a *FileApi) InitMultipartUpload(c *gin.Context) {
 		"instant_upload": false,
 		"upload_id":      upload.UploadID,
 		"key":            upload.Key,
-		"storage_id":     storage.ID,
 		"chunk_size":     chunkSize,
 		"total_parts":    totalParts,
 		"upload_urls":    urls,
@@ -181,9 +169,8 @@ func (a *FileApi) InitMultipartUpload(c *gin.Context) {
 func (a *FileApi) GetUploadedParts(c *gin.Context) {
 	uploadID := c.Query("upload_id")
 	key := c.Query("key")
-	storageID, _ := strconv.ParseUint(c.Query("storage_id"), 10, 32)
 
-	parts, err := service.File.GetUploadedParts(uploadID, key, uint(storageID))
+	parts, err := service.File.GetUploadedParts(uploadID, key)
 	if err != nil {
 		response.Fail(c, err.Error())
 		return
@@ -194,26 +181,23 @@ func (a *FileApi) GetUploadedParts(c *gin.Context) {
 // CompleteMultipartUpload 完成分片上传
 func (a *FileApi) CompleteMultipartUpload(c *gin.Context) {
 	var req struct {
-		UploadID  string     `json:"upload_id" binding:"required"`
-		Key       string     `json:"key" binding:"required"`
-		Filename  string     `json:"filename" binding:"required"`
-		FileSize  int64      `json:"file_size" binding:"required"`
-		MD5       string     `json:"md5" binding:"required"`
-		StorageID uint       `json:"storage_id" binding:"required"`
-		Parts     []oss.Part `json:"parts" binding:"required"`
+		UploadID string     `json:"upload_id" binding:"required"`
+		Key      string     `json:"key" binding:"required"`
+		Filename string     `json:"filename" binding:"required"`
+		FileSize int64      `json:"file_size" binding:"required"`
+		MD5      string     `json:"md5" binding:"required"`
+		Parts    []oss.Part `json:"parts" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "参数错误")
 		return
 	}
 
-	// 获取当前用户ID
 	userID, _ := c.Get("user_id")
 	uploaderID := userID.(uint)
 
 	file, err := service.File.CompleteMultipartUpload(
-		req.UploadID, req.Key, req.Filename, req.MD5, req.FileSize,
-		req.StorageID, uploaderID, req.Parts,
+		req.UploadID, req.Key, req.Filename, req.MD5, req.FileSize, uploaderID, req.Parts,
 	)
 	if err != nil {
 		response.Fail(c, err.Error())
@@ -225,16 +209,15 @@ func (a *FileApi) CompleteMultipartUpload(c *gin.Context) {
 // AbortMultipartUpload 取消分片上传
 func (a *FileApi) AbortMultipartUpload(c *gin.Context) {
 	var req struct {
-		UploadID  string `json:"upload_id" binding:"required"`
-		Key       string `json:"key" binding:"required"`
-		StorageID uint   `json:"storage_id" binding:"required"`
+		UploadID string `json:"upload_id" binding:"required"`
+		Key      string `json:"key" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "参数错误")
 		return
 	}
 
-	if err := service.File.AbortMultipartUpload(req.UploadID, req.Key, req.StorageID); err != nil {
+	if err := service.File.AbortMultipartUpload(req.UploadID, req.Key); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
@@ -244,26 +227,21 @@ func (a *FileApi) AbortMultipartUpload(c *gin.Context) {
 // SaveUploadedFile 保存已上传的文件记录
 func (a *FileApi) SaveUploadedFile(c *gin.Context) {
 	var req struct {
-		Filename  string `json:"filename" binding:"required"`
-		Key       string `json:"key" binding:"required"`
-		URL       string `json:"url" binding:"required"`
-		FileSize  int64  `json:"file_size" binding:"required"`
-		MD5       string `json:"md5" binding:"required"`
-		StorageID uint   `json:"storage_id" binding:"required"`
+		Filename string `json:"filename" binding:"required"`
+		Key      string `json:"key" binding:"required"`
+		URL      string `json:"url" binding:"required"`
+		FileSize int64  `json:"file_size" binding:"required"`
+		MD5      string `json:"md5" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "参数错误")
 		return
 	}
 
-	// 获取当前用户ID
 	userID, _ := c.Get("user_id")
 	uploaderID := userID.(uint)
 
-	file, err := service.File.SaveUploadedFile(
-		req.Filename, req.Key, req.URL, req.MD5, req.FileSize,
-		req.StorageID, uploaderID,
-	)
+	file, err := service.File.SaveUploadedFile(req.Filename, req.Key, req.URL, req.MD5, req.FileSize, uploaderID)
 	if err != nil {
 		response.Fail(c, err.Error())
 		return
@@ -284,21 +262,18 @@ func (a *FileApi) UploadLocalFile(c *gin.Context) {
 		key = service.File.GenerateFilePath(file.Filename)
 	}
 
-	// 获取默认存储
 	storage, err := service.Storage.GetDefaultStorage()
 	if err != nil {
 		response.Fail(c, "获取存储配置失败")
 		return
 	}
 
-	// 获取客户端
 	client, err := oss.GetClient(storage)
 	if err != nil {
 		response.Fail(c, "创建存储客户端失败")
 		return
 	}
 
-	// 打开文件
 	src, err := file.Open()
 	if err != nil {
 		response.Fail(c, "打开文件失败")
@@ -306,22 +281,16 @@ func (a *FileApi) UploadLocalFile(c *gin.Context) {
 	}
 	defer src.Close()
 
-	// 上传文件
 	if err := client.Upload(c.Request.Context(), key, src, file.Size); err != nil {
 		response.Fail(c, "上传文件失败: "+err.Error())
 		return
 	}
 
-	// 获取当前用户ID
 	userID, _ := c.Get("user_id")
 	uploaderID := userID.(uint)
 
-	// 保存文件记录
 	md5 := c.PostForm("md5")
-	savedFile, err := service.File.SaveUploadedFile(
-		file.Filename, key, client.GetURL(key), md5, file.Size,
-		storage.ID, uploaderID,
-	)
+	savedFile, err := service.File.SaveUploadedFile(file.Filename, key, client.GetURL(key), md5, file.Size, uploaderID)
 	if err != nil {
 		response.Fail(c, err.Error())
 		return
@@ -335,28 +304,24 @@ func (a *FileApi) UploadChunk(c *gin.Context) {
 	uploadID := c.Query("upload_id")
 	key := c.Query("key")
 	partNumber, _ := strconv.Atoi(c.Query("part_number"))
-	storageID, _ := strconv.ParseUint(c.Query("storage_id"), 10, 32)
 
-	// 获取文件内容
+	storage, err := service.Storage.GetDefaultStorage()
+	if err != nil {
+		response.Fail(c, "获取存储配置失败")
+		return
+	}
+
+	client, err := oss.GetClient(storage)
+	if err != nil {
+		response.Fail(c, "创建存储客户端失败")
+		return
+	}
+
 	file, err := c.FormFile("file")
 	if err != nil {
-		// 尝试从body读取
 		body := c.Request.Body
 		defer body.Close()
 
-		storage, err := service.Storage.GetStorageByID(uint(storageID))
-		if err != nil {
-			response.Fail(c, "获取存储配置失败")
-			return
-		}
-
-		client, err := oss.GetClient(storage)
-		if err != nil {
-			response.Fail(c, "创建存储客户端失败")
-			return
-		}
-
-		// 本地存储
 		if localClient, ok := client.(*oss.LocalClient); ok {
 			if err := localClient.UploadChunk(uploadID, partNumber, body); err != nil {
 				response.Fail(c, "上传分片失败: "+err.Error())
@@ -366,11 +331,9 @@ func (a *FileApi) UploadChunk(c *gin.Context) {
 			return
 		}
 
-		// MinIO
 		if minioClient, ok := client.(*oss.MinioClient); ok {
 			data, _ := io.ReadAll(body)
-			etag, err := minioClient.UploadPart(c.Request.Context(), key, uploadID, partNumber,
-				io.NopCloser(bytes.NewReader(data)), int64(len(data)))
+			etag, err := minioClient.UploadPart(c.Request.Context(), key, uploadID, partNumber, io.NopCloser(bytes.NewReader(data)), int64(len(data)))
 			if err != nil {
 				response.Fail(c, "上传分片失败: "+err.Error())
 				return
@@ -383,7 +346,6 @@ func (a *FileApi) UploadChunk(c *gin.Context) {
 		return
 	}
 
-	// 使用表单文件上传
 	src, err := file.Open()
 	if err != nil {
 		response.Fail(c, "打开文件失败")
@@ -391,19 +353,6 @@ func (a *FileApi) UploadChunk(c *gin.Context) {
 	}
 	defer src.Close()
 
-	storage, err := service.Storage.GetStorageByID(uint(storageID))
-	if err != nil {
-		response.Fail(c, "获取存储配置失败")
-		return
-	}
-
-	client, err := oss.GetClient(storage)
-	if err != nil {
-		response.Fail(c, "创建存储客户端失败")
-		return
-	}
-
-	// 本地存储
 	if localClient, ok := client.(*oss.LocalClient); ok {
 		if err := localClient.UploadChunk(uploadID, partNumber, src); err != nil {
 			response.Fail(c, "上传分片失败: "+err.Error())
@@ -413,7 +362,6 @@ func (a *FileApi) UploadChunk(c *gin.Context) {
 		return
 	}
 
-	// MinIO
 	if minioClient, ok := client.(*oss.MinioClient); ok {
 		etag, err := minioClient.UploadPart(c.Request.Context(), key, uploadID, partNumber, src, file.Size)
 		if err != nil {
