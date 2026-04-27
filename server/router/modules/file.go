@@ -27,6 +27,9 @@ func (m *FileModule) RegisterPrivateRoutes(rg *gin.RouterGroup) {
 	R(rg, "GET", "/files/:id", m.Name(), "文件详情", v1.File.GetFile, registry.WithAuth())
 	R(rg, "DELETE", "/files/:id", m.Name(), "删除文件", v1.File.DeleteFile, registry.WithAuth())
 	R(rg, "DELETE", "/files/batch", m.Name(), "批量删除文件", v1.File.BatchDeleteFiles, registry.WithAuth())
+	R(rg, "POST", "/files/migrate/preview", m.Name(), "预览文件迁移", v1.File.PreviewFileMigration, registry.WithAuth())
+	R(rg, "POST", "/files/migrate/execute", m.Name(), "执行文件迁移", v1.File.ExecuteFileMigration, registry.WithAuth())
+	R(rg, "GET", "/files/migrate/task/current", m.Name(), "获取当前文件迁移任务", v1.File.GetCurrentFileMigrationTask, registry.WithAuth())
 
 	// 上传相关
 	R(rg, "POST", "/files/credential", m.Name(), "获取上传凭证", v1.File.GetUploadCredential, registry.WithAuth())

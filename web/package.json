@@ -12,6 +12,8 @@
     "test:config-tab-guard": "node scripts/test-config-tab-guard.mjs",
     "test:tabs-state": "node scripts/test-tabs-state.mjs",
     "test:storage-config-state": "node scripts/test-storage-config-state.mjs",
+    "test:ai-config-state": "node scripts/test-ai-config-state.mjs",
+    "test:storage-wording": "node scripts/test-storage-wording.mjs",
     "test:view-resolver": "node scripts/test-view-resolver.mjs",
     "typecheck": "vue-tsc --noEmit",
     "preview": "vite preview --mode development"

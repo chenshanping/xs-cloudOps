@@ -36,6 +36,13 @@
                 <a-select-option :value="0">禁用</a-select-option>
               </a-select>
             </a-form-item>
+            <a-form-item label="性别">
+              <a-select v-model:value="searchForm.gender" placeholder="请选择性别" allowClear style="width: 120px">
+                <a-select-option v-for="option in genderOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </a-select-option>
+              </a-select>
+            </a-form-item>
             <a-form-item label="角色">
               <a-select v-model:value="searchForm.roleId" placeholder="请选择角色" allowClear style="width: 150px">
                 <a-select-option v-for="role in roleList" :key="role.id" :value="role.id">
@@ -77,6 +84,11 @@
                 @change="(checked: boolean) => handleStatusChange(record, checked)"
               />
             </template>
+            <template v-if="column.key === 'gender'">
+              <a-tag :color="getGenderOption(record.gender)?.tag_type || 'default'">
+                {{ getGenderOption(record.gender)?.label || '-' }}
+              </a-tag>
+            </template>
             <template v-if="column.key === 'roles'">
               <a-tag v-for="role in record.roles" :key="role.id" color="blue">
                 {{ role.name }}
@@ -116,6 +128,7 @@
       :title="drawerTitle"
       :is-edit="isEdit"
       :role-options="roleList"
+      :gender-options="genderOptions"
       :dept-options="deptSelectOptions"
       :initial-value="drawerInitialValue"
       @submit="handleDrawerSubmit"
@@ -138,6 +151,7 @@ import { createVNode } from 'vue'
 import ProTable from '@/components/ProTable.vue'
 import UserFormDrawer from './components/UserFormDrawer.vue'
 import UserProfilesDrawer from './components/UserProfilesDrawer.vue'
+import { getDictDataByType } from '@/api/dict'
 import {
   getUserList,
   createUser,
@@ -158,6 +172,7 @@ import { useTableColumns } from '@/utils/permission'
 import { useConfigStore } from '@/store/config'
 import { useUserStore } from '@/store/user'
 import type { Dept, Role, User } from '@/types'
+import { normalizeGenderDictOptions, resolveGenderOption, type GenderOption } from './user-gender'
 
 interface DeptTreeNode {
   key: string
@@ -184,6 +199,7 @@ const loading = ref(false)
 const deptLoading = ref(false)
 const tableData = ref<User[]>([])
 const roleList = ref<Role[]>([])
+const genderOptions = ref<GenderOption[]>([])
 const deptTree = ref<Dept[]>([])
 const unassignedUserCount = ref(0)
 const selectedTreeKey = ref<string>('all')
@@ -211,6 +227,7 @@ const currentUserId = computed(() => userStore.user?.id ?? 0)
 const searchForm = reactive({
   username: '',
   status: undefined as number | undefined,
+  gender: undefined as number | undefined,
   roleId: undefined as number | undefined
 })
 
@@ -227,6 +244,7 @@ const columns = useTableColumns(
     { title: '头像', key: 'avatar', width: 80 },
     { title: '用户名', dataIndex: 'username', key: 'username' },
     { title: '昵称', dataIndex: 'nickname', key: 'nickname' },
+    { title: '性别', key: 'gender', width: 90 },
     { title: '邮箱', dataIndex: 'email', key: 'email' },
     { title: '所属部门', key: 'dept' },
     { title: '状态', key: 'status' },
@@ -268,6 +286,7 @@ const fetchData = async () => {
       page_size: pagination.pageSize,
       username: searchForm.username,
       status: searchForm.status,
+      gender: searchForm.gender,
       role_id: searchForm.roleId
     }
 
@@ -293,6 +312,11 @@ const fetchRoles = async () => {
   roleList.value = res.data
 }
 
+const fetchGenderOptions = async () => {
+  const res = await getDictDataByType('sys_gender')
+  genderOptions.value = normalizeGenderDictOptions(res.data || [])
+}
+
 const fetchDeptTree = async () => {
   deptLoading.value = true
   try {
@@ -312,6 +336,7 @@ const handleSearch = () => {
 const handleReset = () => {
   searchForm.username = ''
   searchForm.status = undefined
+  searchForm.gender = undefined
   searchForm.roleId = undefined
   pagination.current = 1
   fetchData()
@@ -339,6 +364,7 @@ const handleAdd = () => {
     username: '',
     password: '123456',
     nickname: '',
+    gender: 0,
     email: '',
     phone: '',
     dept_id: defaultDeptId,
@@ -358,6 +384,7 @@ const handleEdit = (record: User) => {
   drawerInitialValue.value = {
     username: record.username,
     nickname: record.nickname,
+    gender: record.gender ?? 0,
     email: record.email,
     phone: record.phone,
     dept_id: record.dept_id || undefined,
@@ -581,8 +608,10 @@ const buildDeptSelectOptions = (depts: Dept[]): TreeSelectOption[] =>
 const getDeptTreeTotalUsers = (depts: Dept[]) =>
   depts.reduce((sum, dept) => sum + (dept.parent_id === 0 ? dept.total_user_count || 0 : 0), 0)
 
+const getGenderOption = (value: number) => resolveGenderOption(genderOptions.value, value)
+
 onMounted(async () => {
-  await Promise.all([fetchRoles(), fetchDeptTree()])
+  await Promise.all([fetchRoles(), fetchDeptTree(), fetchGenderOptions()])
   await fetchData()
 })
 </script>

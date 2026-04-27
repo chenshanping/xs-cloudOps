@@ -68,6 +68,43 @@ When a target file does not exist, search the nearest real module and follow tha
 
 Do not cite or depend on external docs that are not present in the current workspace.
 
+## Dictionary Binding Decision Rule
+
+When analyzing requirements, database design, API contracts, or admin forms/tables, decide explicitly whether a field should bind to the system dictionary instead of hardcoding options.
+
+Bind a field to the system dictionary when any of these are true:
+
+- The field is a stable finite enum such as status, type, category, source, level, result, mode, or tag style.
+- The same value set will be reused across multiple modules, pages, exports, or filters.
+- Stored values and displayed labels must be separated, such as storing `pending` while displaying `待审核`.
+- Frontend and backend both need one shared semantic source for dropdowns, search filters, table rendering, and detail display.
+- The options may need admin-side maintenance instead of code-only constants.
+- The field needs dictionary metadata such as sort order, enabled/disabled state, default item, remark, or tag color.
+
+Do not force dictionary binding when any of these are a better fit:
+
+- The options are one-off page-local values with no reuse value.
+- The field is purely technical control data and not business-facing configuration.
+- The value actually belongs to a real entity table such as department, role, user, supplier, warehouse, or organization.
+- The values change like normal business records rather than stable enum candidates.
+- A simple boolean or tiny fixed state is enough and there is no need for configurable labels or metadata.
+
+When you decide a field should use dictionary binding, make that explicit in the analysis output:
+
+- Field name
+- Business purpose
+- Suggested dictionary type code
+- Suggested dictionary items (`label` / `value`)
+- Whether default item, sort, status, remark, or tag color is needed
+- Where the frontend consumes it: create, edit, filter, list render, detail render
+- Backend storage rule: store the dictionary value, not the display label
+
+Default project stance:
+
+- Prefer dictionary binding for cross-module reusable or admin-maintainable enums.
+- Do not replace real entity relations with dictionaries.
+- Do not elevate every small local option into a system dictionary just for uniformity.
+
 ## Current Project Architecture
 
 ### Backend

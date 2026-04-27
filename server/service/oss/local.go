@@ -69,10 +69,37 @@ func (c *LocalClient) Upload(ctx context.Context, key string, reader io.Reader, 
 	return nil
 }
 
+// Open 打开文件读取流
+func (c *LocalClient) Open(ctx context.Context, key string) (io.ReadCloser, error) {
+	fullPath := filepath.Join(c.config.BasePath, key)
+	file, err := os.Open(fullPath)
+	if err != nil {
+		return nil, err
+	}
+	return file, nil
+}
+
+// Exists 判断文件是否存在
+func (c *LocalClient) Exists(ctx context.Context, key string) (bool, error) {
+	fullPath := filepath.Join(c.config.BasePath, key)
+	_, err := os.Stat(fullPath)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
+}
+
 // Delete 删除文件
 func (c *LocalClient) Delete(ctx context.Context, key string) error {
 	fullPath := filepath.Join(c.config.BasePath, key)
-	return os.Remove(fullPath)
+	err := os.Remove(fullPath)
+	if err != nil && os.IsNotExist(err) {
+		return nil
+	}
+	return err
 }
 
 // GetURL 获取文件访问URL

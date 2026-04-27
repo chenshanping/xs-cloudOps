@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/glebarez/sqlite"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 
 	"server/global"
@@ -19,10 +20,10 @@ func setupInitializeTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("open sqlite db: %v", err)
 	}
 
-	if err := db.AutoMigrate(&model.SysMenu{}, &model.SysRole{}); err != nil {
+	if err := db.AutoMigrate(&model.SysMenu{}, &model.SysRole{}, &model.SysDept{}, &model.SysUser{}); err != nil {
 		t.Fatalf("auto migrate base role/menu: %v", err)
 	}
-	if err := db.AutoMigrate(&model.SysApi{}, &model.SysConfig{}, &model.LegacyStorageRecord{}, &model.SysFile{}, &model.SysFileChunk{}); err != nil {
+	if err := db.AutoMigrate(&model.SysApi{}, &model.SysConfig{}, &model.LegacyStorageRecord{}, &model.SysFile{}, &model.SysFileChunk{}, &model.SysDictType{}, &model.SysDictData{}); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
 	if err := db.Exec("ALTER TABLE sys_file ADD COLUMN storage_id integer").Error; err != nil {
@@ -33,9 +34,12 @@ func setupInitializeTestDB(t *testing.T) *gorm.DB {
 	}
 
 	previousDB := global.DB
+	previousLog := global.Log
 	global.DB = db
+	global.Log = zap.NewNop().Sugar()
 	t.Cleanup(func() {
 		global.DB = previousDB
+		global.Log = previousLog
 	})
 
 	return db
@@ -82,6 +86,210 @@ func TestEnsureDeptMenusDoesNotOverwriteCustomizedIcon(t *testing.T) {
 	}
 	if updated.Icon != "custom-icon" {
 		t.Fatalf("dept menu icon = %s, want %s", updated.Icon, "custom-icon")
+	}
+}
+
+func TestEnsureBuiltInDataCreatesAIMenus(t *testing.T) {
+	db := setupInitializeTestDB(t)
+
+	adminRole := model.SysRole{
+		Name:   "超级管理员",
+		Code:   "admin",
+		Status: 1,
+	}
+	if err := db.Create(&adminRole).Error; err != nil {
+		t.Fatalf("create admin role: %v", err)
+	}
+	systemMenu := model.SysMenu{
+		ParentID:  0,
+		Name:      "系统管理",
+		Path:      "/system",
+		Component: "Layout",
+		Icon:      "setting",
+		Sort:      1,
+		Type:      1,
+		Status:    1,
+	}
+	if err := db.Create(&systemMenu).Error; err != nil {
+		t.Fatalf("create system menu: %v", err)
+	}
+
+	ensureBuiltInData()
+
+	var aiToolsMenu model.SysMenu
+	if err := db.Where("permission = ? AND type = ?", "ai:tools", 1).First(&aiToolsMenu).Error; err != nil {
+		t.Fatalf("load ai tools menu: %v", err)
+	}
+	if aiToolsMenu.Path != "/ai-tools" {
+		t.Fatalf("ai tools path = %s, want %s", aiToolsMenu.Path, "/ai-tools")
+	}
+
+	var aiChatMenu model.SysMenu
+	if err := db.Where("permission = ? AND type = ?", "ai:chat:list", 2).First(&aiChatMenu).Error; err != nil {
+		t.Fatalf("load ai chat menu: %v", err)
+	}
+	if aiChatMenu.ParentID != aiToolsMenu.ID {
+		t.Fatalf("ai chat parent_id = %d, want %d", aiChatMenu.ParentID, aiToolsMenu.ID)
+	}
+
+	var aiConfigMenu model.SysMenu
+	if err := db.Where("permission = ? AND type = ?", "ai:config:list", 2).First(&aiConfigMenu).Error; err != nil {
+		t.Fatalf("load ai config menu: %v", err)
+	}
+	if aiConfigMenu.ParentID != aiToolsMenu.ID {
+		t.Fatalf("ai config parent_id = %d, want %d", aiConfigMenu.ParentID, aiToolsMenu.ID)
+	}
+	if aiConfigMenu.Component != "ai/config/index" {
+		t.Fatalf("ai config component = %s, want %s", aiConfigMenu.Component, "ai/config/index")
+	}
+}
+
+func TestEnsureBuiltInDataGrantsAdminAIApiAccess(t *testing.T) {
+	db := setupInitializeTestDB(t)
+
+	adminRole := model.SysRole{
+		Name:   "超级管理员",
+		Code:   "admin",
+		Status: 1,
+	}
+	if err := db.Create(&adminRole).Error; err != nil {
+		t.Fatalf("create admin role: %v", err)
+	}
+
+	systemMenu := model.SysMenu{
+		ParentID:  0,
+		Name:      "系统管理",
+		Path:      "/system",
+		Component: "Layout",
+		Icon:      "setting",
+		Sort:      1,
+		Type:      1,
+		Status:    1,
+	}
+	if err := db.Create(&systemMenu).Error; err != nil {
+		t.Fatalf("create system menu: %v", err)
+	}
+
+	ensureBuiltInData()
+
+	var aiTestAPI model.SysApi
+	if err := db.Where("path = ? AND method = ?", "/api/v1/ai/test", "POST").First(&aiTestAPI).Error; err != nil {
+		t.Fatalf("load ai test api: %v", err)
+	}
+
+	var relationCount int64
+	if err := db.Table("sys_role_api").
+		Where("sys_role_id = ? AND sys_api_id = ?", adminRole.ID, aiTestAPI.ID).
+		Count(&relationCount).Error; err != nil {
+		t.Fatalf("count ai test api relation: %v", err)
+	}
+	if relationCount != 1 {
+		t.Fatalf("admin ai test api relation count = %d, want 1", relationCount)
+	}
+}
+
+func TestEnsureBuiltInDataGrantsProviderModelFetchApiToAdminRoles(t *testing.T) {
+	db := setupInitializeTestDB(t)
+
+	roles := []model.SysRole{
+		{Name: "超级管理员", Code: "admin", Status: 1},
+		{Name: "系统管理员", Code: "system_admin", Status: 1},
+	}
+	if err := db.Create(&roles).Error; err != nil {
+		t.Fatalf("create roles: %v", err)
+	}
+
+	systemMenu := model.SysMenu{
+		ParentID:  0,
+		Name:      "系统管理",
+		Path:      "/system",
+		Component: "Layout",
+		Icon:      "setting",
+		Sort:      1,
+		Type:      1,
+		Status:    1,
+	}
+	if err := db.Create(&systemMenu).Error; err != nil {
+		t.Fatalf("create system menu: %v", err)
+	}
+
+	ensureBuiltInData()
+
+	var fetchAPI model.SysApi
+	if err := db.Where("path = ? AND method = ?", "/api/v1/ai/providers/models/fetch", "POST").First(&fetchAPI).Error; err != nil {
+		t.Fatalf("load provider model fetch api: %v", err)
+	}
+
+	for _, role := range roles {
+		var relationCount int64
+		if err := db.Table("sys_role_api").
+			Where("sys_role_id = ? AND sys_api_id = ?", role.ID, fetchAPI.ID).
+			Count(&relationCount).Error; err != nil {
+			t.Fatalf("count role api relation (%s): %v", role.Code, err)
+		}
+		if relationCount != 1 {
+			t.Fatalf("%s fetch api relation count = %d, want 1", role.Code, relationCount)
+		}
+	}
+}
+
+func TestEnsureAIToolMenusDoesNotOverwriteCustomizedMetadata(t *testing.T) {
+	db := setupInitializeTestDB(t)
+
+	aiToolsMenu := model.SysMenu{
+		ParentID:   0,
+		Name:       "自定义AI工具",
+		Path:       "/custom-ai-tools",
+		Component:  "Layout",
+		Icon:       "custom-root-icon",
+		Sort:       99,
+		Type:       1,
+		Permission: "ai:tools",
+		Status:     1,
+		Hidden:     1,
+	}
+	if err := db.Create(&aiToolsMenu).Error; err != nil {
+		t.Fatalf("create ai tools menu: %v", err)
+	}
+
+	aiConfigMenu := model.SysMenu{
+		ParentID:   aiToolsMenu.ID,
+		Name:       "自定义AI配置",
+		Path:       "/custom-ai/config",
+		Component:  "custom/ai/config/index",
+		Icon:       "custom-child-icon",
+		Sort:       88,
+		Type:       2,
+		Permission: "ai:config:list",
+		Status:     1,
+		Hidden:     1,
+	}
+	if err := db.Create(&aiConfigMenu).Error; err != nil {
+		t.Fatalf("create ai config menu: %v", err)
+	}
+
+	ensureAIToolMenus()
+
+	var updatedToolsMenu model.SysMenu
+	if err := db.First(&updatedToolsMenu, aiToolsMenu.ID).Error; err != nil {
+		t.Fatalf("reload ai tools menu: %v", err)
+	}
+	if updatedToolsMenu.Path != aiToolsMenu.Path {
+		t.Fatalf("ai tools path overwritten = %s, want %s", updatedToolsMenu.Path, aiToolsMenu.Path)
+	}
+	if updatedToolsMenu.Icon != aiToolsMenu.Icon {
+		t.Fatalf("ai tools icon overwritten = %s, want %s", updatedToolsMenu.Icon, aiToolsMenu.Icon)
+	}
+
+	var updatedConfigMenu model.SysMenu
+	if err := db.First(&updatedConfigMenu, aiConfigMenu.ID).Error; err != nil {
+		t.Fatalf("reload ai config menu: %v", err)
+	}
+	if updatedConfigMenu.Path != aiConfigMenu.Path {
+		t.Fatalf("ai config path overwritten = %s, want %s", updatedConfigMenu.Path, aiConfigMenu.Path)
+	}
+	if updatedConfigMenu.Component != aiConfigMenu.Component {
+		t.Fatalf("ai config component overwritten = %s, want %s", updatedConfigMenu.Component, aiConfigMenu.Component)
 	}
 }
 
@@ -202,12 +410,12 @@ func TestEnsureFileStorageSnapshotsBackfillsMissingRowsOnly(t *testing.T) {
 	}
 
 	existingSnapshot := model.SysFile{
-		Name:          "existing.txt",
-		Path:          "existing.txt",
-		URL:           "/api/v1/upload/existing.txt",
-		MD5:           "existing-md5",
-		StorageType:   string(model.StorageTypeMinio),
-		Status:        1,
+		Name:        "existing.txt",
+		Path:        "existing.txt",
+		URL:         "/api/v1/upload/existing.txt",
+		MD5:         "existing-md5",
+		StorageType: string(model.StorageTypeMinio),
+		Status:      1,
 	}
 	if err := db.Create(&existingSnapshot).Error; err != nil {
 		t.Fatalf("create existing snapshot file: %v", err)
@@ -232,5 +440,62 @@ func TestEnsureFileStorageSnapshotsBackfillsMissingRowsOnly(t *testing.T) {
 	}
 	if updatedExisting.StorageType != existingSnapshot.StorageType {
 		t.Fatalf("existing snapshot storage_type overwritten = %s, want %s", updatedExisting.StorageType, existingSnapshot.StorageType)
+	}
+}
+
+func TestEnsureBuiltInDataCreatesGenderDictWithoutOverwritingCustomizedData(t *testing.T) {
+	db := setupInitializeTestDB(t)
+
+	customType := model.SysDictType{
+		Name:   "自定义性别名称",
+		Type:   "sys_gender",
+		Status: 1,
+		Remark: "保留已有字典类型配置",
+	}
+	if err := db.Create(&customType).Error; err != nil {
+		t.Fatalf("create custom gender dict type: %v", err)
+	}
+
+	customData := model.SysDictData{
+		DictType:  "sys_gender",
+		Label:     "男士",
+		Value:     "1",
+		Sort:      88,
+		Status:    1,
+		TagType:   "cyan",
+		IsDefault: 0,
+		Remark:    "保留已有字典项配置",
+	}
+	if err := db.Create(&customData).Error; err != nil {
+		t.Fatalf("create custom gender dict data: %v", err)
+	}
+
+	ensureBuiltInData()
+
+	var dictType model.SysDictType
+	if err := db.Where("type = ?", "sys_gender").First(&dictType).Error; err != nil {
+		t.Fatalf("load gender dict type: %v", err)
+	}
+	if dictType.Name != customType.Name {
+		t.Fatalf("gender dict type name overwritten = %s, want %s", dictType.Name, customType.Name)
+	}
+
+	var existingMale model.SysDictData
+	if err := db.Where("dict_type = ? AND value = ?", "sys_gender", "1").First(&existingMale).Error; err != nil {
+		t.Fatalf("load existing male dict data: %v", err)
+	}
+	if existingMale.Label != customData.Label {
+		t.Fatalf("gender dict data label overwritten = %s, want %s", existingMale.Label, customData.Label)
+	}
+	if existingMale.TagType != customData.TagType {
+		t.Fatalf("gender dict data tag_type overwritten = %s, want %s", existingMale.TagType, customData.TagType)
+	}
+
+	var count int64
+	if err := db.Model(&model.SysDictData{}).Where("dict_type = ?", "sys_gender").Count(&count).Error; err != nil {
+		t.Fatalf("count gender dict data: %v", err)
+	}
+	if count != 3 {
+		t.Fatalf("gender dict data count = %d, want 3", count)
 	}
 }

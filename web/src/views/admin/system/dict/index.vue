@@ -1,95 +1,195 @@
 <template>
   <div class="dict-page">
     <a-row :gutter="16">
-      <!-- 左侧：字典类型列表 -->
-      <a-col :span="8">
-        <a-card title="字典类型">
+      <a-col :xs="24" :xl="8">
+        <a-card class="dict-panel dict-panel--types">
+          <template #title>
+            <div class="dict-panel__title">
+              <span>字典类型</span>
+              <a-tag color="blue">{{ typePagination.total }}</a-tag>
+            </div>
+          </template>
           <template #extra>
-            <a-button type="primary" size="small" @click="handleAddType">
-              <PlusOutlined /> 新增
-            </a-button>
+            <a-space :size="4">
+              <a-tooltip title="刷新列表">
+                <a-button type="text" @click="fetchDictTypes()">
+                  <ReloadOutlined />
+                </a-button>
+              </a-tooltip>
+              <a-button type="primary" @click="handleAddType">
+                <PlusOutlined />
+                新增
+              </a-button>
+            </a-space>
           </template>
 
-          <!-- 搜索 -->
           <a-input-search
             v-model:value="typeSearchText"
-            placeholder="搜索字典名称/类型"
-            style="margin-bottom: 16px"
-            @search="fetchDictTypes"
             allow-clear
+            class="dict-panel__search"
+            placeholder="搜索字典名称或类型编码"
+            @search="handleTypeSearch"
           />
 
-          <!-- 字典类型表格 -->
-          <a-table
-            :columns="typeColumns"
-            :data-source="dictTypes"
-            :loading="typeLoading"
-            :pagination="typePagination"
-            row-key="id"
-            size="small"
-            :row-class-name="(record: DictType) => selectedType?.id === record.id ? 'selected-row' : ''"
-            :custom-row="(record: DictType) => ({ onClick: () => handleSelectType(record) })"
-            @change="handleTypeTableChange"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'status'">
-                <a-tag :color="record.status === 1 ? 'success' : 'error'">
-                  {{ record.status === 1 ? '正常' : '停用' }}
-                </a-tag>
+          <a-alert
+            v-if="showSelectedOutsideFilter && selectedType"
+            class="dict-panel__hint"
+            type="info"
+            show-icon
+            :message="`当前搜索结果未包含已选字典：${selectedType.name}`"
+          />
+
+          <div class="dict-type-list">
+            <a-list
+              v-if="filteredDictTypes.length"
+              :data-source="filteredDictTypes"
+              :loading="typeLoading"
+              item-layout="horizontal"
+            >
+              <template #renderItem="{ item }">
+                <a-list-item
+                  :class="['dict-type-item', { 'dict-type-item--active': selectedType?.id === item.id }]"
+                  role="button"
+                  tabindex="0"
+                  @click="handleSelectType(item)"
+                  @keydown.enter.prevent="handleSelectType(item)"
+                  @keydown.space.prevent="handleSelectType(item)"
+                >
+                  <template #actions>
+                    <a-tooltip title="复制编码">
+                      <a-button type="text" size="small" @click.stop="handleCopy(item.type, '字典类型编码')">
+                        <CopyOutlined />
+                      </a-button>
+                    </a-tooltip>
+                    <a-tooltip title="编辑">
+                      <a-button type="text" size="small" @click.stop="handleEditType(item)">
+                        <EditOutlined />
+                      </a-button>
+                    </a-tooltip>
+                    <a-popconfirm
+                      title="确定删除此字典类型及其所有字典数据吗？"
+                      @confirm="handleDeleteType(item)"
+                    >
+                      <a-button type="text" size="small" danger @click.stop>
+                        <DeleteOutlined />
+                      </a-button>
+                    </a-popconfirm>
+                  </template>
+
+                  <a-list-item-meta>
+                    <template #title>
+                      <div class="dict-type-item__title">
+                        <span class="dict-type-item__name">{{ item.name }}</span>
+                        <a-tag :color="item.status === 1 ? 'success' : 'default'">
+                          {{ item.status === 1 ? '正常' : '停用' }}
+                        </a-tag>
+                      </div>
+                    </template>
+                    <template #description>
+                      <div class="dict-type-item__description">
+                        <a-typography-text code>{{ item.type }}</a-typography-text>
+                        <span class="dict-type-item__remark">{{ item.remark || '暂无备注' }}</span>
+                      </div>
+                    </template>
+                  </a-list-item-meta>
+                </a-list-item>
               </template>
-              <template v-if="column.key === 'action'">
-                <a-space>
-                  <a-button type="link" size="small" @click.stop="handleEditType(record)">编辑</a-button>
-                  <a-popconfirm title="确定删除此字典类型及其所有数据?" @confirm="handleDeleteType(record.id)">
-                    <a-button type="link" size="small" danger @click.stop>删除</a-button>
-                  </a-popconfirm>
-                </a-space>
-              </template>
-            </template>
-          </a-table>
+            </a-list>
+
+            <a-empty v-else :image="false" description="当前条件下没有匹配的字典类型" />
+          </div>
+
+          <div class="dict-panel__pagination">
+            <a-pagination
+              size="small"
+              :current="typePagination.current"
+              :page-size="typePagination.pageSize"
+              :total="typePagination.total"
+              :show-size-changer="typePagination.showSizeChanger"
+              :show-total="typePagination.showTotal"
+              @change="handleTypePaginationChange"
+              @showSizeChange="handleTypePaginationChange"
+            />
+          </div>
         </a-card>
       </a-col>
 
-      <!-- 右侧：字典数据列表 -->
-      <a-col :span="16">
-        <a-card :title="selectedType ? `字典数据 - ${selectedType.name}` : '字典数据'">
+      <a-col :xs="24" :xl="16">
+        <a-card class="dict-panel dict-panel--data">
+          <template #title>
+            <div class="dict-data-header">
+              <div class="dict-data-header__main">
+                {{ selectedType ? selectedType.name : '字典数据' }}
+              </div>
+              <div v-if="selectedType" class="dict-data-header__meta">
+                <a-typography-text code>{{ selectedType.type }}</a-typography-text>
+                <a-button type="link" size="small" @click="handleCopy(selectedType.type, '字典类型编码')">
+                  复制编码
+                </a-button>
+                <a-tag :color="selectedType.status === 1 ? 'success' : 'default'">
+                  {{ selectedType.status === 1 ? '正常' : '停用' }}
+                </a-tag>
+              </div>
+            </div>
+          </template>
           <template #extra>
-            <a-button type="primary" size="small" @click="handleAddData" :disabled="!selectedType">
-              <PlusOutlined /> 新增
-            </a-button>
+            <a-space>
+              <a-button :disabled="!selectedType" @click="fetchDictData()">
+                <ReloadOutlined />
+                刷新
+              </a-button>
+              <a-button type="primary" :disabled="!selectedType" @click="handleAddData">
+                <PlusOutlined />
+                新增字典数据
+              </a-button>
+            </a-space>
           </template>
 
-          <a-empty v-if="!selectedType" description="请选择左侧字典类型" />
+          <template v-if="selectedType">
+            <div class="dict-data-summary">
+              <span class="dict-data-summary__label">备注</span>
+              <span class="dict-data-summary__text">{{ selectedType.remark || '暂无备注' }}</span>
+            </div>
 
-          <template v-else>
-            <!-- 字典数据表格 -->
             <a-table
               :columns="dataColumns"
               :data-source="dictDataList"
               :loading="dataLoading"
               :pagination="dataPagination"
               row-key="id"
-              size="small"
-              @change="handleDataTableChange"
+              @change="pagination => handleDataPaginationChange(pagination.current, pagination.pageSize)"
             >
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'label'">
-                  <a-tag v-if="record.tag_type" :color="record.tag_type">{{ record.label }}</a-tag>
-                  <span v-else>{{ record.label }}</span>
+                  <a-tag :color="record.tag_type || 'default'">{{ record.label }}</a-tag>
+                </template>
+                <template v-if="column.key === 'value'">
+                  <div class="dict-value-cell">
+                    <a-typography-text>{{ record.value }}</a-typography-text>
+                    <a-tooltip title="复制键值">
+                      <a-button type="text" size="small" @click="handleCopy(record.value, '字典键值')">
+                        <CopyOutlined />
+                      </a-button>
+                    </a-tooltip>
+                  </div>
                 </template>
                 <template v-if="column.key === 'status'">
-                  <a-tag :color="record.status === 1 ? 'success' : 'error'">
+                  <a-tag :color="record.status === 1 ? 'success' : 'default'">
                     {{ record.status === 1 ? '正常' : '停用' }}
                   </a-tag>
                 </template>
                 <template v-if="column.key === 'is_default'">
-                  <a-tag v-if="record.is_default === 1" color="blue">是</a-tag>
-                  <span v-else>否</span>
+                  <a-tag :color="record.is_default === 1 ? 'blue' : 'default'">
+                    {{ record.is_default === 1 ? '默认' : '否' }}
+                  </a-tag>
+                </template>
+                <template v-if="column.key === 'remark'">
+                  <span>{{ record.remark || '-' }}</span>
                 </template>
                 <template v-if="column.key === 'action'">
-                  <a-space>
+                  <a-space :size="0">
                     <a-button type="link" size="small" @click="handleEditData(record)">编辑</a-button>
-                    <a-popconfirm title="确定删除此字典数据?" @confirm="handleDeleteData(record.id)">
+                    <a-popconfirm title="确定删除此字典数据吗？" @confirm="handleDeleteData(record)">
                       <a-button type="link" size="small" danger>删除</a-button>
                     </a-popconfirm>
                   </a-space>
@@ -97,371 +197,224 @@
               </template>
             </a-table>
           </template>
+
+          <a-empty
+            v-else
+            class="dict-panel__empty"
+            description="请先从左侧选择一个字典类型，再管理对应的字典数据"
+          />
         </a-card>
       </a-col>
     </a-row>
 
-    <!-- 字典类型表单弹窗 -->
-    <a-modal
-      v-model:open="typeModalVisible"
-      :title="typeModalTitle"
-      @ok="handleTypeSubmit"
-      :confirm-loading="typeSubmitLoading"
-    >
-      <a-form :label-col="{ span: 5 }" :wrapper-col="{ span: 18 }">
-        <a-form-item label="字典名称" required>
-          <a-input v-model:value="typeForm.name" placeholder="请输入字典名称" />
-        </a-form-item>
-        <a-form-item label="字典类型" required>
-          <a-input v-model:value="typeForm.type" placeholder="请输入字典类型（英文）" :disabled="!!editingType" />
-        </a-form-item>
-        <a-form-item label="状态">
-          <a-switch v-model:checked="typeForm.statusBool" checked-children="正常" un-checked-children="停用" />
-        </a-form-item>
-        <a-form-item label="备注">
-          <a-textarea v-model:value="typeForm.remark" :rows="3" placeholder="请输入备注" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+    <DictTypeDrawer
+      v-model:open="typeDrawerVisible"
+      :title="typeDrawerTitle"
+      :is-edit="Boolean(editingType)"
+      :submitting="typeSubmitLoading"
+      :initial-value="typeDrawerInitialValue"
+      @submit="handleTypeSubmit"
+    />
 
-    <!-- 字典数据表单弹窗 -->
-    <a-modal
-      v-model:open="dataModalVisible"
-      :title="dataModalTitle"
-      @ok="handleDataSubmit"
-      :confirm-loading="dataSubmitLoading"
-    >
-      <a-form :label-col="{ span: 5 }" :wrapper-col="{ span: 18 }">
-        <a-form-item label="字典标签" required>
-          <a-input v-model:value="dataForm.label" placeholder="请输入字典标签（显示名称）" />
-        </a-form-item>
-        <a-form-item label="字典键值" required>
-          <a-input v-model:value="dataForm.value" placeholder="请输入字典键值" />
-        </a-form-item>
-        <a-form-item label="排序">
-          <a-input-number v-model:value="dataForm.sort" :min="0" style="width: 100%" />
-        </a-form-item>
-        <a-form-item label="标签颜色">
-          <a-select v-model:value="dataForm.tag_type" placeholder="请选择标签颜色" allow-clear>
-            <a-select-option value="success">
-              <a-tag color="success">成功/绿色</a-tag>
-            </a-select-option>
-            <a-select-option value="processing">
-              <a-tag color="processing">处理中/蓝色</a-tag>
-            </a-select-option>
-            <a-select-option value="warning">
-              <a-tag color="warning">警告/橙色</a-tag>
-            </a-select-option>
-            <a-select-option value="error">
-              <a-tag color="error">错误/红色</a-tag>
-            </a-select-option>
-            <a-select-option value="default">
-              <a-tag color="default">默认/灰色</a-tag>
-            </a-select-option>
-            <a-select-option value="pink">
-              <a-tag color="pink">粉色</a-tag>
-            </a-select-option>
-            <a-select-option value="purple">
-              <a-tag color="purple">紫色</a-tag>
-            </a-select-option>
-            <a-select-option value="cyan">
-              <a-tag color="cyan">青色</a-tag>
-            </a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item label="状态">
-          <a-switch v-model:checked="dataForm.statusBool" checked-children="正常" un-checked-children="停用" />
-        </a-form-item>
-        <a-form-item label="是否默认">
-          <a-switch v-model:checked="dataForm.isDefaultBool" checked-children="是" un-checked-children="否" />
-        </a-form-item>
-        <a-form-item label="备注">
-          <a-textarea v-model:value="dataForm.remark" :rows="2" placeholder="请输入备注" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+    <DictDataDrawer
+      v-model:open="dataDrawerVisible"
+      :title="dataDrawerTitle"
+      :submitting="dataSubmitLoading"
+      :current-type-name="selectedType?.name || '未选择'"
+      :current-type-code="selectedType?.type || ''"
+      :initial-value="dataDrawerInitialValue"
+      @submit="handleDataSubmit"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { message } from 'ant-design-vue'
-import { PlusOutlined } from '@ant-design/icons-vue'
-import {
-  getDictTypeList,
-  createDictType,
-  updateDictType,
-  deleteDictType,
-  getDictDataList,
-  createDictData,
-  updateDictData,
-  deleteDictData,
-  type DictType,
-  type DictData
-} from '@/api/dict'
-
-// ==================== 字典类型 ====================
-const dictTypes = ref<DictType[]>([])
-const typeLoading = ref(false)
-const typeSearchText = ref('')
-const selectedType = ref<DictType | null>(null)
-const typePagination = reactive({
-  current: 1,
-  pageSize: 10,
-  total: 0,
-  showSizeChanger: true,
-  showTotal: (total: number) => `共 ${total} 条`
-})
-
-const typeColumns = [
-  { title: '字典名称', dataIndex: 'name', key: 'name', ellipsis: true },
-  { title: '字典类型', dataIndex: 'type', key: 'type', ellipsis: true },
-  { title: '状态', key: 'status', width: 70 },
-  { title: '操作', key: 'action', width: 100 }
-]
-
-// 字典类型表单
-const typeModalVisible = ref(false)
-const typeModalTitle = ref('新增字典类型')
-const typeSubmitLoading = ref(false)
-const editingType = ref<DictType | null>(null)
-const typeForm = reactive({
-  name: '',
-  type: '',
-  statusBool: true,
-  remark: ''
-})
-
-// 获取字典类型列表
-const fetchDictTypes = async () => {
-  typeLoading.value = true
-  try {
-    const res = await getDictTypeList({
-      page: typePagination.current,
-      page_size: typePagination.pageSize,
-      name: typeSearchText.value || undefined,
-      type: typeSearchText.value || undefined
-    })
-    dictTypes.value = res.data.list || []
-    typePagination.total = res.data.total
-  } finally {
-    typeLoading.value = false
-  }
-}
-
-// 字典类型表格分页变化
-const handleTypeTableChange = (pagination: any) => {
-  typePagination.current = pagination.current
-  typePagination.pageSize = pagination.pageSize
-  fetchDictTypes()
-}
-
-// 选择字典类型
-const handleSelectType = (record: DictType) => {
-  selectedType.value = record
-  dataPagination.current = 1
-  fetchDictData()
-}
-
-// 新增字典类型
-const handleAddType = () => {
-  editingType.value = null
-  typeModalTitle.value = '新增字典类型'
-  Object.assign(typeForm, { name: '', type: '', statusBool: true, remark: '' })
-  typeModalVisible.value = true
-}
-
-// 编辑字典类型
-const handleEditType = (record: DictType) => {
-  editingType.value = record
-  typeModalTitle.value = '编辑字典类型'
-  Object.assign(typeForm, {
-    name: record.name,
-    type: record.type,
-    statusBool: record.status === 1,
-    remark: record.remark
-  })
-  typeModalVisible.value = true
-}
-
-// 提交字典类型
-const handleTypeSubmit = async () => {
-  if (!typeForm.name || !typeForm.type) {
-    message.warning('请填写字典名称和类型')
-    return
-  }
-  typeSubmitLoading.value = true
-  try {
-    const data = {
-      name: typeForm.name,
-      type: typeForm.type,
-      status: typeForm.statusBool ? 1 : 0,
-      remark: typeForm.remark
-    }
-    if (editingType.value) {
-      await updateDictType(editingType.value.id, data)
-      message.success('更新成功')
-    } else {
-      await createDictType(data)
-      message.success('创建成功')
-    }
-    typeModalVisible.value = false
-    fetchDictTypes()
-  } finally {
-    typeSubmitLoading.value = false
-  }
-}
-
-// 删除字典类型
-const handleDeleteType = async (id: number) => {
-  await deleteDictType(id)
-  message.success('删除成功')
-  if (selectedType.value?.id === id) {
-    selectedType.value = null
-    dictDataList.value = []
-  }
-  fetchDictTypes()
-}
-
-// ==================== 字典数据 ====================
-const dictDataList = ref<DictData[]>([])
-const dataLoading = ref(false)
-const dataPagination = reactive({
-  current: 1,
-  pageSize: 10,
-  total: 0,
-  showSizeChanger: true,
-  showTotal: (total: number) => `共 ${total} 条`
-})
+import { CopyOutlined, DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons-vue'
+import DictDataDrawer from './components/DictDataDrawer.vue'
+import DictTypeDrawer from './components/DictTypeDrawer.vue'
+import { useDictPage } from './useDictPage'
 
 const dataColumns = [
-  { title: '字典标签', key: 'label', ellipsis: true },
-  { title: '字典键值', dataIndex: 'value', key: 'value', width: 100 },
-  { title: '排序', dataIndex: 'sort', key: 'sort', width: 60 },
-  { title: '状态', key: 'status', width: 70 },
-  { title: '默认', key: 'is_default', width: 60 },
-  { title: '操作', key: 'action', width: 100 }
+  { title: '字典标签', key: 'label', width: 160 },
+  { title: '字典键值', key: 'value', width: 180 },
+  { title: '排序', dataIndex: 'sort', key: 'sort', width: 80 },
+  { title: '状态', key: 'status', width: 90 },
+  { title: '默认', key: 'is_default', width: 90 },
+  { title: '备注', key: 'remark' },
+  { title: '操作', key: 'action', width: 140 },
 ]
 
-// 字典数据表单
-const dataModalVisible = ref(false)
-const dataModalTitle = ref('新增字典数据')
-const dataSubmitLoading = ref(false)
-const editingData = ref<DictData | null>(null)
-const dataForm = reactive({
-  label: '',
-  value: '',
-  sort: 0,
-  tag_type: '',
-  statusBool: true,
-  isDefaultBool: false,
-  remark: ''
-})
-
-// 获取字典数据列表
-const fetchDictData = async () => {
-  if (!selectedType.value) return
-  dataLoading.value = true
-  try {
-    const res = await getDictDataList({
-      dict_type: selectedType.value.type,
-      page: dataPagination.current,
-      page_size: dataPagination.pageSize
-    })
-    dictDataList.value = res.data.list || []
-    dataPagination.total = res.data.total
-  } finally {
-    dataLoading.value = false
-  }
-}
-
-// 字典数据表格分页变化
-const handleDataTableChange = (pagination: any) => {
-  dataPagination.current = pagination.current
-  dataPagination.pageSize = pagination.pageSize
-  fetchDictData()
-}
-
-// 新增字典数据
-const handleAddData = () => {
-  if (!selectedType.value) return
-  editingData.value = null
-  dataModalTitle.value = '新增字典数据'
-  Object.assign(dataForm, {
-    label: '', value: '', sort: 0, tag_type: '',
-    statusBool: true, isDefaultBool: false, remark: ''
-  })
-  dataModalVisible.value = true
-}
-
-// 编辑字典数据
-const handleEditData = (record: DictData) => {
-  editingData.value = record
-  dataModalTitle.value = '编辑字典数据'
-  Object.assign(dataForm, {
-    label: record.label,
-    value: record.value,
-    sort: record.sort,
-    tag_type: record.tag_type || '',
-    statusBool: record.status === 1,
-    isDefaultBool: record.is_default === 1,
-    remark: record.remark
-  })
-  dataModalVisible.value = true
-}
-
-// 提交字典数据
-const handleDataSubmit = async () => {
-  if (!dataForm.label || !dataForm.value) {
-    message.warning('请填写字典标签和键值')
-    return
-  }
-  dataSubmitLoading.value = true
-  try {
-    const data = {
-      dict_type: selectedType.value!.type,
-      label: dataForm.label,
-      value: dataForm.value,
-      sort: dataForm.sort,
-      tag_type: dataForm.tag_type || '',
-      status: dataForm.statusBool ? 1 : 0,
-      is_default: dataForm.isDefaultBool ? 1 : 0,
-      remark: dataForm.remark
-    }
-    if (editingData.value) {
-      await updateDictData(editingData.value.id, data)
-      message.success('更新成功')
-    } else {
-      await createDictData(data)
-      message.success('创建成功')
-    }
-    dataModalVisible.value = false
-    fetchDictData()
-  } finally {
-    dataSubmitLoading.value = false
-  }
-}
-
-// 删除字典数据
-const handleDeleteData = async (id: number) => {
-  await deleteDictData(id)
-  message.success('删除成功')
-  fetchDictData()
-}
-
-onMounted(() => {
-  fetchDictTypes()
-})
+const {
+  dataDrawerInitialValue,
+  dataDrawerTitle,
+  dataDrawerVisible,
+  dataLoading,
+  dataPagination,
+  dataSubmitLoading,
+  dictDataList,
+  editingType,
+  fetchDictData,
+  fetchDictTypes,
+  filteredDictTypes,
+  handleAddData,
+  handleAddType,
+  handleCopy,
+  handleDataPaginationChange,
+  handleDataSubmit,
+  handleDeleteData,
+  handleDeleteType,
+  handleEditData,
+  handleEditType,
+  handleSelectType,
+  handleTypePaginationChange,
+  handleTypeSearch,
+  handleTypeSubmit,
+  selectedType,
+  showSelectedOutsideFilter,
+  typeDrawerInitialValue,
+  typeDrawerTitle,
+  typeDrawerVisible,
+  typeLoading,
+  typePagination,
+  typeSearchText,
+  typeSubmitLoading,
+} = useDictPage()
 </script>
 
 <style scoped>
 .dict-page {
   padding: 16px;
 }
-:deep(.selected-row) {
-  background-color: #e6f7ff;
+
+.dict-panel {
+  min-height: 680px;
 }
-:deep(.ant-table-tbody > tr) {
+
+.dict-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dict-panel__search {
+  margin-bottom: 12px;
+}
+
+.dict-panel__hint {
+  margin-bottom: 12px;
+}
+
+.dict-type-list {
+  min-height: 520px;
+}
+
+.dict-type-item {
+  padding: 12px 8px;
   cursor: pointer;
+  border-radius: 10px;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.dict-type-item:hover {
+  background: #fafafa;
+}
+
+.dict-type-item--active {
+  background: #f0f7ff;
+  border-color: #91caff;
+}
+
+.dict-type-item__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dict-type-item__name {
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.dict-type-item__description {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dict-type-item__remark {
+  color: rgba(0, 0, 0, 0.45);
+  line-height: 1.5;
+}
+
+.dict-panel__pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.dict-panel__empty {
+  min-height: 560px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dict-data-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dict-data-header__main {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.dict-data-header__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dict-data-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 0 0 16px;
+}
+
+.dict-data-summary__label {
+  color: rgba(0, 0, 0, 0.45);
+  white-space: nowrap;
+}
+
+.dict-data-summary__text {
+  color: rgba(0, 0, 0, 0.65);
+  line-height: 1.5;
+}
+
+.dict-value-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+@media (max-width: 1199px) {
+  .dict-panel {
+    min-height: auto;
+  }
+
+  .dict-type-list {
+    min-height: auto;
+  }
+
+  .dict-panel__empty {
+    min-height: 240px;
+  }
 }
 </style>

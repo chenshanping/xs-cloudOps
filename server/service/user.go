@@ -72,6 +72,13 @@ func validateBatchUserStatusTargets(ids []uint, status int, operatorID uint, use
 	return nil
 }
 
+func validateUserGender(gender int) error {
+	if gender < 0 || gender > 2 {
+		return errors.New("性别值无效")
+	}
+	return nil
+}
+
 // 获取用户选项列表（轻量级，仅返回 id/username/nickname）
 func (s *UserService) GetUserOptions(operatorID uint) ([]map[string]interface{}, error) {
 	var results []map[string]interface{}
@@ -145,6 +152,9 @@ func (s *UserService) GetUserList(operatorID uint, req *request.UserListRequest)
 	if req.Status != nil {
 		db = db.Where("status = ?", *req.Status)
 	}
+	if req.Gender != nil {
+		db = db.Where("gender = ?", *req.Gender)
+	}
 	if req.UnassignedDept {
 		db = db.Where("sys_user.dept_id IS NULL OR sys_user.dept_id = 0")
 	} else if req.DeptId != nil && *req.DeptId > 0 {
@@ -181,6 +191,9 @@ func (s *UserService) GetUserList(operatorID uint, req *request.UserListRequest)
 
 // 创建用户
 func (s *UserService) CreateUser(operatorID uint, req *request.CreateUserRequest) error {
+	if err := validateUserGender(req.Gender); err != nil {
+		return err
+	}
 	if err := EnsureDeptManageable(operatorID, req.DeptID); err != nil {
 		return err
 	}
@@ -202,6 +215,7 @@ func (s *UserService) CreateUser(operatorID uint, req *request.CreateUserRequest
 		Username: req.Username,
 		Password: hashedPassword,
 		Nickname: req.Nickname,
+		Gender:   req.Gender,
 		Email:    req.Email,
 		Phone:    req.Phone,
 		Status:   req.Status,
@@ -241,6 +255,9 @@ func (s *UserService) CreateUser(operatorID uint, req *request.CreateUserRequest
 
 // 更新用户
 func (s *UserService) UpdateUser(operatorID, id uint, req *request.UpdateUserRequest) error {
+	if err := validateUserGender(req.Gender); err != nil {
+		return err
+	}
 	user, err := EnsureUserManageable(operatorID, id)
 	if err != nil {
 		return err
@@ -262,6 +279,7 @@ func (s *UserService) UpdateUser(operatorID, id uint, req *request.UpdateUserReq
 
 	updates := map[string]interface{}{
 		"nickname": req.Nickname,
+		"gender":   req.Gender,
 		"email":    req.Email,
 		"phone":    req.Phone,
 		"status":   req.Status,

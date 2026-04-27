@@ -1,6 +1,6 @@
 import { login, getUserInfo, type LoginParams, logout } from '@/api/auth';
 import type { User, Menu } from '@/types';
-import { resetRouter } from '@/router';
+import { refreshDynamicRoutes, resetRouter } from '@/router';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
@@ -45,6 +45,12 @@ export const useUserStore = defineStore('user', () => {
     return res
   }
 
+  async function refreshAccessAction() {
+    const res = await getUserInfoAction()
+    refreshDynamicRoutes(menus.value)
+    return res
+  }
+
   // 登出
   async function logoutAction() {
     try {
@@ -71,6 +77,7 @@ export const useUserStore = defineStore('user', () => {
     hasAnyPermission,
     loginAction,
     getUserInfoAction,
+    refreshAccessAction,
     logoutAction,
   }
 })

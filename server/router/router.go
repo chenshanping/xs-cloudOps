@@ -14,6 +14,7 @@ func InitRouter() *gin.Engine {
 
 	// 跨域中间件
 	r.Use(middleware.Cors())
+	r.Use(middleware.BusinessErrorLog())
 
 	// 静态资源：
 	r.Static("/api/v1/upload", "./uploads")

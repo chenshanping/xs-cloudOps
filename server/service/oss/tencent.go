@@ -48,6 +48,27 @@ func (c *TencentClient) Upload(ctx context.Context, key string, reader io.Reader
 	return err
 }
 
+// Open 打开文件读取流
+func (c *TencentClient) Open(ctx context.Context, key string) (io.ReadCloser, error) {
+	resp, err := c.client.Object.Get(ctx, key, nil)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Body, nil
+}
+
+// Exists 判断文件是否存在
+func (c *TencentClient) Exists(ctx context.Context, key string) (bool, error) {
+	resp, err := c.client.Object.Head(ctx, key, nil)
+	if err == nil {
+		return true, nil
+	}
+	if resp != nil && resp.StatusCode == http.StatusNotFound {
+		return false, nil
+	}
+	return false, err
+}
+
 // Delete 删除文件
 func (c *TencentClient) Delete(ctx context.Context, key string) error {
 	_, err := c.client.Object.Delete(ctx, key)

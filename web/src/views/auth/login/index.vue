@@ -173,7 +173,7 @@ const doLogin = async (loginData: any) => {
   loading.value = true
   try {
     await userStore.loginAction(loginData)
-    await userStore.getUserInfoAction()
+    await userStore.refreshAccessAction()
     message.success('登录成功')
 
     const roles = userStore.user?.roles || []

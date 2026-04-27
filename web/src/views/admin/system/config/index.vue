@@ -74,19 +74,6 @@
             @dirty-change="setTabDirty('email', $event)"
           />
         </a-tab-pane>
-        <a-tab-pane key="ai">
-          <template #tab>
-            <span class="config-tab-title">
-              AI配置
-              <span v-if="dirtyState.ai" class="dirty-mark">*</span>
-            </span>
-          </template>
-          <AIConfig
-            v-if="!loading"
-            ref="aiTabRef"
-            @dirty-change="setTabDirty('ai', $event)"
-          />
-        </a-tab-pane>
       </a-tabs>
     </a-card>
 
@@ -118,13 +105,12 @@ import SystemConfig from './components/SystemConfig.vue'
 import FileSettings from './components/FileSettings.vue'
 import LoginRegisterConfig from './components/LoginRegisterConfig.vue'
 import EmailConfig from './components/EmailConfig.vue'
-import AIConfig from './components/AIConfig.vue'
 import type { ConfigTabGuardHandle, ConfigTabKey } from './config-tab-guard'
 import { hasDirtyConfigTabs } from './config-tab-guard'
 
 type LeavePromptAction = 'save' | 'discard' | 'cancel'
 
-const CONFIG_TAB_KEYS: ConfigTabKey[] = ['basic', 'file', 'login', 'email', 'ai']
+const CONFIG_TAB_KEYS: ConfigTabKey[] = ['basic', 'file', 'login', 'email']
 
 const activeTab = ref<ConfigTabKey>('basic')
 const configStore = useConfigStore()
@@ -145,7 +131,6 @@ const basicTabRef = ref<ConfigTabGuardHandle | null>(null)
 const fileTabRef = ref<ConfigTabGuardHandle | null>(null)
 const loginTabRef = ref<ConfigTabGuardHandle | null>(null)
 const emailTabRef = ref<ConfigTabGuardHandle | null>(null)
-const aiTabRef = ref<ConfigTabGuardHandle | null>(null)
 
 const hasUnsavedChanges = computed(() => hasDirtyConfigTabs(dirtyState))
 const currentTabDirty = computed(() => dirtyState[activeTab.value])
@@ -160,8 +145,6 @@ const getTabHandle = (tab: ConfigTabKey): ConfigTabGuardHandle | null => {
       return loginTabRef.value
     case 'email':
       return emailTabRef.value
-    case 'ai':
-      return aiTabRef.value
     default:
       return null
   }

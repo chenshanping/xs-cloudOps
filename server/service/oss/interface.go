@@ -11,6 +11,12 @@ type Client interface {
 	// Upload 上传文件
 	Upload(ctx context.Context, key string, reader io.Reader, size int64) error
 
+	// Open 打开文件读取流
+	Open(ctx context.Context, key string) (io.ReadCloser, error)
+
+	// Exists 判断文件是否存在
+	Exists(ctx context.Context, key string) (bool, error)
+
 	// Delete 删除文件
 	Delete(ctx context.Context, key string) error
 

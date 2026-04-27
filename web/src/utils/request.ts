@@ -3,6 +3,11 @@ import { useUserStore } from '@/store/user';
 import { message } from 'ant-design-vue';
 import router from '@/router';
 
+type HandledRequestError = Error & {
+  handledByMessage?: boolean
+  errorSource?: 'request'
+}
+
 // 扩展 AxiosRequestConfig 支持自定义配置
 declare module 'axios' {
   interface AxiosRequestConfig {
@@ -15,6 +20,13 @@ const request = axios.create({
   baseURL: '/api/v1',
   timeout: 10000,
 })
+
+function createHandledRequestError(errorMessage: string): HandledRequestError {
+  const error = new Error(errorMessage) as HandledRequestError
+  error.handledByMessage = true
+  error.errorSource = 'request'
+  return error
+}
 
 // Token 刷新状态
 let isRefreshing = false
@@ -57,7 +69,7 @@ request.interceptors.response.use(
         const text = await response.data.text()
         const errorData = JSON.parse(text)
         message.error(errorData.message || '操作失败')
-        return Promise.reject(new Error(errorData.message || '操作失败'))
+        return Promise.reject(createHandledRequestError(errorData.message || '操作失败'))
       }
       // 正常的文件响应，直接返回
       return response.data
@@ -77,7 +89,7 @@ request.interceptors.response.use(
         message.error(res.message || '请求失败')
       }
       
-      return Promise.reject(new Error(res.message || '请求失败'))
+      return Promise.reject(createHandledRequestError(res.message || '请求失败'))
     }
     return res
   },
@@ -118,7 +130,7 @@ request.interceptors.response.use(
     }
     
     // 返回一个带有友好消息的错误
-    const friendlyError = new Error(errorMessage)
+    const friendlyError = createHandledRequestError(errorMessage)
     return Promise.reject(friendlyError)
   }
 )
@@ -132,7 +144,7 @@ async function handle401Error(response: AxiosResponse) {
   if (originalConfig.url === '/auth/refresh' || originalConfig._retry) {
     await userStore.logoutAction()
     router.push('/login')
-    return Promise.reject(new Error('Token已失效'))
+    return Promise.reject(createHandledRequestError('Token已失效'))
   }
   
   // 标记已重试
@@ -169,7 +181,7 @@ async function handle401Error(response: AxiosResponse) {
     // 刷新失败，登出
     await userStore.logoutAction()
     router.push('/login')
-    return Promise.reject(new Error('Token刷新失败'))
+    return Promise.reject(createHandledRequestError('Token刷新失败'))
   } finally {
     isRefreshing = false
   }

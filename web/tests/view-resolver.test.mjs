@@ -44,6 +44,10 @@ test('maps dynamic admin module views into admin directory', () => {
     resolveViewModulePath('monitor/login-log'),
     '../views/admin/monitor/login-log/index.vue',
   )
+  assert.equal(
+    resolveViewModulePath('ai/config/index'),
+    '../views/admin/ai/config/index.vue',
+  )
 })
 
 test('returns null for empty component paths', () => {

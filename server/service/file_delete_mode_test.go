@@ -127,6 +127,35 @@ func TestDeleteFilePhysicalModeRemovesRecordAndPhysicalFile(t *testing.T) {
 	}
 }
 
+func TestDeleteFilePhysicalModeAllowsMissingPhysicalFile(t *testing.T) {
+	db := setupFileServiceTestDB(t)
+	dir := t.TempDir()
+	seedLocalFileDeleteConfig(t, db, dir, FileDeleteModePhysical)
+
+	file := model.SysFile{
+		Name:        "missing.txt",
+		Path:        "missing.txt",
+		URL:         "/api/v1/upload/missing.txt",
+		StorageType: string(model.StorageTypeLocal),
+		Status:      1,
+	}
+	if err := db.Create(&file).Error; err != nil {
+		t.Fatalf("create file: %v", err)
+	}
+
+	if err := File.DeleteFile(file.ID); err != nil {
+		t.Fatalf("DeleteFile physical with missing file error: %v", err)
+	}
+
+	var count int64
+	if err := db.Unscoped().Model(&model.SysFile{}).Where("id = ?", file.ID).Count(&count).Error; err != nil {
+		t.Fatalf("count deleted file: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("physical delete retained db record count = %d", count)
+	}
+}
+
 func TestDeleteFileRejectsReferencedAvatarFile(t *testing.T) {
 	db := setupFileServiceTestDB(t)
 	dir := t.TempDir()

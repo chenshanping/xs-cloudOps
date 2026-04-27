@@ -6,12 +6,35 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
+	"path"
+	"strings"
 	"time"
 
 	appconfig "server/config"
 	"server/global"
+	modelresponse "server/model/response"
 )
+
+const (
+	providerModelsFetchTimeout  = 15 * time.Second
+	providerModelsResponseLimit = 1 << 20
+)
+
+type AIProviderModelFetchError struct {
+	Code    int
+	Message string
+}
+
+func (e *AIProviderModelFetchError) Error() string {
+	return e.Message
+}
+
+type openAIModelsResponse struct {
+	Data []modelresponse.AIProviderModelItem `json:"data"`
+}
 
 func (s *AIService) defaultModelID() string {
 	aiConfig := Config.GetAIConfig()
@@ -186,4 +209,151 @@ func (s *AIService) TestConfig(apiKey, baseURL, model string) error {
 	}
 
 	return nil
+}
+
+func (s *AIService) FetchProviderModels(apiKey, baseURL string) ([]modelresponse.AIProviderModelItem, error) {
+	client := &http.Client{Timeout: providerModelsFetchTimeout}
+	return s.fetchProviderModelsWithClient(client, apiKey, baseURL)
+}
+
+func (s *AIService) fetchProviderModelsWithClient(client *http.Client, apiKey, baseURL string) ([]modelresponse.AIProviderModelItem, error) {
+	if strings.TrimSpace(apiKey) == "" {
+		return nil, &AIProviderModelFetchError{Code: 400, Message: "请先填写 API Key"}
+	}
+	if strings.TrimSpace(baseURL) == "" {
+		return nil, &AIProviderModelFetchError{Code: 400, Message: "请先填写 Base URL"}
+	}
+
+	candidates, err := buildProviderModelsCandidates(baseURL)
+	if err != nil {
+		return nil, &AIProviderModelFetchError{Code: 400, Message: "Base URL 格式不正确"}
+	}
+
+	var lastErr error
+	for index, candidate := range candidates {
+		models, fetchErr := fetchProviderModelsFromURL(client, apiKey, candidate)
+		if fetchErr == nil {
+			return models, nil
+		}
+
+		lastErr = fetchErr
+		fetchBizErr, ok := fetchErr.(*AIProviderModelFetchError)
+		shouldFallback := index < len(candidates)-1 && ok && fetchBizErr.Code == http.StatusNotFound
+		if !shouldFallback {
+			return nil, fetchErr
+		}
+	}
+
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, &AIProviderModelFetchError{Code: 502, Message: "拉取模型列表失败，请稍后重试"}
+}
+
+func buildProviderModelsCandidates(baseURL string) ([]string, error) {
+	normalized, err := normalizeProviderBaseURL(baseURL)
+	if err != nil {
+		return nil, err
+	}
+	if strings.HasSuffix(strings.ToLower(normalized.Path), "/v1") {
+		return []string{appendURLPath(normalized, "models")}, nil
+	}
+	return []string{
+		appendURLPath(normalized, "v1", "models"),
+		appendURLPath(normalized, "models"),
+	}, nil
+}
+
+func normalizeProviderBaseURL(baseURL string) (*url.URL, error) {
+	trimmed := strings.TrimSpace(strings.TrimRight(baseURL, "/"))
+	if trimmed == "" {
+		return nil, errors.New("empty base url")
+	}
+	parsed, err := url.Parse(trimmed)
+	if err != nil {
+		return nil, err
+	}
+	if parsed.Scheme == "" || parsed.Host == "" {
+		return nil, errors.New("invalid base url")
+	}
+	if parsed.Path == "" {
+		parsed.Path = "/"
+	}
+	return parsed, nil
+}
+
+func appendURLPath(base *url.URL, segments ...string) string {
+	cloned := *base
+	parts := []string{cloned.Path}
+	parts = append(parts, segments...)
+	cloned.Path = path.Join(parts...)
+	if !strings.HasPrefix(cloned.Path, "/") {
+		cloned.Path = "/" + cloned.Path
+	}
+	return cloned.String()
+}
+
+func fetchProviderModelsFromURL(client *http.Client, apiKey, endpoint string) ([]modelresponse.AIProviderModelItem, error) {
+	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, &AIProviderModelFetchError{Code: 400, Message: "模型列表地址无效"}
+	}
+
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		if isTimeoutError(err) {
+			return nil, &AIProviderModelFetchError{Code: 504, Message: "拉取模型列表超时，请稍后重试"}
+		}
+		return nil, &AIProviderModelFetchError{Code: 502, Message: "拉取模型列表失败，请检查 Base URL 是否可用"}
+	}
+	defer resp.Body.Close()
+
+	reader := io.LimitReader(resp.Body, providerModelsResponseLimit)
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(reader)
+		return nil, sanitizeProviderModelsError(resp.StatusCode, string(body))
+	}
+
+	var payload openAIModelsResponse
+	if err := json.NewDecoder(reader).Decode(&payload); err != nil {
+		return nil, &AIProviderModelFetchError{Code: 502, Message: "平台模型列表响应格式无效"}
+	}
+
+	models := make([]modelresponse.AIProviderModelItem, 0, len(payload.Data))
+	for _, item := range payload.Data {
+		if strings.TrimSpace(item.ID) == "" {
+			continue
+		}
+		models = append(models, modelresponse.AIProviderModelItem{
+			ID:      strings.TrimSpace(item.ID),
+			Object:  strings.TrimSpace(item.Object),
+			Created: item.Created,
+			OwnedBy: strings.TrimSpace(item.OwnedBy),
+		})
+	}
+	return models, nil
+}
+
+func sanitizeProviderModelsError(statusCode int, _ string) error {
+	switch statusCode {
+	case http.StatusUnauthorized, http.StatusForbidden:
+		return &AIProviderModelFetchError{Code: statusCode, Message: "拉取模型列表失败，请检查 API Key 或平台权限"}
+	case http.StatusNotFound:
+		return &AIProviderModelFetchError{Code: statusCode, Message: "未找到模型列表接口，请检查 Base URL"}
+	case http.StatusTooManyRequests:
+		return &AIProviderModelFetchError{Code: 502, Message: "上游平台请求过于频繁，请稍后重试"}
+	default:
+		if statusCode >= 500 {
+			return &AIProviderModelFetchError{Code: 502, Message: "上游平台暂时不可用，请稍后重试"}
+		}
+		return &AIProviderModelFetchError{Code: 502, Message: fmt.Sprintf("拉取模型列表失败，上游返回异常(%d)", statusCode)}
+	}
+}
+
+func isTimeoutError(err error) bool {
+	var netErr net.Error
+	return errors.As(err, &netErr) && netErr.Timeout()
 }

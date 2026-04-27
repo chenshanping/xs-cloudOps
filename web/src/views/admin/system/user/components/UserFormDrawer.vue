@@ -31,6 +31,13 @@
       <a-form-item label="昵称">
         <a-input v-model:value="formState.nickname" />
       </a-form-item>
+      <a-form-item label="性别">
+        <a-select v-model:value="formState.gender" placeholder="请选择性别">
+          <a-select-option v-for="option in genderOptions" :key="option.value" :value="option.value">
+            {{ option.label }}
+          </a-select-option>
+        </a-select>
+      </a-form-item>
       <a-form-item label="邮箱">
         <a-input v-model:value="formState.email" />
       </a-form-item>
@@ -76,6 +83,7 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import { message } from 'ant-design-vue'
 import AvatarUpload from '@/components/AvatarUpload.vue'
 import type { Role } from '@/types'
+import type { GenderOption } from '../user-gender'
 
 interface TreeSelectOption {
   key: string | number
@@ -96,6 +104,7 @@ interface UserFormValue {
   username: string
   password: string
   nickname: string
+  gender: number
   email: string
   phone: string
   deptSelection?: TreeSelectValue
@@ -112,6 +121,7 @@ const props = defineProps<{
   title: string
   isEdit: boolean
   roleOptions: Role[]
+  genderOptions: GenderOption[]
   deptOptions: TreeSelectOption[]
   initialValue?: Partial<UserFormValue>
 }>()
@@ -122,6 +132,7 @@ const emit = defineEmits<{
     username: string
     password: string
     nickname: string
+    gender: number
     email: string
     phone: string
     dept_id?: number
@@ -137,6 +148,7 @@ const formState = reactive<UserFormValue>({
   username: '',
   password: '123456',
   nickname: '',
+  gender: 0,
   email: '',
   phone: '',
   deptSelection: undefined,
@@ -226,6 +238,7 @@ watch(
       username: props.initialValue?.username ?? '',
       password: props.initialValue?.password ?? '123456',
       nickname: props.initialValue?.nickname ?? '',
+      gender: props.initialValue?.gender ?? 0,
       email: props.initialValue?.email ?? '',
       phone: props.initialValue?.phone ?? '',
       deptSelection: deptId ? { value: deptId, label: deptLabel ?? String(deptId) } : undefined,
@@ -262,6 +275,7 @@ const handleSubmit = async () => {
     username: formState.username,
     password: formState.password,
     nickname: formState.nickname,
+    gender: formState.gender,
     email: formState.email,
     phone: formState.phone,
     dept_id: formState.deptSelection?.value,

@@ -1,177 +1,303 @@
 <template>
   <div class="ai-config">
     <a-spin :spinning="loading">
-      <a-form :label-col="{ span: 4 }" :wrapper-col="{ span: 18 }">
-        <!-- 平台配置 -->
-        <a-collapse v-model:activeKey="activeProviders" accordion>
-          <a-collapse-panel v-for="(provider, pIndex) in formData.providers" :key="pIndex">
-            <template #header>
-              <span>{{ provider.name || '新平台' }}</span>
-              <a-tag v-if="isDefaultProvider(pIndex)" color="blue" style="margin-left: 8px">默认</a-tag>
-            </template>
-            <template #extra>
-              <a-space @click.stop>
-                <a-button 
-                  v-if="!isDefaultProvider(pIndex) && provider.name" 
-                  type="link" 
-                  size="small" 
-                  @click="setDefaultProvider(pIndex)"
-                >
-                  设为默认
+      <div class="ai-config-layout">
+        <section class="provider-panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">AI 平台</div>
+              <div class="panel-subtitle">选择平台并维护本地导入模型</div>
+            </div>
+            <a-button type="primary" @click="openCreateProviderDrawer">
+              <template #icon><PlusOutlined /></template>
+              新增平台
+            </a-button>
+          </div>
+
+          <div v-if="formData.providers.length > 0" class="provider-list">
+            <button
+              v-for="(provider, index) in formData.providers"
+              :key="`${provider.name || 'provider'}-${index}`"
+              type="button"
+              class="provider-item"
+              :class="{ 'provider-item--active': index === selectedProviderIndex }"
+              @click="selectProvider(index)"
+            >
+              <div class="provider-item__header">
+                <span class="provider-item__name">{{ provider.name || '未命名平台' }}</span>
+                <a-tag v-if="isDefaultProvider(index)" color="blue">默认</a-tag>
+              </div>
+              <div class="provider-item__meta">{{ provider.models.length }} 个已导入模型</div>
+            </button>
+          </div>
+
+          <a-empty v-else description="暂未配置 AI 平台">
+            <a-button type="primary" @click="openCreateProviderDrawer">新增第一个平台</a-button>
+          </a-empty>
+        </section>
+
+        <section class="models-panel">
+          <template v-if="selectedProvider">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">{{ selectedProvider.name || '未命名平台' }}</div>
+                <div class="panel-subtitle">
+                  {{ selectedProvider.base_url || '请先配置 Base URL' }}
+                </div>
+              </div>
+              <a-space wrap>
+                <a-button @click="openEditProviderDrawer">
+                  <template #icon><EditOutlined /></template>
+                  编辑平台
                 </a-button>
-                <a-button type="link" danger size="small" @click="removeProvider(pIndex)">
-                  <template #icon><DeleteOutlined /></template>
+                <a-button type="primary" @click="openModelManagerDrawer">
+                  <template #icon><CloudDownloadOutlined /></template>
+                  管理平台模型
                 </a-button>
               </a-space>
-            </template>
-            
-            <a-form-item label="平台名称" :label-col="{ span: 4 }" :wrapper-col="{ span: 18 }">
-              <a-input v-model:value="provider.name" placeholder="如：阿里云百炼" />
-            </a-form-item>
-            
-            <a-form-item label="API Key" :label-col="{ span: 4 }" :wrapper-col="{ span: 18 }">
-              <a-input-password v-model:value="provider.api_key" placeholder="请输入API Key" />
-            </a-form-item>
-            
-            <a-form-item label="Base URL" :label-col="{ span: 4 }" :wrapper-col="{ span: 18 }">
-              <a-input v-model:value="provider.base_url" placeholder="如：https://dashscope.aliyuncs.com/compatible-mode/v1" />
-            </a-form-item>
+            </div>
 
-            <!-- 模型列表 -->
-            <a-form-item label="模型列表" :label-col="{ span: 4 }" :wrapper-col="{ span: 18 }">
-              <div class="models-list">
-                <div class="models-header">
-                  <span class="col-id">模型ID</span>
-                  <span class="col-name">显示名称</span>
-                  <span class="col-desc">模型描述</span>
-                  <span class="col-actions">操作</span>
-                </div>
-                <div v-for="(model, mIndex) in provider.models" :key="mIndex" class="model-item">
-                  <a-input v-model:value="model.id" placeholder="模型ID" size="small" class="col-id" />
-                  <a-input v-model:value="model.name" placeholder="显示名称" size="small" class="col-name" />
-                  <a-input v-model:value="model.description" placeholder="模型描述" size="small" class="col-desc" />
-                  <div class="col-actions">
+            <a-alert
+              class="page-alert"
+              type="info"
+              show-icon
+              message="模型导入只更新当前编辑态；仍需点击底部“保存配置”后才会真正落库。"
+            />
+
+            <div class="models-header">
+              <div>
+                <div class="models-title">已导入模型</div>
+                <div class="models-subtitle">支持本地维护显示名称、描述、顺序与测试。</div>
+              </div>
+              <a-button @click="addModel">
+                <template #icon><PlusOutlined /></template>
+                手动添加模型
+              </a-button>
+            </div>
+
+            <a-table
+              :data-source="selectedProvider.models"
+              :columns="modelColumns"
+              :pagination="false"
+              :row-key="(_record, index) => `model-${index}`"
+              size="small"
+              class="models-table"
+              :locale="{ emptyText: '当前平台还没有已导入模型' }"
+            >
+              <template #bodyCell="{ column, index }">
+                <template v-if="column.key === 'id'">
+                  <a-input
+                    v-model:value="selectedProvider.models[index].id"
+                    size="small"
+                    placeholder="模型 ID"
+                  />
+                </template>
+                <template v-else-if="column.key === 'name'">
+                  <a-input
+                    v-model:value="selectedProvider.models[index].name"
+                    size="small"
+                    placeholder="显示名称"
+                  />
+                </template>
+                <template v-else-if="column.key === 'description'">
+                  <a-input
+                    v-model:value="selectedProvider.models[index].description"
+                    size="small"
+                    placeholder="模型描述"
+                  />
+                </template>
+                <template v-else-if="column.key === 'actions'">
+                  <div class="model-actions">
                     <a-tooltip title="上移">
-                      <a-button 
-                        type="text" 
-                        size="small" 
-                        :disabled="mIndex === 0"
-                        @click="moveModel(pIndex, mIndex, -1)"
+                      <a-button
+                        type="text"
+                        size="small"
+                        :disabled="index === 0"
+                        @click="moveModel(index, -1)"
                       >
                         <template #icon><UpOutlined /></template>
                       </a-button>
                     </a-tooltip>
                     <a-tooltip title="下移">
-                      <a-button 
-                        type="text" 
-                        size="small" 
-                        :disabled="mIndex === provider.models.length - 1"
-                        @click="moveModel(pIndex, mIndex, 1)"
+                      <a-button
+                        type="text"
+                        size="small"
+                        :disabled="index === selectedProvider.models.length - 1"
+                        @click="moveModel(index, 1)"
                       >
                         <template #icon><DownOutlined /></template>
                       </a-button>
                     </a-tooltip>
                     <a-tooltip title="测试">
-                      <a-button 
-                        type="text" 
+                      <a-button
+                        type="text"
                         size="small"
-                        :loading="testingModel === `${pIndex}-${mIndex}`"
-                        @click="testModel(pIndex, mIndex)"
+                        :loading="testingModel === `${selectedProviderIndex}-${index}`"
+                        @click="testModel(index)"
                       >
                         <template #icon><ThunderboltOutlined /></template>
                       </a-button>
                     </a-tooltip>
                     <a-tooltip title="删除">
-                      <a-button type="text" danger size="small" @click="removeModel(pIndex, mIndex)">
+                      <a-button type="text" danger size="small" @click="removeModel(index)">
                         <template #icon><DeleteOutlined /></template>
                       </a-button>
                     </a-tooltip>
                   </div>
-                </div>
-                <a-button type="dashed" size="small" block @click="addModel(pIndex)" style="margin-top: 8px">
-                  <template #icon><PlusOutlined /></template>
-                  添加模型
-                </a-button>
-              </div>
-            </a-form-item>
-          </a-collapse-panel>
-        </a-collapse>
+                </template>
+              </template>
+            </a-table>
+          </template>
 
-        <div style="margin-top: 16px">
-          <a-button type="dashed" block @click="addProvider">
-            <template #icon><PlusOutlined /></template>
-            添加平台
-          </a-button>
-        </div>
+          <a-empty v-else description="请先新增 AI 平台">
+            <a-button type="primary" @click="openCreateProviderDrawer">新增平台</a-button>
+          </a-empty>
+        </section>
+      </div>
 
-        <!-- 操作按钮 -->
-        <a-form-item :wrapper-col="{ offset: 4, span: 18 }" style="margin-top: 24px">
-          <a-button type="primary" :loading="saving" @click="handleSave">保存配置</a-button>
-        </a-form-item>
-      </a-form>
+      <div class="page-actions">
+        <a-button type="primary" :loading="saving" @click="handleSave">保存配置</a-button>
+      </div>
     </a-spin>
+
+    <ProviderEditorDrawer
+      v-model:open="providerDrawerOpen"
+      :is-edit="providerDrawerMode === 'edit'"
+      :initial-value="editingProvider"
+      :is-default="editingProviderIsDefault"
+      :existing-names="providerNames"
+      @submit="handleProviderSubmit"
+      @remove="handleProviderRemove"
+    />
+
+    <ProviderModelManagerDrawer
+      v-model:open="modelManagerDrawerOpen"
+      :provider-name="selectedProvider?.name ?? ''"
+      :api-key="selectedProvider?.api_key ?? ''"
+      :provider-base-url="selectedProvider?.base_url ?? ''"
+      :local-models="selectedProvider?.models ?? []"
+      @import="handleImportModels"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
-import { DeleteOutlined, PlusOutlined, UpOutlined, DownOutlined, ThunderboltOutlined } from '@ant-design/icons-vue'
-import { getConfigByKey, updateConfig, createConfig, aiTest } from '@/api/config'
+import {
+  CloudDownloadOutlined,
+  DeleteOutlined,
+  DownOutlined,
+  EditOutlined,
+  PlusOutlined,
+  ThunderboltOutlined,
+  UpOutlined,
+} from '@ant-design/icons-vue'
+import { aiTest, createConfig, getConfigByKey, updateConfig } from '@/api/config'
 import { cloneFromSnapshot, createSnapshot, isSnapshotDirty } from '../config-tab-guard'
+import ProviderEditorDrawer from './ai-config/ProviderEditorDrawer.vue'
+import ProviderModelManagerDrawer from './ai-config/ProviderModelManagerDrawer.vue'
+import {
+  createEmptyModel,
+  createEmptyProvider,
+  mergeImportedModels,
+  normalizeAIConfig,
+  type AIConfigState,
+  type RemoteProviderModel,
+} from './ai-config/state'
 
-interface AIModel {
-  id: string
-  name: string
-  description: string
-}
-
-interface AIProvider {
+interface ProviderEditorSubmitValue {
   name: string
   api_key: string
   base_url: string
-  models: AIModel[]
+  isDefault: boolean
 }
 
-interface AIConfig {
-  default_provider: string
-  providers: AIProvider[]
-}
+const modelColumns = [
+  { title: '模型 ID', key: 'id', width: 220 },
+  { title: '显示名称', key: 'name', width: 220 },
+  { title: '模型描述', key: 'description' },
+  { title: '操作', key: 'actions', width: 180, fixed: 'right' as const },
+]
 
 const loading = ref(true)
 const saving = ref(false)
 const configId = ref<number | null>(null)
-const activeProviders = ref<number[]>([0])
+const selectedProviderIndex = ref(0)
+const providerDrawerOpen = ref(false)
+const providerDrawerMode = ref<'create' | 'edit'>('create')
+const editingProviderIndex = ref<number | null>(null)
+const modelManagerDrawerOpen = ref(false)
 const testingModel = ref<string | null>(null)
 const initialized = ref(false)
+
 const emit = defineEmits<{
   (e: 'dirty-change', value: boolean): void
 }>()
 
-const formData = reactive<AIConfig>({
+const formData = reactive<AIConfigState>({
   default_provider: '',
-  providers: []
+  providers: [],
 })
 
-const getConfigState = (): AIConfig => ({
+const selectedProvider = computed(() => formData.providers[selectedProviderIndex.value] ?? null)
+const providerNames = computed(() => formData.providers.map(provider => provider.name))
+const editingProvider = computed(() => {
+  if (editingProviderIndex.value === null) {
+    return undefined
+  }
+  return formData.providers[editingProviderIndex.value]
+})
+const editingProviderIsDefault = computed(() => {
+  if (editingProviderIndex.value === null) {
+    return formData.providers.length === 0
+  }
+  return isDefaultProvider(editingProviderIndex.value)
+})
+
+const getConfigState = (): AIConfigState => ({
   default_provider: formData.default_provider,
-  providers: formData.providers,
+  providers: formData.providers.map(provider => ({
+    name: provider.name,
+    api_key: provider.api_key,
+    base_url: provider.base_url,
+    models: provider.models.map(model => ({
+      id: model.id,
+      name: model.name,
+      description: model.description,
+    })),
+  })),
 })
 
-const applyConfigState = (state: AIConfig) => {
-  formData.default_provider = state.default_provider || ''
-  formData.providers = state.providers || []
-  activeProviders.value = formData.providers.length > 0 ? [0] : []
+const syncSelectedProviderIndex = (preferredIndex = selectedProviderIndex.value) => {
+  if (formData.providers.length === 0) {
+    selectedProviderIndex.value = 0
+    return
+  }
+  selectedProviderIndex.value = Math.min(Math.max(preferredIndex, 0), formData.providers.length - 1)
+}
+
+const applyConfigState = (state?: Partial<AIConfigState> | null) => {
+  const normalized = normalizeAIConfig(state)
+  formData.default_provider = normalized.default_provider
+  formData.providers = normalized.providers
+  if (!formData.default_provider && formData.providers.length > 0) {
+    formData.default_provider = formData.providers[0].name
+  }
+  syncSelectedProviderIndex()
 }
 
 const baselineSnapshot = ref(createSnapshot(getConfigState()))
 const hasUnsavedChanges = computed(() => initialized.value && isSnapshotDirty(baselineSnapshot.value, getConfigState()))
 
-watch(hasUnsavedChanges, (value) => {
-  emit('dirty-change', value)
-}, { immediate: true })
+watch(
+  hasUnsavedChanges,
+  value => {
+    emit('dirty-change', value)
+  },
+  { immediate: true },
+)
 
-// 加载配置
 const loadConfig = async () => {
   loading.value = true
   try {
@@ -179,15 +305,16 @@ const loadConfig = async () => {
     if (res.data) {
       configId.value = res.data.id
       if (res.data.value) {
-        const config = JSON.parse(res.data.value) as AIConfig
-        applyConfigState(config)
+        applyConfigState(JSON.parse(res.data.value) as AIConfigState)
+      } else {
+        applyConfigState()
       }
     }
-  } catch (e: any) {
-    // 配置不存在，使用默认空配置
-    if (e.response?.status !== 404) {
-      message.error('加载配置失败')
+  } catch (error: any) {
+    if (error.message !== '请求失败 (404)') {
+      message.error('加载 AI 配置失败')
     }
+    applyConfigState()
   } finally {
     baselineSnapshot.value = createSnapshot(getConfigState())
     initialized.value = true
@@ -195,110 +322,219 @@ const loadConfig = async () => {
   }
 }
 
-// 添加平台
-const addProvider = () => {
-  formData.providers.push({
-    name: '',
-    api_key: '',
-    base_url: '',
-    models: []
-  })
-  activeProviders.value = [formData.providers.length - 1]
+const openCreateProviderDrawer = () => {
+  providerDrawerMode.value = 'create'
+  editingProviderIndex.value = null
+  providerDrawerOpen.value = true
 }
 
-// 删除平台
-const removeProvider = (index: number) => {
+const openEditProviderDrawer = () => {
+  if (!selectedProvider.value) {
+    message.warning('请先选择要编辑的平台')
+    return
+  }
+  providerDrawerMode.value = 'edit'
+  editingProviderIndex.value = selectedProviderIndex.value
+  providerDrawerOpen.value = true
+}
+
+const selectProvider = (index: number) => {
+  selectedProviderIndex.value = index
+}
+
+const isDefaultProvider = (index: number) => formData.providers[index]?.name === formData.default_provider
+
+const ensureDefaultProvider = () => {
+  if (formData.providers.length === 0) {
+    formData.default_provider = ''
+    return
+  }
+  const hasDefaultProvider = formData.providers.some(provider => provider.name === formData.default_provider)
+  if (!hasDefaultProvider) {
+    formData.default_provider = formData.providers[0].name
+  }
+}
+
+const handleProviderSubmit = (value: ProviderEditorSubmitValue) => {
+  if (providerDrawerMode.value === 'create') {
+    formData.providers.push({
+      ...createEmptyProvider(),
+      name: value.name,
+      api_key: value.api_key,
+      base_url: value.base_url,
+    })
+    selectedProviderIndex.value = formData.providers.length - 1
+    if (value.isDefault || formData.providers.length === 1 || !formData.default_provider) {
+      formData.default_provider = value.name
+    } else {
+      ensureDefaultProvider()
+    }
+  } else if (editingProviderIndex.value !== null) {
+    const provider = formData.providers[editingProviderIndex.value]
+    const previousName = provider.name
+    provider.name = value.name
+    provider.api_key = value.api_key
+    provider.base_url = value.base_url
+
+    if (value.isDefault) {
+      formData.default_provider = value.name
+    } else if (formData.default_provider === previousName) {
+      formData.default_provider = value.name
+    }
+    ensureDefaultProvider()
+    selectedProviderIndex.value = editingProviderIndex.value
+  }
+
+  providerDrawerOpen.value = false
+}
+
+const handleProviderRemove = () => {
+  const index = editingProviderIndex.value ?? selectedProviderIndex.value
+  if (index < 0 || index >= formData.providers.length) {
+    return
+  }
+
   const removed = formData.providers[index]
   formData.providers.splice(index, 1)
-  // 如果删除的是默认平台，自动设置第一个为默认
-  if (removed.name === formData.default_provider) {
-    formData.default_provider = formData.providers[0]?.name || ''
+  if (formData.default_provider === removed.name) {
+    formData.default_provider = formData.providers[0]?.name ?? ''
   }
+  providerDrawerOpen.value = false
+  ensureDefaultProvider()
+  syncSelectedProviderIndex(index)
+  message.success(`已删除平台 ${removed.name || '未命名平台'}`)
 }
 
-// 设置默认平台
-const setDefaultProvider = (index: number) => {
-  formData.default_provider = formData.providers[index].name
-  message.info('已设为默认，请记得保存配置')
-}
-
-// 判断是否为默认平台
-const isDefaultProvider = (index: number) => {
-  return formData.providers[index].name === formData.default_provider
-}
-
-// 添加模型
-const addModel = (providerIndex: number) => {
-  formData.providers[providerIndex].models.push({
-    id: '',
-    name: '',
-    description: ''
-  })
-}
-
-// 删除模型
-const removeModel = (providerIndex: number, modelIndex: number) => {
-  formData.providers[providerIndex].models.splice(modelIndex, 1)
-}
-
-// 移动模型顺序
-const moveModel = (providerIndex: number, modelIndex: number, direction: number) => {
-  const models = formData.providers[providerIndex].models
-  const newIndex = modelIndex + direction
-  if (newIndex < 0 || newIndex >= models.length) return
-  const temp = models[modelIndex]
-  models[modelIndex] = models[newIndex]
-  models[newIndex] = temp
-}
-
-// 测试模型
-const testModel = async (providerIndex: number, modelIndex: number) => {
-  const provider = formData.providers[providerIndex]
-  const model = provider.models[modelIndex]
-  
-  if (!provider.api_key) {
-    message.warning('请先填写 API Key')
+const openModelManagerDrawer = () => {
+  if (!selectedProvider.value) {
+    message.warning('请先选择平台')
     return
   }
-  if (!provider.base_url) {
-    message.warning('请先填写 Base URL')
+  modelManagerDrawerOpen.value = true
+}
+
+const addModel = () => {
+  if (!selectedProvider.value) {
     return
   }
-  if (!model.id) {
+  selectedProvider.value.models.push(createEmptyModel())
+}
+
+const removeModel = (modelIndex: number) => {
+  selectedProvider.value?.models.splice(modelIndex, 1)
+}
+
+const moveModel = (modelIndex: number, direction: number) => {
+  const models = selectedProvider.value?.models
+  if (!models) {
+    return
+  }
+  const targetIndex = modelIndex + direction
+  if (targetIndex < 0 || targetIndex >= models.length) {
+    return
+  }
+  const current = models[modelIndex]
+  models[modelIndex] = models[targetIndex]
+  models[targetIndex] = current
+}
+
+const testModel = async (modelIndex: number) => {
+  const provider = selectedProvider.value
+  const model = provider?.models[modelIndex]
+  if (!provider || !model) {
+    return
+  }
+
+  if (!provider.api_key.trim()) {
+    message.warning('请先填写当前平台的 API Key')
+    return
+  }
+  if (!provider.base_url.trim()) {
+    message.warning('请先填写当前平台的 Base URL')
+    return
+  }
+  if (!model.id.trim()) {
     message.warning('请先填写模型 ID')
     return
   }
 
-  testingModel.value = `${providerIndex}-${modelIndex}`
+  testingModel.value = `${selectedProviderIndex.value}-${modelIndex}`
   try {
-    let data={
-        api_key: provider.api_key,
+    await aiTest({
+      api_key: provider.api_key,
       base_url: provider.base_url,
-      model: model.id
-    }
-    await aiTest(data)
+      model: model.id,
+    })
     message.success(`模型 ${model.name || model.id} 测试成功`)
-    
-  } catch (e: any) {
-    // 拦截器抛出的是 new Error(res.message)，所以用 e.message
-    message.error(e.message || '测试失败')
+  } catch (error: any) {
+    message.error(error.message || '测试失败')
   } finally {
     testingModel.value = null
   }
 }
 
-// 保存配置
-const save = async () => {
-  // 验证
-  for (const p of formData.providers) {
-    if (!p.name) {
+const handleImportModels = (models: RemoteProviderModel[]) => {
+  if (!selectedProvider.value) {
+    return
+  }
+  const result = mergeImportedModels(selectedProvider.value.models, models)
+  selectedProvider.value.models = result.models
+
+  if (result.importedCount > 0) {
+    message.success(`已导入 ${result.importedCount} 个模型，重复跳过 ${result.skippedCount} 个`)
+    return
+  }
+  message.info('所选模型都已存在，未重复导入')
+}
+
+const validateBeforeSave = () => {
+  const providerNameSet = new Set<string>()
+
+  for (const provider of formData.providers) {
+    provider.name = provider.name.trim()
+    provider.api_key = provider.api_key.trim()
+    provider.base_url = provider.base_url.trim()
+
+    if (!provider.name) {
       message.warning('请填写平台名称')
       return false
     }
-    if (!p.base_url) {
-      message.warning(`请填写 ${p.name} 的 Base URL`)
+    if (providerNameSet.has(provider.name)) {
+      message.warning(`平台名称“${provider.name}”不能重复`)
       return false
     }
+    providerNameSet.add(provider.name)
+
+    if (!provider.base_url) {
+      message.warning(`请填写 ${provider.name} 的 Base URL`)
+      return false
+    }
+
+    const modelIDSet = new Set<string>()
+    for (const model of provider.models) {
+      model.id = model.id.trim()
+      model.name = (model.name || model.id).trim()
+      model.description = model.description.trim()
+
+      if (!model.id) {
+        message.warning(`请填写 ${provider.name} 平台下的模型 ID`)
+        return false
+      }
+      if (modelIDSet.has(model.id)) {
+        message.warning(`平台 ${provider.name} 下存在重复模型 ID：${model.id}`)
+        return false
+      }
+      modelIDSet.add(model.id)
+    }
+  }
+
+  ensureDefaultProvider()
+  return true
+}
+
+const save = async () => {
+  if (!validateBeforeSave()) {
+    return false
   }
 
   saving.value = true
@@ -312,14 +548,14 @@ const save = async () => {
         key: 'ai_config',
         value,
         value_type: 'json',
-        remark: 'AI平台配置，包含平台名称、API Key、基础URL和模型列表'
+        remark: 'AI平台配置，包含平台名称、API Key、基础URL和模型列表',
       })
       configId.value = res.data.id
     }
     baselineSnapshot.value = createSnapshot(getConfigState())
     message.success('保存成功')
     return true
-  } catch (e) {
+  } catch {
     message.error('保存失败')
     return false
   } finally {
@@ -328,11 +564,15 @@ const save = async () => {
 }
 
 const discardChanges = () => {
-  const restored = cloneFromSnapshot<AIConfig>(baselineSnapshot.value)
+  const restored = cloneFromSnapshot<AIConfigState>(baselineSnapshot.value)
   applyConfigState(restored)
+  closeTransientUi()
 }
 
-const closeTransientUi = () => {}
+const closeTransientUi = () => {
+  providerDrawerOpen.value = false
+  modelManagerDrawerOpen.value = false
+}
 
 const handleSave = async () => {
   await save()
@@ -352,70 +592,130 @@ defineExpose({
 
 <style scoped>
 .ai-config {
-  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.models-list {
-  border: 1px solid #e8e8e8;
-  border-radius: 6px;
+.ai-config-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.provider-panel,
+.models-panel {
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
+  background: #fff;
+  padding: 16px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.panel-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f1f1f;
+}
+
+.panel-subtitle {
+  margin-top: 4px;
+  color: #8c8c8c;
+  word-break: break-all;
+}
+
+.provider-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.provider-item {
+  width: 100%;
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
+  padding: 14px 16px;
   background: #fafafa;
-  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.provider-item:hover,
+.provider-item--active {
+  border-color: #1677ff;
+  background: #f0f7ff;
+}
+
+.provider-item__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.provider-item__name {
+  min-width: 0;
+  font-weight: 600;
+  color: #1f1f1f;
+}
+
+.provider-item__meta {
+  margin-top: 8px;
+  color: #8c8c8c;
+  font-size: 12px;
+}
+
+.page-alert {
+  margin-bottom: 16px;
 }
 
 .models-header {
   display: flex;
-  gap: 8px;
-  padding: 8px 12px;
-  background: #f0f0f0;
-  font-size: 12px;
-  color: #666;
-  font-weight: 500;
-}
-
-.model-item {
-  display: flex;
-  gap: 8px;
-  padding: 8px 12px;
-  border-bottom: 1px solid #f0f0f0;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
-.model-item:hover {
-  background: #fff;
+.models-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f1f1f;
 }
 
-.model-item:last-child {
-  border-bottom: none;
+.models-subtitle {
+  margin-top: 4px;
+  color: #8c8c8c;
 }
 
-.col-id {
-  width: 160px;
-  flex-shrink: 0;
+.models-table :deep(.ant-table-cell) {
+  vertical-align: middle;
 }
 
-.col-name {
-  width: 140px;
-  flex-shrink: 0;
+.model-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
 }
 
-.col-desc {
-  flex: 1;
-  min-width: 0;
-}
-
-.col-actions {
-  width: 130px;
-  flex-shrink: 0;
+.page-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 2px;
 }
 
-:deep(.ant-collapse-header) {
-  align-items: center !important;
-}
-
-:deep(.ant-collapse-extra) {
-  margin-left: auto;
+@media (max-width: 960px) {
+  .ai-config-layout {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

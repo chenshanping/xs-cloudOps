@@ -22,36 +22,26 @@
 import { ref, onErrorCaptured } from 'vue'
 import { useRouter } from 'vue-router'
 
+type CapturedBoundaryError = Error & {
+  handledByMessage?: boolean
+  errorSource?: string
+}
+
 const router = useRouter()
 const error = ref<string>('')
 
-// API 错误关键词，这些错误已经由 request.ts 处理并显示 message，不需要显示错误页面
-const apiErrorKeywords = [
-  '服务器内部错误',
-  '网关错误',
-  '服务不可用',
-  '网关超时',
-  '请求失败',
-  '请求超时',
-  '网络已断开',
-  '无法连接服务器',
-  '网络错误',
-  'Token',
-]
+onErrorCaptured((err: CapturedBoundaryError) => {
+  const errMsg = err?.message || '未知错误'
 
-onErrorCaptured((err: any) => {
-  const errMsg = err.message || '未知错误'
-  
-  // 检查是否是 API 错误，如果是则不显示错误页面
-  const isApiError = apiErrorKeywords.some(keyword => errMsg.includes(keyword))
-  if (isApiError) {
-    console.warn('API错误已由 request.ts 处理:', errMsg)
-    return false // 阻止错误继续向上传播，但不显示错误页面
+  // request.ts 已经弹过消息的接口错误，不再升级成整页错误页
+  if (err?.handledByMessage || err?.errorSource === 'request') {
+    console.warn('接口错误已由消息提示处理:', errMsg)
+    return false
   }
-  
+
   console.error('捕获到组件错误:', err)
   error.value = errMsg
-  return false // 阻止错误继续向上传播
+  return false
 })
 
 const reload = () => {

@@ -234,6 +234,7 @@ func initDefaultConfigs() {
 func ensureBuiltInData() {
 	ensureSystemStorageConfigs()
 	ensureFileStorageSnapshots()
+	ensureGenderDictData()
 	ensureConfigExists(model.SysConfig{
 		Name:      "用户身份按钮显示",
 		Key:       "user_profile_button_visible",
@@ -253,6 +254,8 @@ func ensureBuiltInData() {
 	backfillDepartmentFoundation(rootDept.ID)
 
 	ensureDeptApiAccess()
+	ensureAIApiAccess()
+	ensureAIToolMenus()
 	ensureDeptMenus()
 	cleanupStorageBuiltInData()
 
@@ -265,6 +268,54 @@ func ensureBuiltInData() {
 	}, "/api/v1/users/:id/status", "PUT")
 
 	ensureUserBatchStatusMenus()
+}
+
+func ensureGenderDictData() {
+	dictType := model.SysDictType{
+		Name:   "性别",
+		Type:   "sys_gender",
+		Status: 1,
+		Remark: "用户性别字典",
+	}
+
+	if err := global.DB.
+		Where("type = ?", dictType.Type).
+		Attrs(model.SysDictType{
+			Name:   dictType.Name,
+			Status: dictType.Status,
+			Remark: dictType.Remark,
+		}).
+		FirstOrCreate(&dictType).Error; err != nil {
+		global.Log.Errorf("补齐性别字典类型失败: %v", err)
+		return
+	}
+
+	items := []model.SysDictData{
+		{DictType: "sys_gender", Label: "未知", Value: "0", Sort: 0, Status: 1, TagType: "default", IsDefault: 1, Remark: "默认值"},
+		{DictType: "sys_gender", Label: "男", Value: "1", Sort: 1, Status: 1, TagType: "processing", IsDefault: 0, Remark: ""},
+		{DictType: "sys_gender", Label: "女", Value: "2", Sort: 2, Status: 1, TagType: "pink", IsDefault: 0, Remark: ""},
+	}
+
+	for _, definition := range items {
+		item := definition
+		if err := global.DB.
+			Where("dict_type = ? AND value = ?", item.DictType, item.Value).
+			Attrs(model.SysDictData{
+				Label:     item.Label,
+				Sort:      item.Sort,
+				Status:    item.Status,
+				TagType:   item.TagType,
+				IsDefault: item.IsDefault,
+				Remark:    item.Remark,
+			}).
+			FirstOrCreate(&item).Error; err != nil {
+			global.Log.Errorf("补齐性别字典数据失败(%s): %v", definition.Value, err)
+		}
+	}
+
+	if err := service.Cache.ClearDictCache(dictType.Type); err != nil {
+		global.Log.Errorf("清理性别字典缓存失败: %v", err)
+	}
 }
 
 func ensureConfigExists(config model.SysConfig) {
@@ -593,6 +644,113 @@ func ensureDeptMenus() {
 	grantMenusToRoleCodes(menuIDs, []string{"admin", "system_admin"})
 }
 
+func ensureAIToolMenus() {
+	aiToolsMenu := model.SysMenu{
+		ParentID:   0,
+		Name:       "AI工具",
+		Path:       "/ai-tools",
+		Component:  "Layout",
+		Icon:       "robot",
+		Sort:       3,
+		Type:       1,
+		Permission: "ai:tools",
+		Status:     1,
+		Hidden:     0,
+	}
+
+	if err := global.DB.
+		Where("permission = ?", aiToolsMenu.Permission).
+		Attrs(model.SysMenu{
+			ParentID:  aiToolsMenu.ParentID,
+			Name:      aiToolsMenu.Name,
+			Path:      aiToolsMenu.Path,
+			Component: aiToolsMenu.Component,
+			Icon:      aiToolsMenu.Icon,
+			Sort:      aiToolsMenu.Sort,
+			Type:      aiToolsMenu.Type,
+			Status:    aiToolsMenu.Status,
+			Hidden:    aiToolsMenu.Hidden,
+		}).
+		FirstOrCreate(&aiToolsMenu).Error; err != nil {
+		global.Log.Errorf("补齐AI工具目录失败: %v", err)
+		return
+	}
+
+	menuDefinitions := []model.SysMenu{
+		{
+			ParentID:   aiToolsMenu.ID,
+			Name:       "AI对话",
+			Path:       "/ai/chat",
+			Component:  "ai",
+			Icon:       "robot",
+			Sort:       1,
+			Type:       2,
+			Permission: "ai:chat:list",
+			Status:     1,
+			Hidden:     0,
+		},
+		{
+			ParentID:   aiToolsMenu.ID,
+			Name:       "AI配置",
+			Path:       "/ai/config",
+			Component:  "ai/config/index",
+			Icon:       "setting",
+			Sort:       2,
+			Type:       2,
+			Permission: "ai:config:list",
+			Status:     1,
+			Hidden:     0,
+		},
+	}
+
+	menuIDs := []uint{aiToolsMenu.ID}
+	for _, definition := range menuDefinitions {
+		menu := definition
+		if err := global.DB.
+			Where("permission = ?", menu.Permission).
+			Attrs(model.SysMenu{
+				ParentID:  menu.ParentID,
+				Name:      menu.Name,
+				Path:      menu.Path,
+				Component: menu.Component,
+				Icon:      menu.Icon,
+				Sort:      menu.Sort,
+				Type:      menu.Type,
+				Status:    menu.Status,
+				Hidden:    menu.Hidden,
+			}).
+			FirstOrCreate(&menu).Error; err != nil {
+			global.Log.Errorf("补齐AI工具菜单失败(%s): %v", definition.Permission, err)
+			continue
+		}
+		menuIDs = append(menuIDs, menu.ID)
+	}
+
+	grantMenusToRoleCodes(menuIDs, []string{"admin", "system_admin"})
+}
+
+func ensureAIApiAccess() {
+	apiDefinitions := []model.SysApi{
+		{Path: "/api/v1/ai/conversations", Method: "GET", Group: "AI对话", Description: "获取对话列表", NeedAuth: true},
+		{Path: "/api/v1/ai/conversations", Method: "POST", Group: "AI对话", Description: "创建对话", NeedAuth: true},
+		{Path: "/api/v1/ai/conversations/:id", Method: "GET", Group: "AI对话", Description: "获取对话详情", NeedAuth: true},
+		{Path: "/api/v1/ai/conversations/:id", Method: "PUT", Group: "AI对话", Description: "更新对话标题", NeedAuth: true},
+		{Path: "/api/v1/ai/conversations/:id", Method: "DELETE", Group: "AI对话", Description: "删除对话", NeedAuth: true},
+		{Path: "/api/v1/ai/conversations/:id/messages", Method: "GET", Group: "AI对话", Description: "获取对话消息", NeedAuth: true},
+		{Path: "/api/v1/ai/conversations/:id/messages", Method: "DELETE", Group: "AI对话", Description: "清空对话消息", NeedAuth: true},
+		{Path: "/api/v1/ai/conversations/:id/clear-context", Method: "POST", Group: "AI对话", Description: "清空上下文", NeedAuth: true},
+		{Path: "/api/v1/ai/messages/:id", Method: "DELETE", Group: "AI对话", Description: "删除单条消息", NeedAuth: true},
+		{Path: "/api/v1/ai/chat", Method: "POST", Group: "AI对话", Description: "AI对话", NeedAuth: true},
+		{Path: "/api/v1/ai/chat/stream", Method: "POST", Group: "AI对话", Description: "AI流式对话", NeedAuth: true},
+		{Path: "/api/v1/ai/test", Method: "POST", Group: "AI对话", Description: "测试AI配置", NeedAuth: true},
+		{Path: "/api/v1/ai/providers/models/fetch", Method: "POST", Group: "AI对话", Description: "拉取平台模型列表", NeedAuth: true},
+	}
+
+	for _, definition := range apiDefinitions {
+		ensureApiAccessForRoleCodes(definition, []string{"admin", "system_admin"})
+	}
+}
+
 func ensureApiAccessInheritedFrom(api model.SysApi, sourcePath, sourceMethod string) {
 	if err := global.DB.
 		Where("path = ? AND method = ?", api.Path, api.Method).
@@ -622,6 +780,50 @@ func ensureApiAccessInheritedFrom(api model.SysApi, sourcePath, sourceMethod str
 			global.Log.Errorf("查询内置角色失败: %v", err)
 			return
 		}
+	}
+
+	policyChanged := false
+	for _, role := range roles {
+		var count int64
+		if err := global.DB.Table("sys_role_api").
+			Where("sys_role_id = ? AND sys_api_id = ?", role.ID, api.ID).
+			Count(&count).Error; err == nil && count == 0 {
+			if err := global.DB.Model(&role).Association("Apis").Append(&api); err != nil {
+				global.Log.Errorf("关联角色API失败(%s): %v", role.Code, err)
+			}
+		}
+
+		if global.Enforcer != nil {
+			if ok, err := global.Enforcer.AddPolicy(role.Code, api.Path, api.Method); err != nil {
+				global.Log.Errorf("补齐Casbin策略失败(%s %s %s): %v", role.Code, api.Method, api.Path, err)
+			} else if ok {
+				policyChanged = true
+			}
+		}
+	}
+
+	if policyChanged && global.Enforcer != nil {
+		_ = global.Enforcer.SavePolicy()
+	}
+}
+
+func ensureApiAccessForRoleCodes(api model.SysApi, roleCodes []string) {
+	if err := global.DB.
+		Where("path = ? AND method = ?", api.Path, api.Method).
+		Assign(model.SysApi{
+			Group:       api.Group,
+			Description: api.Description,
+			NeedAuth:    api.NeedAuth,
+		}).
+		FirstOrCreate(&api).Error; err != nil {
+		global.Log.Errorf("补齐系统API失败(%s %s): %v", api.Method, api.Path, err)
+		return
+	}
+
+	var roles []model.SysRole
+	if err := global.DB.Where("code IN ?", roleCodes).Find(&roles).Error; err != nil {
+		global.Log.Errorf("查询内置角色失败: %v", err)
+		return
 	}
 
 	policyChanged := false

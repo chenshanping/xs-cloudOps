@@ -1,5 +1,13 @@
 import request from '@/utils/request'
-import type { FileInfo, UploadCredential, InitMultipartUploadResponse, Part } from '@/types/file'
+import type {
+  FileInfo,
+  UploadCredential,
+  InitMultipartUploadResponse,
+  Part,
+  FileMigrationRequest,
+  FileMigrationResult,
+  FileMigrationTaskStatus,
+} from '@/types/file'
 import type { PageResponse } from '@/types'
 
 // 获取文件列表
@@ -20,6 +28,18 @@ export function deleteFile(id: number) {
 // 批量删除文件
 export function batchDeleteFiles(ids: number[]) {
   return request.delete('/files/batch', { data: { ids } })
+}
+
+export function previewFileMigration(data: FileMigrationRequest) {
+  return request.post<FileMigrationResult>('/files/migrate/preview', data)
+}
+
+export function executeFileMigration(data: FileMigrationRequest) {
+  return request.post<FileMigrationTaskStatus>('/files/migrate/execute', data)
+}
+
+export function getCurrentFileMigrationTask() {
+  return request.get<FileMigrationTaskStatus | null>('/files/migrate/task/current')
 }
 
 // 获取上传凭证

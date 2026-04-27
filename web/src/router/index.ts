@@ -4,6 +4,7 @@ import { useUserStore } from '@/store/user';
 import { message } from 'ant-design-vue';
 import type { Menu } from '@/types';
 import { resolveViewModulePath } from './view-resolver';
+import { computeDynamicRouteSyncPlan } from './dynamic-route-sync.js';
 
 
 // 动态导入视图组件的映射
@@ -123,6 +124,7 @@ const router = createRouter({
 
 // 已添加的动态路由名称（用于避免重复添加）
 let dynamicRoutesAdded = false
+let addedDynamicRouteNames = new Set<string>()
 
 // 根据菜单生成路由
 function generateRoutes(menus: Menu[]): RouteRecordRaw[] {
@@ -173,6 +175,7 @@ export function addDynamicRoutes(menus: Menu[] | null) {
       if (!router.hasRoute(route.name as string)) {
         router.addRoute('Layout', route)
       }
+      addedDynamicRouteNames.add(String(route.name))
     })
     
     // 最后添加404路由（确保它在所有路由之后）
@@ -186,9 +189,50 @@ export function addDynamicRoutes(menus: Menu[] | null) {
   }
 }
 
+export function refreshDynamicRoutes(menus: Menu[] | null) {
+  const dynamicRoutes = generateRoutes(menus || [])
+  const nextRouteNames = dynamicRoutes.map((route) => String(route.name))
+  const syncPlan = computeDynamicRouteSyncPlan(Array.from(addedDynamicRouteNames), nextRouteNames)
+  const routeMap = new Map(dynamicRoutes.map((route) => [String(route.name), route]))
+
+  syncPlan.removeNames.forEach((name) => {
+    if (router.hasRoute(name)) {
+      router.removeRoute(name)
+    }
+    addedDynamicRouteNames.delete(name)
+  })
+
+  syncPlan.replaceNames.forEach((name) => {
+    if (router.hasRoute(name)) {
+      router.removeRoute(name)
+    }
+    const route = routeMap.get(name)
+    if (route) {
+      router.addRoute('Layout', route)
+      addedDynamicRouteNames.add(name)
+    }
+  })
+
+  syncPlan.addNames.forEach((name) => {
+    const route = routeMap.get(name)
+    if (route) {
+      router.addRoute('Layout', route)
+      addedDynamicRouteNames.add(name)
+    }
+  })
+
+  if (router.hasRoute('NotFound')) {
+    router.removeRoute('NotFound')
+  }
+  router.addRoute(notFoundRoute)
+
+  dynamicRoutesAdded = true
+}
+
 // 重置路由（登出时调用）
 export function resetRouter() {
   dynamicRoutesAdded = false
+  addedDynamicRouteNames.clear()
   // 获取所有路由，移除动态添加的
   const routes = router.getRoutes()
   routes.forEach(route => {

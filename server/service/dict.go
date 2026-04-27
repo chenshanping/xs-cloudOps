@@ -172,7 +172,10 @@ func (s *DictService) GetDictDataByType(dictType string) ([]model.SysDictData, e
 	if data, err := Cache.GetDictFromCache(dictType); err == nil {
 		var list []model.SysDictData
 		if err := json.Unmarshal(data, &list); err == nil {
-			return list, nil
+			// 新增内置字典时，旧的空缓存可能残留在 Redis 中，空数组需要回源数据库再次确认。
+			if len(list) > 0 {
+				return list, nil
+			}
 		}
 	}
 

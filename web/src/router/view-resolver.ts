@@ -1,4 +1,4 @@
-const ADMIN_VIEW_PREFIXES = ['system/', 'monitor/'] as const
+const ADMIN_VIEW_PREFIXES = ['system/', 'monitor/', 'ai/'] as const
 const ADMIN_ROOT_VIEWS = new Set(['dashboard', 'profile', 'ai'])
 const AUTH_ROOT_VIEWS = new Set([
   'login',

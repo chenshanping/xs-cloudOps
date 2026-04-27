@@ -62,7 +62,27 @@ export interface AITestRequest {
   base_url: string
   model: string
 }
+
+export interface AIProviderRemoteModel {
+  id: string
+  object?: string
+  created?: number
+  owned_by?: string
+}
+
+export interface AIProviderModelsFetchRequest {
+  api_key: string
+  base_url: string
+}
+
+export interface AIProviderModelsFetchResponse {
+  models: AIProviderRemoteModel[]
+}
 // ai配置测试
 export function aiTest(config: AITestRequest) {
   return request.post('/ai/test',config, { silent: true })
+}
+
+export function fetchAIProviderModels(data: AIProviderModelsFetchRequest) {
+  return request.post<AIProviderModelsFetchResponse>('/ai/providers/models/fetch', data, { silent: true })
 }

@@ -30,6 +30,9 @@
             </template>
 
             <template #toolbar>
+              <a-button @click="migrationVisible = true">
+                文件迁移
+              </a-button>
               <a-button type="primary" danger :disabled="selectedRowKeys.length === 0" @click="handleBatchDelete">
                 <DeleteOutlined /> 批量删除
                 <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
@@ -89,6 +92,14 @@
       :size="previewFile?.size"
       :mime-type="previewFile?.mime_type"
     />
+
+    <FileMigrationDrawer
+      v-model:open="migrationVisible"
+      :selected-ids="selectedRowKeys"
+      :current-filters="searchForm"
+      :current-default-storage-type="configStore.get('storage_type') || 'local'"
+      @success="handleMigrationSuccess"
+    />
   </div>
 </template>
 
@@ -113,6 +124,7 @@ import {
 import { createVNode } from 'vue'
 import FileUpload from '@/components/FileUpload.vue'
 import FilePreview from '@/components/FilePreview.vue'
+import FileMigrationDrawer from './components/FileMigrationDrawer.vue'
 import type { FileInfo } from '@/types/file'
 import { getFileList, deleteFile, batchDeleteFiles } from '@/api/file'
 import { useConfigStore } from '@/store/config'
@@ -129,6 +141,7 @@ const fileUploadRef = ref()
 const selectedRowKeys = ref<number[]>([])
 const previewVisible = ref(false)
 const previewFile = ref<FileInfo | null>(null)
+const migrationVisible = ref(false)
 
 const searchForm = reactive({
   name: '',
@@ -301,6 +314,11 @@ const handleBatchDelete = () => {
 const handleUploadSuccess = (file: FileInfo) => {
   message.success(`${file.name} 上传成功`)
   activeTab.value = 'list'
+  fetchList()
+}
+
+const handleMigrationSuccess = () => {
+  selectedRowKeys.value = []
   fetchList()
 }
 

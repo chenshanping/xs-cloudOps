@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"io"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"server/global"
+	"server/model/request"
 	"server/model/response"
 	"server/service"
 	"server/service/oss"
@@ -45,6 +48,7 @@ func (a *FileApi) GetFile(c *gin.Context) {
 func (a *FileApi) DeleteFile(c *gin.Context) {
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err := service.File.DeleteFile(uint(id)); err != nil {
+		global.Log.Warnf("删除文件失败: file_id=%d, path=%s, err=%v", id, c.FullPath(), err)
 		response.Fail(c, "删除文件失败")
 		return
 	}
@@ -71,6 +75,7 @@ func (a *FileApi) BatchDeleteFiles(c *gin.Context) {
 		return
 	}
 	if successCount > 0 {
+		global.Log.Warnf("批量删除文件部分失败: ids=%v, success_count=%d, failed=%v", req.Ids, successCount, failedMsgs)
 		response.OkWithData(c, gin.H{
 			"success_count": successCount,
 			"failed_count":  len(failedMsgs),
@@ -78,7 +83,73 @@ func (a *FileApi) BatchDeleteFiles(c *gin.Context) {
 		})
 		return
 	}
+	global.Log.Warnf("批量删除文件全部失败: ids=%v, failed=%v", req.Ids, failedMsgs)
 	response.Fail(c, "删除失败")
+}
+
+// PreviewFileMigration 预览文件迁移
+func (a *FileApi) PreviewFileMigration(c *gin.Context) {
+	var req request.FileMigrationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if len(req.IDs) == 0 {
+		if strings.TrimSpace(req.Scope) == "selected" {
+			response.BadRequest(c, "请选择要迁移的文件")
+			return
+		}
+	}
+	if strings.TrimSpace(req.SourceStorageType) == "" {
+		response.BadRequest(c, "请选择源存储")
+		return
+	}
+	if strings.TrimSpace(req.TargetStorageType) == "" {
+		response.BadRequest(c, "请选择目标存储")
+		return
+	}
+
+	result, err := service.File.PreviewFileMigration(req)
+	if err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+	response.OkWithData(c, result)
+}
+
+// ExecuteFileMigration 执行文件迁移
+func (a *FileApi) ExecuteFileMigration(c *gin.Context) {
+	var req request.FileMigrationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if len(req.IDs) == 0 {
+		if strings.TrimSpace(req.Scope) == "selected" {
+			response.BadRequest(c, "请选择要迁移的文件")
+			return
+		}
+	}
+	if strings.TrimSpace(req.SourceStorageType) == "" {
+		response.BadRequest(c, "请选择源存储")
+		return
+	}
+	if strings.TrimSpace(req.TargetStorageType) == "" {
+		response.BadRequest(c, "请选择目标存储")
+		return
+	}
+
+	result, err := service.File.StartFileMigrationTask(req)
+	if err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+	response.OkWithData(c, result)
+}
+
+// GetCurrentFileMigrationTask 获取当前文件迁移任务状态
+func (a *FileApi) GetCurrentFileMigrationTask(c *gin.Context) {
+	response.OkWithData(c, service.File.GetCurrentFileMigrationTask())
 }
 
 // GetUploadCredential 获取上传凭证

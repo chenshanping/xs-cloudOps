@@ -2,16 +2,22 @@ package service
 
 import (
 	"context"
+	"crypto/md5"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"server/global"
 	"server/model"
+	modelrequest "server/model/request"
+	modelresponse "server/model/response"
 	"server/service/oss"
+
+	"gorm.io/gorm"
 )
 
 type FileService struct{}
@@ -22,6 +28,27 @@ const (
 	FileDeleteModeConfigKey = "file_delete_mode"
 	FileDeleteModeLogical   = "logical"
 	FileDeleteModePhysical  = "physical"
+)
+
+type fileMigrationCandidate struct {
+	file            model.SysFile
+	sourceStorage   *model.StorageProfile
+	targetStorage   *model.StorageProfile
+	targetURL       string
+	skipMessage     string
+	conflictMessage string
+	sourceMissing   bool
+}
+
+type fileMigrationPrecheck struct {
+	result     *modelresponse.FileMigrationResult
+	candidates []fileMigrationCandidate
+}
+
+const (
+	fileMigrationScopeAll      = "all"
+	fileMigrationScopeFilter   = "filter"
+	fileMigrationScopeSelected = "selected"
 )
 
 // GetFileList 获取文件列表
@@ -43,7 +70,7 @@ func (s *FileService) GetFileList(page, pageSize int, name, ext string) ([]model
 	}
 
 	db.Count(&total)
-	err := db.Order("id desc").Offset((page-1)*pageSize).Limit(pageSize).Find(&files).Error
+	err := db.Order("id desc").Offset((page - 1) * pageSize).Limit(pageSize).Find(&files).Error
 	return files, total, err
 }
 
@@ -80,16 +107,16 @@ func (s *FileService) resolveFileStorage(file model.SysFile) (*model.StorageProf
 func (s *FileService) createFileRecord(filename, key, url, md5 string, fileSize int64, uploaderID uint, storage *model.StorageProfile) *model.SysFile {
 	ext := strings.TrimPrefix(filepath.Ext(filename), ".")
 	return &model.SysFile{
-		Name:          filename,
-		Path:          key,
-		URL:           url,
-		Size:          fileSize,
-		Ext:           ext,
-		MimeType:      getMimeType(ext),
-		MD5:           md5,
-		StorageType:   string(storage.Type),
-		UploaderID:    uploaderID,
-		Status:        1,
+		Name:        filename,
+		Path:        key,
+		URL:         url,
+		Size:        fileSize,
+		Ext:         ext,
+		MimeType:    getMimeType(ext),
+		MD5:         md5,
+		StorageType: string(storage.Type),
+		UploaderID:  uploaderID,
+		Status:      1,
 	}
 }
 
@@ -237,6 +264,528 @@ func (s *FileService) BatchDeleteFiles(ids []uint) (int, []string) {
 	}
 
 	return successCount, failedMsgs
+}
+
+func (s *FileService) PreviewFileMigration(req modelrequest.FileMigrationRequest) (*modelresponse.FileMigrationResult, error) {
+	precheck, err := s.buildFileMigrationPrecheck(req)
+	if err != nil {
+		return nil, err
+	}
+	return precheck.result, nil
+}
+
+func (s *FileService) ExecuteFileMigration(req modelrequest.FileMigrationRequest) (*modelresponse.FileMigrationResult, error) {
+	precheck, err := s.buildFileMigrationPrecheck(req)
+	if err != nil {
+		return nil, err
+	}
+
+	result := s.newFileMigrationExecutionResult(precheck.result)
+
+	for _, candidate := range precheck.candidates {
+		action, message := s.resolveFileMigrationCandidateAction(candidate)
+		if action != "PENDING" {
+			result.Items = append(result.Items, s.toFileMigrationItem(candidate, action, message))
+			continue
+		}
+
+		warning, err := s.executeFileMigrationCandidate(candidate)
+		switch {
+		case err != nil:
+			result.FailedCount++
+			result.Items = append(result.Items, s.toFileMigrationItem(candidate, "FAILED", err.Error()))
+		case warning != "":
+			result.MigratedCount++
+			result.WarningCount++
+			result.Items = append(result.Items, s.toFileMigrationItem(candidate, "WARNING", warning))
+		default:
+			result.MigratedCount++
+			result.Items = append(result.Items, s.toFileMigrationItem(candidate, "MIGRATED", "迁移成功"))
+		}
+	}
+
+	return result, nil
+}
+
+func (s *FileService) StartFileMigrationTask(req modelrequest.FileMigrationRequest) (*modelresponse.FileMigrationTaskStatus, error) {
+	return fileMigrationTasks.start(req, func(task *fileMigrationTask) {
+		s.runFileMigrationTask(task, req)
+	})
+}
+
+func (s *FileService) GetCurrentFileMigrationTask() *modelresponse.FileMigrationTaskStatus {
+	return fileMigrationTasks.snapshot()
+}
+
+func (s *FileService) runFileMigrationTask(task *fileMigrationTask, req modelrequest.FileMigrationRequest) {
+	precheck, err := s.buildFileMigrationPrecheck(req)
+	if err != nil {
+		task.finishFailed(err)
+		return
+	}
+
+	task.setPrecheck(precheck.result)
+	task.markRunning()
+	for _, candidate := range precheck.candidates {
+		task.setCurrentFile(candidate.file.ID, candidate.file.Name)
+
+		action, message := s.resolveFileMigrationCandidateAction(candidate)
+		if action != "PENDING" {
+			task.recordHandled(s.toFileMigrationItem(candidate, action, message), candidate.file.Size)
+			continue
+		}
+
+		warning, err := s.executeFileMigrationCandidate(candidate)
+		switch {
+		case err != nil:
+			task.recordHandled(s.toFileMigrationItem(candidate, "FAILED", err.Error()), candidate.file.Size)
+		case warning != "":
+			task.recordHandled(s.toFileMigrationItem(candidate, "WARNING", warning), candidate.file.Size)
+		default:
+			task.recordHandled(s.toFileMigrationItem(candidate, "MIGRATED", "迁移成功"), candidate.file.Size)
+		}
+	}
+
+	status := task.snapshot()
+	if status.FailedCount > 0 || status.WarningCount > 0 {
+		task.finishSuccess("迁移完成，请检查结果详情")
+		return
+	}
+	task.finishSuccess("迁移完成")
+}
+
+func (s *FileService) buildFileMigrationPrecheck(req modelrequest.FileMigrationRequest) (*fileMigrationPrecheck, error) {
+	candidates, err := s.buildFileMigrationCandidates(req)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &modelresponse.FileMigrationResult{
+		TargetStorageType: req.TargetStorageType,
+		Items:             make([]modelresponse.FileMigrationItem, 0, len(candidates)),
+	}
+
+	for _, candidate := range candidates {
+		result.TotalCount++
+		result.TotalSize += candidate.file.Size
+
+		action, message := s.resolveFileMigrationCandidateAction(candidate)
+		switch action {
+		case "PENDING":
+			result.PendingCount++
+			result.PendingSize += candidate.file.Size
+		case "CONFLICT":
+			result.ConflictCount++
+			result.ConflictSize += candidate.file.Size
+		case "MISSING_SOURCE":
+			result.MissingSourceCount++
+			result.MissingSourceSize += candidate.file.Size
+		default:
+			result.SkippedCount++
+			result.SkippedSize += candidate.file.Size
+		}
+
+		result.Items = append(result.Items, s.toFileMigrationItem(candidate, action, message))
+	}
+
+	return &fileMigrationPrecheck{
+		result:     result,
+		candidates: candidates,
+	}, nil
+}
+
+func (s *FileService) newFileMigrationExecutionResult(precheck *modelresponse.FileMigrationResult) *modelresponse.FileMigrationResult {
+	return &modelresponse.FileMigrationResult{
+		TargetStorageType:  precheck.TargetStorageType,
+		TotalCount:         precheck.TotalCount,
+		TotalSize:          precheck.TotalSize,
+		PendingCount:       precheck.PendingCount,
+		PendingSize:        precheck.PendingSize,
+		SkippedCount:       precheck.SkippedCount,
+		SkippedSize:        precheck.SkippedSize,
+		ConflictCount:      precheck.ConflictCount,
+		ConflictSize:       precheck.ConflictSize,
+		MissingSourceCount: precheck.MissingSourceCount,
+		MissingSourceSize:  precheck.MissingSourceSize,
+		Items:              make([]modelresponse.FileMigrationItem, 0, len(precheck.Items)),
+	}
+}
+
+func (s *FileService) resolveFileMigrationCandidateAction(candidate fileMigrationCandidate) (string, string) {
+	if candidate.conflictMessage != "" {
+		return "CONFLICT", candidate.conflictMessage
+	}
+	if candidate.sourceMissing {
+		return "MISSING_SOURCE", candidate.skipMessage
+	}
+	if candidate.skipMessage != "" {
+		return "SKIP", candidate.skipMessage
+	}
+	return "PENDING", "待迁移"
+}
+
+func (s *FileService) buildFileMigrationCandidates(req modelrequest.FileMigrationRequest) ([]fileMigrationCandidate, error) {
+	scope := s.normalizeFileMigrationScope(req.Scope)
+	sourceStorageType := model.StorageType(strings.TrimSpace(req.SourceStorageType))
+	targetStorageType := model.StorageType(strings.TrimSpace(req.TargetStorageType))
+	if sourceStorageType == "" {
+		return nil, errors.New("请选择源存储")
+	}
+	if targetStorageType == "" {
+		return nil, errors.New("请选择目标存储")
+	}
+	if sourceStorageType == targetStorageType {
+		return nil, errors.New("源存储和目标存储不能相同")
+	}
+	if !s.isSupportedMigrationStorageType(sourceStorageType) {
+		return nil, fmt.Errorf("不支持的源存储类型: %s", sourceStorageType)
+	}
+	if !s.isSupportedMigrationStorageType(targetStorageType) {
+		return nil, fmt.Errorf("不支持的目标存储类型: %s", targetStorageType)
+	}
+	if scope == fileMigrationScopeSelected && len(req.IDs) == 0 {
+		return nil, errors.New("请选择要迁移的文件")
+	}
+
+	targetStorage, err := Storage.GetStorageByType(targetStorageType)
+	if err != nil {
+		return nil, fmt.Errorf("获取目标存储配置失败: %v", err)
+	}
+
+	targetClient, err := oss.GetClient(targetStorage)
+	if err != nil {
+		return nil, fmt.Errorf("创建目标存储客户端失败: %v", err)
+	}
+
+	files, err := s.collectFilesForMigration(req, scope, sourceStorageType)
+	if err != nil {
+		return nil, err
+	}
+	if len(files) == 0 {
+		return nil, errors.New("未找到可迁移的文件")
+	}
+
+	selectedPathCount := make(map[string]int, len(files))
+	targetPaths := make([]string, 0, len(files))
+	for _, file := range files {
+		path := strings.TrimSpace(file.Path)
+		if path == "" {
+			continue
+		}
+		selectedPathCount[path]++
+		targetPaths = append(targetPaths, path)
+	}
+
+	conflictPathMap := make(map[string]struct{})
+	if len(targetPaths) > 0 {
+		var existingFiles []model.SysFile
+		if err := global.DB.
+			Where("status = ? AND storage_type = ? AND path IN ? AND id NOT IN ?", 1, string(targetStorageType), targetPaths, s.collectFileIDs(files)).
+			Find(&existingFiles).Error; err != nil {
+			return nil, err
+		}
+		for _, file := range existingFiles {
+			conflictPathMap[file.Path] = struct{}{}
+		}
+	}
+
+	candidates := make([]fileMigrationCandidate, 0, len(files))
+	for _, file := range files {
+		candidate := fileMigrationCandidate{
+			file:          file,
+			targetStorage: targetStorage,
+			targetURL:     targetClient.GetURL(file.Path),
+		}
+
+		path := strings.TrimSpace(file.Path)
+		if path == "" {
+			candidate.skipMessage = "文件路径为空，无法迁移"
+			candidates = append(candidates, candidate)
+			continue
+		}
+
+		if selectedPathCount[path] > 1 {
+			candidate.conflictMessage = "选中的文件存在重复存储路径，无法安全迁移"
+			candidates = append(candidates, candidate)
+			continue
+		}
+
+		if _, ok := conflictPathMap[path]; ok {
+			candidate.conflictMessage = "目标存储已存在其他文件占用相同路径，无法覆盖"
+			candidates = append(candidates, candidate)
+			continue
+		}
+
+		sourceStorage, err := s.resolveFileStorage(file)
+		if err != nil {
+			candidate.skipMessage = fmt.Sprintf("解析源存储失败: %v", err)
+			candidates = append(candidates, candidate)
+			continue
+		}
+		candidate.sourceStorage = sourceStorage
+
+		if sourceStorage.Type == targetStorageType {
+			candidate.skipMessage = "文件已在目标存储，无需迁移"
+			candidates = append(candidates, candidate)
+			continue
+		}
+
+		exists, err := s.fileObjectExists(sourceStorage, file.Path)
+		if err != nil {
+			candidate.skipMessage = fmt.Sprintf("检查源文件失败: %v", err)
+			candidates = append(candidates, candidate)
+			continue
+		}
+		if !exists {
+			candidate.skipMessage = "源文件不存在，无法迁移"
+			candidate.sourceMissing = true
+			candidates = append(candidates, candidate)
+			continue
+		}
+
+		targetConflictMessage, err := s.resolveTargetObjectConflict(candidate)
+		if err != nil {
+			candidate.skipMessage = err.Error()
+			candidates = append(candidates, candidate)
+			continue
+		}
+		if targetConflictMessage != "" {
+			candidate.conflictMessage = targetConflictMessage
+		}
+
+		candidates = append(candidates, candidate)
+	}
+
+	return candidates, nil
+}
+
+func (s *FileService) collectFilesForMigration(req modelrequest.FileMigrationRequest, scope string, sourceStorageType model.StorageType) ([]model.SysFile, error) {
+	db := global.DB.Model(&model.SysFile{}).
+		Where("status = ? AND storage_type = ?", 1, string(sourceStorageType))
+
+	switch scope {
+	case fileMigrationScopeSelected:
+		db = db.Where("id IN ?", req.IDs)
+	case fileMigrationScopeFilter:
+		if strings.TrimSpace(req.Filters.Name) != "" {
+			db = db.Where("name LIKE ?", "%"+strings.TrimSpace(req.Filters.Name)+"%")
+		}
+		if strings.TrimSpace(req.Filters.Ext) != "" {
+			exts := strings.Split(req.Filters.Ext, ",")
+			if len(exts) == 1 {
+				db = db.Where("ext = ?", strings.TrimSpace(req.Filters.Ext))
+			} else {
+				db = db.Where("ext IN ?", exts)
+			}
+		}
+	}
+
+	var files []model.SysFile
+	if err := db.Order("id asc").Find(&files).Error; err != nil {
+		return nil, err
+	}
+	return files, nil
+}
+
+func (s *FileService) normalizeFileMigrationScope(scope string) string {
+	switch strings.ToLower(strings.TrimSpace(scope)) {
+	case fileMigrationScopeFilter:
+		return fileMigrationScopeFilter
+	case fileMigrationScopeSelected:
+		return fileMigrationScopeSelected
+	default:
+		return fileMigrationScopeAll
+	}
+}
+
+func (s *FileService) collectFileIDs(files []model.SysFile) []uint {
+	ids := make([]uint, 0, len(files))
+	for _, file := range files {
+		ids = append(ids, file.ID)
+	}
+	return ids
+}
+
+func (s *FileService) fileObjectExists(storage *model.StorageProfile, key string) (bool, error) {
+	client, err := oss.GetClient(storage)
+	if err != nil {
+		return false, err
+	}
+	return client.Exists(context.Background(), key)
+}
+
+func (s *FileService) resolveTargetObjectConflict(candidate fileMigrationCandidate) (string, error) {
+	client, err := oss.GetClient(candidate.targetStorage)
+	if err != nil {
+		return "", fmt.Errorf("检查目标文件失败: %v", err)
+	}
+
+	exists, err := client.Exists(context.Background(), candidate.file.Path)
+	if err != nil {
+		return "", fmt.Errorf("检查目标文件失败: %v", err)
+	}
+	if !exists {
+		return "", nil
+	}
+
+	if strings.TrimSpace(candidate.file.MD5) == "" {
+		return "目标存储已存在同路径文件，且当前文件缺少 MD5，无法安全迁移", nil
+	}
+
+	matches, err := s.fileObjectMatchesMD5(context.Background(), client, candidate.file.Path, candidate.file.MD5)
+	if err != nil {
+		return "", fmt.Errorf("校验目标文件失败: %v", err)
+	}
+	if !matches {
+		return "目标存储已存在同路径文件，但内容不一致", nil
+	}
+
+	return "", nil
+}
+
+func (s *FileService) executeFileMigrationCandidate(candidate fileMigrationCandidate) (string, error) {
+	if candidate.sourceStorage == nil {
+		return "", errors.New("源存储配置不存在")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	sourceClient, err := oss.GetClient(candidate.sourceStorage)
+	if err != nil {
+		return "", fmt.Errorf("创建源存储客户端失败: %v", err)
+	}
+	targetClient, err := oss.GetClient(candidate.targetStorage)
+	if err != nil {
+		return "", fmt.Errorf("创建目标存储客户端失败: %v", err)
+	}
+
+	path := candidate.file.Path
+	targetExists, err := targetClient.Exists(ctx, path)
+	if err != nil {
+		return "", fmt.Errorf("检查目标文件失败: %v", err)
+	}
+
+	uploadedNewObject := false
+	if targetExists {
+		if strings.TrimSpace(candidate.file.MD5) == "" {
+			return "", errors.New("目标存储已存在同路径文件，且当前文件缺少 MD5，无法安全迁移")
+		}
+		matches, err := s.fileObjectMatchesMD5(ctx, targetClient, path, candidate.file.MD5)
+		if err != nil {
+			return "", fmt.Errorf("校验目标文件失败: %v", err)
+		}
+		if !matches {
+			return "", errors.New("目标存储已存在同路径文件，但内容不一致")
+		}
+	} else {
+		sourceReader, err := sourceClient.Open(ctx, path)
+		if err != nil {
+			return "", fmt.Errorf("读取源文件失败: %v", err)
+		}
+
+		if err := targetClient.Upload(ctx, path, sourceReader, candidate.file.Size); err != nil {
+			sourceReader.Close()
+			return "", fmt.Errorf("上传目标文件失败: %v", err)
+		}
+		if err := sourceReader.Close(); err != nil {
+			return "", fmt.Errorf("关闭源文件流失败: %v", err)
+		}
+		uploadedNewObject = true
+	}
+
+	if strings.TrimSpace(candidate.file.MD5) != "" {
+		matches, err := s.fileObjectMatchesMD5(ctx, targetClient, path, candidate.file.MD5)
+		if err != nil {
+			if uploadedNewObject {
+				_ = targetClient.Delete(context.Background(), path)
+			}
+			return "", fmt.Errorf("迁移后校验失败: %v", err)
+		}
+		if !matches {
+			if uploadedNewObject {
+				_ = targetClient.Delete(context.Background(), path)
+			}
+			return "", errors.New("迁移后文件校验失败")
+		}
+	}
+
+	updateErr := global.DB.Transaction(func(tx *gorm.DB) error {
+		updateQuery := tx.Model(&model.SysFile{}).
+			Where("id = ? AND status = ? AND path = ? AND url = ?", candidate.file.ID, 1, candidate.file.Path, candidate.file.URL)
+		if strings.TrimSpace(candidate.file.StorageType) != "" {
+			updateQuery = updateQuery.Where("storage_type = ?", candidate.file.StorageType)
+		}
+
+		updateData := map[string]interface{}{
+			"storage_type": string(candidate.targetStorage.Type),
+			"url":          candidate.targetURL,
+		}
+
+		result := updateQuery.Updates(updateData)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return errors.New("文件记录已变化，请刷新后重试")
+		}
+		return nil
+	})
+	if updateErr != nil {
+		if uploadedNewObject {
+			_ = targetClient.Delete(context.Background(), path)
+		}
+		return "", updateErr
+	}
+
+	if err := sourceClient.Delete(ctx, path); err != nil {
+		return fmt.Sprintf("迁移成功，但源文件清理失败: %v", err), nil
+	}
+
+	return "", nil
+}
+
+func (s *FileService) isSupportedMigrationStorageType(storageType model.StorageType) bool {
+	for _, item := range Storage.SupportedStorageTypes() {
+		if item == storageType {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *FileService) fileObjectMatchesMD5(ctx context.Context, client oss.Client, key, expectedMD5 string) (bool, error) {
+	reader, err := client.Open(ctx, key)
+	if err != nil {
+		return false, err
+	}
+	defer reader.Close()
+
+	hash := md5.New()
+	if _, err := io.Copy(hash, reader); err != nil {
+		return false, err
+	}
+
+	actualMD5 := fmt.Sprintf("%x", hash.Sum(nil))
+	return strings.EqualFold(actualMD5, strings.TrimSpace(expectedMD5)), nil
+}
+
+func (s *FileService) toFileMigrationItem(candidate fileMigrationCandidate, action, message string) modelresponse.FileMigrationItem {
+	sourceStorageType := ""
+	if candidate.sourceStorage != nil {
+		sourceStorageType = string(candidate.sourceStorage.Type)
+	}
+
+	return modelresponse.FileMigrationItem{
+		FileID:            candidate.file.ID,
+		FileName:          candidate.file.Name,
+		SourceStorageType: sourceStorageType,
+		TargetStorageType: string(candidate.targetStorage.Type),
+		OldURL:            candidate.file.URL,
+		NewURL:            candidate.targetURL,
+		Action:            action,
+		Message:           message,
+	}
 }
 
 // GenerateFilePath 生成文件存储路径

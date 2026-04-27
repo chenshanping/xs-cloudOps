@@ -18,6 +18,7 @@ export interface User {
   id: number
   username: string
   nickname: string
+  gender: number
   email: string
   phone: string
   avatar: string

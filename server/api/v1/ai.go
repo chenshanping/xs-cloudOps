@@ -303,3 +303,23 @@ func (a *AIApi) TestConfig(c *gin.Context) {
 
 	response.OkWithMessage(c, "测试成功")
 }
+
+func (a *AIApi) FetchProviderModels(c *gin.Context) {
+	var req request.AIProviderModelsFetchRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	models, err := service.AI.FetchProviderModels(req.APIKey, req.BaseURL)
+	if err != nil {
+		if fetchErr, ok := err.(*service.AIProviderModelFetchError); ok {
+			response.FailWithCode(c, fetchErr.Code, fetchErr.Message)
+			return
+		}
+		response.Fail(c, err.Error())
+		return
+	}
+
+	response.OkWithData(c, response.AIProviderModelsFetchResponse{Models: models})
+}

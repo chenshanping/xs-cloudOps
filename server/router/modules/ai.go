@@ -45,4 +45,6 @@ func (m *AIModule) RegisterPrivateRoutes(rg *gin.RouterGroup) {
 
 	// 配置测试
 	R(rg, "POST", "/ai/test", m.Name(), "测试AI配置", v1.AI.TestConfig, registry.WithAuth(), registry.WithRequest(request.AITestRequest{}))
+	R(rg, "POST", "/ai/providers/models/fetch", m.Name(), "拉取平台模型列表", v1.AI.FetchProviderModels,
+		registry.WithAuth(), registry.WithRequest(request.AIProviderModelsFetchRequest{}))
 }

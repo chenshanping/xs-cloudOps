@@ -1,6 +1,14 @@
 <template>
   <div class="file-settings">
     <div class="config-form">
+      <a-alert
+        class="storage-notice"
+        type="info"
+        show-icon
+        message="这里配置的是默认上传存储位置，仅影响后续新上传文件。"
+        description="切换后不会自动迁移已有历史文件；如需处理存量文件，请前往 文件管理 > 文件迁移。"
+      />
+
       <a-form :label-col="{ span: 8 }" :wrapper-col="{ span: 16 }">
         <a-form-item label="文件删除方式">
           <a-radio-group v-model:value="fileDeleteMode">
@@ -12,7 +20,7 @@
           </div>
         </a-form-item>
 
-        <a-form-item label="存储方式">
+        <a-form-item label="默认上传存储" :extra="storageTypeExtra">
           <a-space direction="vertical" size="small" style="width: 100%">
             <a-select v-model:value="storageType" @change="handleStorageTypeChange">
               <a-select-option v-for="item in storageTypeOptions" :key="item.value" :value="item.value">
@@ -21,7 +29,8 @@
             </a-select>
             <a-space>
               <a-tag color="blue">{{ currentStorageLabel }}</a-tag>
-              <a-button @click="configVisible = true">查看配置</a-button>
+              <a-tag color="processing">当前默认上传位置</a-tag>
+              <a-button @click="configVisible = true">查看当前类型配置</a-button>
             </a-space>
           </a-space>
         </a-form-item>
@@ -160,6 +169,7 @@ const currentStorageLabel = computed(() => {
   return storageTypeOptions.find((item) => item.value === storageType.value)?.label || storageType.value
 })
 const localPreviewUrl = computed(() => '/api/v1/upload')
+const storageTypeExtra = '这里仅影响后续新上传文件的默认存储位置；切换后，已上传文件仍保留在原存储位置。'
 
 const handleStorageTypeChange = (value: StorageType) => {
   storageType.value = value
@@ -271,6 +281,10 @@ defineExpose({
 .config-form {
   width: 100%;
   max-width: 560px;
+}
+
+.storage-notice {
+  margin-bottom: 16px;
 }
 
 .form-tip {

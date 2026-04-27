@@ -57,6 +57,31 @@ func (c *MinioClient) Upload(ctx context.Context, key string, reader io.Reader, 
 	return err
 }
 
+// Open 打开文件读取流
+func (c *MinioClient) Open(ctx context.Context, key string) (io.ReadCloser, error) {
+	object, err := c.client.GetObject(ctx, c.config.BucketName, key, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, err
+	}
+	if _, err := object.Stat(); err != nil {
+		object.Close()
+		return nil, err
+	}
+	return object, nil
+}
+
+// Exists 判断文件是否存在
+func (c *MinioClient) Exists(ctx context.Context, key string) (bool, error) {
+	_, err := c.client.StatObject(ctx, c.config.BucketName, key, minio.StatObjectOptions{})
+	if err == nil {
+		return true, nil
+	}
+	if minio.ToErrorResponse(err).StatusCode == 404 {
+		return false, nil
+	}
+	return false, err
+}
+
 // Delete 删除文件
 func (c *MinioClient) Delete(ctx context.Context, key string) error {
 	return c.client.RemoveObject(ctx, c.config.BucketName, key, minio.RemoveObjectOptions{})

@@ -116,6 +116,7 @@ import IconSelect from '@/components/IconSelect.vue'
 import { getMenuTree, createMenu, updateMenu, deleteMenu } from '@/api/menu'
 import { getAllApis } from '@/api/api'
 import { useTableColumns } from '@/utils/permission'
+import { useUserStore } from '@/store/user'
 import type { Menu, Api } from '@/types'
 
 const getIconComponent = (iconName?: string) => {
@@ -154,6 +155,7 @@ const drawerVisible = ref(false)
 const modalTitle = ref('新增菜单')
 const isEdit = ref(false)
 const currentId = ref(0)
+const userStore = useUserStore()
 
 
 const formState = reactive({
@@ -284,13 +286,13 @@ const handleModalOk = async () => {
     message.success('创建成功')
   }
   drawerVisible.value = false
-  fetchData()
+  await Promise.all([fetchData(), userStore.refreshAccessAction()])
 }
 
 const handleDelete = async (record: Menu) => {
   await deleteMenu(record.id)
   message.success('删除成功')
-  fetchData()
+  await Promise.all([fetchData(), userStore.refreshAccessAction()])
 }
 
 

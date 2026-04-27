@@ -463,7 +463,7 @@ const handleSavePermissions = async () => {
     ])
     message.success('权限分配成功')
     visible.value = false
-    userStore.getUserInfoAction()
+    await userStore.refreshAccessAction()
   } finally {
     saveLoading.value = false
   }

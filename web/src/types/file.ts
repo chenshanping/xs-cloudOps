@@ -69,6 +69,81 @@ export interface UploadProgress {
   result?: FileInfo
 }
 
+export interface FileMigrationItem {
+  file_id: number
+  file_name: string
+  source_storage_type: string
+  target_storage_type: string
+  old_url: string
+  new_url: string
+  action: 'PENDING' | 'SKIP' | 'CONFLICT' | 'MISSING_SOURCE' | 'MIGRATED' | 'WARNING' | 'FAILED'
+  message: string
+}
+
+export interface FileMigrationResult {
+  target_storage_type: string
+  total_count: number
+  total_size: number
+  pending_count: number
+  pending_size: number
+  skipped_count: number
+  skipped_size: number
+  conflict_count: number
+  conflict_size: number
+  missing_source_count: number
+  missing_source_size: number
+  migrated_count: number
+  failed_count: number
+  warning_count: number
+  items: FileMigrationItem[]
+}
+
+export type FileMigrationTaskState = 'SCANNING' | 'RUNNING' | 'SUCCESS' | 'FAILED'
+
+export interface FileMigrationTaskStatus {
+  task_id: string
+  status: FileMigrationTaskState
+  message: string
+  scope: FileMigrationScope
+  source_storage_type: string
+  target_storage_type: string
+  total_count: number
+  total_size: number
+  pending_count: number
+  pending_size: number
+  skipped_count: number
+  skipped_size: number
+  conflict_count: number
+  conflict_size: number
+  missing_source_count: number
+  missing_source_size: number
+  processed_count: number
+  processed_size: number
+  migrated_count: number
+  failed_count: number
+  warning_count: number
+  current_file_id: number
+  current_file_name: string
+  started_at: string
+  finished_at: string
+  items: FileMigrationItem[]
+}
+
+export type FileMigrationScope = 'all' | 'filter' | 'selected'
+
+export interface FileMigrationFilters {
+  name?: string
+  ext?: string
+}
+
+export interface FileMigrationRequest {
+  scope: FileMigrationScope
+  ids?: number[]
+  source_storage_type: string
+  target_storage_type: string
+  filters?: FileMigrationFilters
+}
+
 // 允许的文件类型
 export const imageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/svg+xml']
 export const documentTypes = [

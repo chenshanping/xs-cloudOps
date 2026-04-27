@@ -48,6 +48,16 @@ func (c *AliyunClient) Upload(ctx context.Context, key string, reader io.Reader,
 	return c.bucket.PutObject(key, reader)
 }
 
+// Open 打开文件读取流
+func (c *AliyunClient) Open(ctx context.Context, key string) (io.ReadCloser, error) {
+	return c.bucket.GetObject(key)
+}
+
+// Exists 判断文件是否存在
+func (c *AliyunClient) Exists(ctx context.Context, key string) (bool, error) {
+	return c.bucket.IsObjectExist(key)
+}
+
 // Delete 删除文件
 func (c *AliyunClient) Delete(ctx context.Context, key string) error {
 	return c.bucket.DeleteObject(key)

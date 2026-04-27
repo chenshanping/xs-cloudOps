@@ -5,6 +5,7 @@ type CreateUserRequest struct {
 	Username     string `json:"username" binding:"required" comment:"用户名"`
 	Password     string `json:"password" binding:"required,min=6" comment:"密码"`
 	Nickname     string `json:"nickname" comment:"昵称"`
+	Gender       int    `json:"gender" comment:"性别(0:未知,1:男,2:女)"`
 	Email        string `json:"email" comment:"邮箱"`
 	Phone        string `json:"phone" comment:"手机号"`
 	Avatar       string `json:"avatar" comment:"头像地址"`
@@ -17,6 +18,7 @@ type CreateUserRequest struct {
 // 更新用户请求
 type UpdateUserRequest struct {
 	Nickname     string `json:"nickname" comment:"昵称"`
+	Gender       int    `json:"gender" comment:"性别(0:未知,1:男,2:女)"`
 	Email        string `json:"email" comment:"邮箱"`
 	Phone        string `json:"phone" comment:"手机号"`
 	Avatar       string `json:"avatar" comment:"头像地址"`
@@ -42,6 +44,7 @@ type UserListRequest struct {
 	PageRequest
 	Username       string `json:"username" form:"username" comment:"用户名"`
 	Status         *int   `json:"status" form:"status" comment:"状态"`
+	Gender         *int   `json:"gender" form:"gender" comment:"性别"`
 	RoleId         *int   `json:"role_id" form:"role_id" comment:"角色ID"`
 	DeptId         *int   `json:"dept_id" form:"dept_id" comment:"部门ID"`
 	UnassignedDept bool   `json:"unassigned_dept" form:"unassigned_dept" comment:"是否筛选未绑定部门用户"`

@@ -1,0 +1,146 @@
+<h2>AI 配置页布局对比</h2>
+<p class="subtitle">目标：左侧平台，右侧模型；点击“管理”可拉平台模型并勾选导入，导入后仍由页面底部统一保存。</p>
+
+<div class="cards">
+  <div class="card" data-choice="master-detail" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">方案 A: 左右主从</div>
+        <div class="mockup-body">
+          <div style="display:flex; gap:16px; min-height:340px;">
+            <div style="width:34%; border-right:1px solid #e5e7eb; padding-right:12px;">
+              <div class="label">AI 平台</div>
+              <div class="option" style="margin-top:8px;">
+                <div class="content">
+                  <h3>阿里云百炼</h3>
+                  <p>默认平台</p>
+                </div>
+              </div>
+              <div class="option" style="margin-top:8px; opacity:.7;">
+                <div class="content">
+                  <h3>OpenAI</h3>
+                  <p>备用平台</p>
+                </div>
+              </div>
+              <button class="mock-button" style="margin-top:12px; width:100%;">新增平台</button>
+            </div>
+            <div style="flex:1;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <div class="label">平台详情</div>
+                  <h3 style="margin:6px 0 0;">阿里云百炼</h3>
+                </div>
+                <button class="mock-button">管理平台模型</button>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px;">
+                <input class="mock-input" value="阿里云百炼" />
+                <input class="mock-input" value="https://dashscope.aliyuncs.com/compatible-mode/v1" />
+              </div>
+              <div class="label" style="margin-top:16px;">已导入模型</div>
+              <div style="border:1px solid #e5e7eb; border-radius:10px; margin-top:8px;">
+                <div style="display:flex; padding:10px 12px; font-size:12px; color:#6b7280; background:#f8fafc;">
+                  <div style="width:28%;">模型 ID</div>
+                  <div style="width:20%;">显示名称</div>
+                  <div style="flex:1;">描述</div>
+                  <div style="width:72px; text-align:right;">操作</div>
+                </div>
+                <div style="display:flex; padding:12px;">
+                  <div style="width:28%;">deepseek-v3.2</div>
+                  <div style="width:20%;">DeepSeek-V3.2</div>
+                  <div style="flex:1;">支持联网和思考</div>
+                  <div style="width:72px; text-align:right;">删除</div>
+                </div>
+              </div>
+              <button class="mock-button" style="margin-top:16px; width:100%;">保存配置</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>方案 A：左侧平台列表，右侧当前平台详情与模型</h3>
+      <p>切平台即切右侧内容，信息密度高，最贴近你说的“左侧平台、右侧模型显示”。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="drawer-detail" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">方案 B: 左列表 + 详情抽屉</div>
+        <div class="mockup-body">
+          <div style="display:flex; gap:16px; min-height:340px;">
+            <div style="width:34%; border-right:1px solid #e5e7eb; padding-right:12px;">
+              <div class="label">AI 平台</div>
+              <div class="option" style="margin-top:8px;">
+                <div class="content">
+                  <h3>阿里云百炼</h3>
+                  <p>2 个已导入模型</p>
+                </div>
+              </div>
+              <div class="option" style="margin-top:8px; opacity:.7;">
+                <div class="content">
+                  <h3>OpenAI</h3>
+                  <p>0 个已导入模型</p>
+                </div>
+              </div>
+              <button class="mock-button" style="margin-top:12px; width:100%;">新增平台</button>
+            </div>
+            <div style="flex:1;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <div class="label">已导入模型</div>
+                  <h3 style="margin:6px 0 0;">阿里云百炼</h3>
+                </div>
+                <div style="display:flex; gap:8px;">
+                  <button class="mock-button">编辑平台</button>
+                  <button class="mock-button">管理平台模型</button>
+                </div>
+              </div>
+              <div style="border:1px dashed #cbd5e1; border-radius:10px; padding:14px; margin-top:14px; background:#f8fafc;">
+                平台详情不常驻在主面板，点击“编辑平台”时从右侧 Drawer 打开。
+              </div>
+              <div style="border:1px solid #e5e7eb; border-radius:10px; margin-top:14px;">
+                <div style="display:flex; padding:10px 12px; font-size:12px; color:#6b7280; background:#f8fafc;">
+                  <div style="width:30%;">模型 ID</div>
+                  <div style="width:22%;">显示名称</div>
+                  <div style="flex:1;">描述</div>
+                </div>
+                <div style="display:flex; padding:12px;">
+                  <div style="width:30%;">qwen3-max</div>
+                  <div style="width:22%;">通义千问3-Max</div>
+                  <div style="flex:1;">主面板更聚焦模型管理</div>
+                </div>
+              </div>
+              <button class="mock-button" style="margin-top:16px; width:100%;">保存配置</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>方案 B：平台详情进 Drawer，主面板更专注模型</h3>
+      <p>更符合仓库默认 Drawer 习惯，但平台字段不是常驻可见，切换和编辑会多一步。</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>推荐</h4>
+      <ul>
+        <li>优先推荐方案 A</li>
+        <li>更直观体现“左平台，右模型”</li>
+        <li>便于直接用当前未保存表单值去拉平台模型</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>要注意</h4>
+      <ul>
+        <li>右侧需要控制字段密度，避免过长</li>
+        <li>模型管理弹窗仍建议用 Drawer，而不是 Modal</li>
+        <li>导入后只回填编辑态，不自动落库</li>
+      </ul>
+    </div>
+  </div>
+</div>

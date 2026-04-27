@@ -6,6 +6,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	ContextResponseCodeKey    = "__response_code__"
+	ContextResponseMessageKey = "__response_message__"
+)
+
 type Response struct {
 	Code    int         `json:"code"`
 	Message string      `json:"message"`
@@ -29,6 +34,8 @@ const (
 )
 
 func Result(c *gin.Context, code int, message string, data interface{}) {
+	c.Set(ContextResponseCodeKey, code)
+	c.Set(ContextResponseMessageKey, message)
 	c.JSON(http.StatusOK, Response{
 		Code:    code,
 		Message: message,
