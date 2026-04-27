@@ -7,7 +7,6 @@
     class="permission-drawer"
   >
     <a-tabs v-model:activeKey="activeTabKey">
-      <!-- 角色菜单 -->
       <a-tab-pane key="menu" tab="角色菜单">
         <div class="permission-header">
           <a-checkbox
@@ -26,7 +25,6 @@
           />
         </div>
         <div class="menu-layout">
-          <!-- 左侧一级菜单列表 -->
           <div class="menu-group-list">
             <div class="group-list-header">一级菜单</div>
             <div class="group-list-content">
@@ -52,7 +50,6 @@
               </div>
             </div>
           </div>
-          <!-- 右侧子菜单列表 -->
           <div class="menu-detail-list">
             <div class="menu-detail-header">
               <span>{{ selectedMenu?.name || '请选择菜单' }} 子菜单</span>
@@ -86,7 +83,6 @@
                     </a-checkbox>
                     <span v-if="child.permission" class="permission-code">{{ child.permission }}</span>
                   </div>
-                  <!-- 按钮权限 -->
                   <div v-if="child.children?.length" class="menu-child-items">
                     <div
                       v-for="subChild in child.children"
@@ -114,7 +110,6 @@
         </div>
       </a-tab-pane>
 
-      <!-- 角色API -->
       <a-tab-pane key="api" tab="角色API">
         <div class="permission-header">
           <a-checkbox
@@ -133,7 +128,6 @@
           />
         </div>
         <div class="api-layout">
-          <!-- 左侧分组列表 -->
           <div class="api-group-list">
             <div class="group-list-header">API 分组</div>
             <div class="group-list-content">
@@ -159,7 +153,6 @@
               </div>
             </div>
           </div>
-          <!-- 右侧接口列表 -->
           <div class="api-detail-list">
             <div class="api-detail-header">
               <span>{{ selectedGroup || '未分组' }} 接口列表</span>
@@ -222,6 +215,11 @@ interface Props {
   roleName: string
 }
 
+interface ApiGroup {
+  name: string
+  apis: Api[]
+}
+
 const props = defineProps<Props>()
 const visible = defineModel<boolean>('open', { default: false })
 
@@ -236,12 +234,6 @@ const apiSearchText = ref('')
 const selectedMenuId = ref<number | null>(null)
 const menuSearchText = ref('')
 
-// 按分组组织API
-interface ApiGroup {
-  name: string
-  apis: Api[]
-}
-
 const apiGroups = computed<ApiGroup[]>(() => {
   const groups: Record<string, Api[]> = {}
   allApis.value.forEach(api => {
@@ -254,93 +246,89 @@ const apiGroups = computed<ApiGroup[]>(() => {
   return Object.entries(groups).map(([name, apis]) => ({ name, apis }))
 })
 
-// 当前选中分组的接口
 const selectedGroupApis = computed(() => {
   const group = apiGroups.value.find(g => g.name === selectedGroup.value)
   return group?.apis || []
 })
 
-// 当前选中的一级菜单
-const selectedMenu = computed(() => {
-  return menuTree.value.find(m => m.id === selectedMenuId.value)
-})
+const selectedMenu = computed(() => menuTree.value.find(m => m.id === selectedMenuId.value))
 
-// 过滤后的子菜单列表
 const filteredChildMenus = computed(() => {
   const children = selectedMenu.value?.children || []
-  if (!menuSearchText.value) return children
+  if (!menuSearchText.value) {
+    return children
+  }
   const keyword = menuSearchText.value.toLowerCase()
   return children.filter(child => {
-    // 匹配二级菜单名称
-    if (child.name.toLowerCase().includes(keyword)) return true
-    // 匹配三级菜单名称
-    if (child.children?.some(sub => sub.name.toLowerCase().includes(keyword))) return true
-    return false
+    if (child.name.toLowerCase().includes(keyword)) {
+      return true
+    }
+    return !!child.children?.some(sub => sub.name.toLowerCase().includes(keyword))
   })
 })
 
-// 获取一级菜单下已选数量
-const getMenuSelectedCount = (menu: Menu) => {
-  let count = 0
-  if (checkedMenuKeys.value.includes(menu.id)) count++
-  if (menu.children?.length) {
-    menu.children.forEach(child => {
-      if (checkedMenuKeys.value.includes(child.id)) count++
-      if (child.children?.length) {
-        child.children.forEach(sub => {
-          if (checkedMenuKeys.value.includes(sub.id)) count++
-        })
-      }
-    })
-  }
-  return count
-}
-
-// 获取一级菜单下总数量
-const getMenuTotalCount = (menu: Menu) => {
-  let count = 1 // 包含自己
-  if (menu.children?.length) {
-    menu.children.forEach(child => {
-      count++
-      if (child.children?.length) {
-        count += child.children.length
-      }
-    })
-  }
-  return count
-}
-
-// 过滤后的接口列表
 const filteredGroupApis = computed(() => {
-  if (!apiSearchText.value) return selectedGroupApis.value
+  if (!apiSearchText.value) {
+    return selectedGroupApis.value
+  }
   const keyword = apiSearchText.value.toLowerCase()
-  return selectedGroupApis.value.filter(api => 
-    api.path.toLowerCase().includes(keyword) || 
+  return selectedGroupApis.value.filter(api =>
+    api.path.toLowerCase().includes(keyword) ||
     (api.description && api.description.toLowerCase().includes(keyword))
   )
 })
 
-// 获取分组已选数量
-const getGroupSelectedCount = (groupName: string) => {
-  const group = apiGroups.value.find(g => g.name === groupName)
-  if (!group) return 0
-  return group.apis.filter(api => checkedApiIds.value.includes(api.id)).length
-}
-
-// 获取所有菜单ID
 const getAllMenuIds = (menus: Menu[]): number[] => {
   const ids: number[] = []
   const traverse = (items: Menu[]) => {
     items.forEach(item => {
       ids.push(item.id)
-      if (item.children?.length) traverse(item.children)
+      if (item.children?.length) {
+        traverse(item.children)
+      }
     })
   }
   traverse(menus)
   return ids
 }
 
-// 菜单全选相关
+const getMenuSelectedCount = (menu: Menu) => {
+  let count = 0
+  if (checkedMenuKeys.value.includes(menu.id)) {
+    count++
+  }
+  menu.children?.forEach(child => {
+    if (checkedMenuKeys.value.includes(child.id)) {
+      count++
+    }
+    child.children?.forEach(sub => {
+      if (checkedMenuKeys.value.includes(sub.id)) {
+        count++
+      }
+    })
+  })
+  return count
+}
+
+const getMenuTotalCount = (menu: Menu) => {
+  let count = 1
+  menu.children?.forEach(child => {
+    count++
+    if (child.children?.length) {
+      count += child.children.length
+    }
+  })
+  return count
+}
+
+const getGroupSelectedCount = (groupName: string) => {
+  const group = apiGroups.value.find(g => g.name === groupName)
+  if (!group) {
+    return 0
+  }
+  return group.apis.filter(api => checkedApiIds.value.includes(api.id)).length
+}
+
 const isAllMenuChecked = computed(() => {
   const allMenuIds = getAllMenuIds(menuTree.value)
   return allMenuIds.length > 0 && allMenuIds.every(id => checkedMenuKeys.value.includes(id))
@@ -352,7 +340,6 @@ const isMenuIndeterminateAll = computed(() => {
   return checked > 0 && checked < allMenuIds.length
 })
 
-// API全选相关
 const isAllApiChecked = computed(() => {
   return allApis.value.length > 0 && allApis.value.every(api => checkedApiIds.value.includes(api.id))
 })
@@ -362,65 +349,58 @@ const isApiIndeterminateAll = computed(() => {
   return checked > 0 && checked < allApis.value.length
 })
 
-const isMenuChecked = (menuId: number) => {
-  return checkedMenuKeys.value.includes(menuId)
-}
+const isMenuChecked = (menuId: number) => checkedMenuKeys.value.includes(menuId)
 
 const isMenuIndeterminate = (menu: Menu) => {
-  if (!menu.children?.length) return false
+  if (!menu.children?.length) {
+    return false
+  }
   const childIds = getAllMenuIds(menu.children)
   const checked = childIds.filter(id => checkedMenuKeys.value.includes(id)).length
   return checked > 0 && checked < childIds.length
 }
 
-// API分组相关
 const isGroupChecked = (groupName: string) => {
   const group = apiGroups.value.find(g => g.name === groupName)
-  if (!group || !group.apis.length) return false
+  if (!group || !group.apis.length) {
+    return false
+  }
   return group.apis.every(api => checkedApiIds.value.includes(api.id))
 }
 
 const isGroupIndeterminate = (groupName: string) => {
   const group = apiGroups.value.find(g => g.name === groupName)
-  if (!group) return false
+  if (!group) {
+    return false
+  }
   const checked = group.apis.filter(api => checkedApiIds.value.includes(api.id)).length
   return checked > 0 && checked < group.apis.length
 }
 
 const getMethodColor = (method: string) => {
   const colors: Record<string, string> = {
-    'GET': 'green',
-    'POST': 'blue',
-    'PUT': 'orange',
-    'DELETE': 'red',
-    'PATCH': 'purple'
+    GET: 'green',
+    POST: 'blue',
+    PUT: 'orange',
+    DELETE: 'red',
+    PATCH: 'purple'
   }
   return colors[method.toUpperCase()] || 'default'
 }
 
 const handleCheckAllMenus = (e: any) => {
-  if (e.target.checked) {
-    checkedMenuKeys.value = getAllMenuIds(menuTree.value)
-  } else {
-    checkedMenuKeys.value = []
-  }
+  checkedMenuKeys.value = e.target.checked ? getAllMenuIds(menuTree.value) : []
 }
 
 const handleCheckAllApis = (e: any) => {
-  if (e.target.checked) {
-    checkedApiIds.value = allApis.value.map(api => api.id)
-  } else {
-    checkedApiIds.value = []
-  }
+  checkedApiIds.value = e.target.checked ? allApis.value.map(api => api.id) : []
 }
 
 const handleMenuChange = (menu: Menu, e: any) => {
   const menuIds = [menu.id]
-  // 收集所有子菜单ID
   if (menu.children?.length) {
     menuIds.push(...getAllMenuIds(menu.children))
   }
-  
   if (e.target.checked) {
     checkedMenuKeys.value = [...new Set([...checkedMenuKeys.value, ...menuIds])]
   } else {
@@ -429,10 +409,11 @@ const handleMenuChange = (menu: Menu, e: any) => {
 }
 
 const handleGroupChange = (groupName: string, e: any) => {
-  const group = apiGroups.value.find(g => g.name === groupName)
-  if (!group) return
+  const group = apiGroups.value.find(item => item.name === groupName)
+  if (!group) {
+    return
+  }
   const groupApiIds = group.apis.map(api => api.id)
-  
   if (e.target.checked) {
     checkedApiIds.value = [...new Set([...checkedApiIds.value, ...groupApiIds])]
   } else {
@@ -451,7 +432,6 @@ const handleApiChange = (apiId: number, e: any) => {
 const fetchMenuTree = async () => {
   const res = await getMenuTree()
   menuTree.value = res.data
-  // 默认选中第一个一级菜单
   if (menuTree.value.length > 0) {
     selectedMenuId.value = menuTree.value[0].id
   }
@@ -460,17 +440,18 @@ const fetchMenuTree = async () => {
 const fetchAllApis = async () => {
   const res = await getAllApis()
   allApis.value = res.data
-  // 默认选中第一个分组
   if (apiGroups.value.length > 0) {
     selectedGroup.value = apiGroups.value[0].name
   }
 }
 
 const loadRolePermissions = async () => {
-  if (!props.roleId) return
+  if (!props.roleId) {
+    return
+  }
   const res = await getRole(props.roleId)
-  checkedMenuKeys.value = res.data.menus?.map((m: Menu) => m.id) || []
-  checkedApiIds.value = res.data.apis?.map((a: Api) => a.id) || []
+  checkedMenuKeys.value = res.data.menus?.map((menu: Menu) => menu.id) || []
+  checkedApiIds.value = res.data.apis?.map((api: Api) => api.id) || []
 }
 
 const handleSavePermissions = async () => {
@@ -482,23 +463,22 @@ const handleSavePermissions = async () => {
     ])
     message.success('权限分配成功')
     visible.value = false
-    // 刷新当前用户的菜单和权限
     userStore.getUserInfoAction()
   } finally {
     saveLoading.value = false
   }
 }
 
-// 监听打开状态，加载数据
 watch(visible, async (val) => {
-  if (val) {
-    activeTabKey.value = 'menu'
-    apiSearchText.value = ''
-    menuSearchText.value = ''
-    selectedMenuId.value = null
-    await Promise.all([fetchMenuTree(), fetchAllApis()])
-    await loadRolePermissions()
+  if (!val) {
+    return
   }
+  activeTabKey.value = 'menu'
+  apiSearchText.value = ''
+  menuSearchText.value = ''
+  selectedMenuId.value = null
+  await Promise.all([fetchMenuTree(), fetchAllApis()])
+  await loadRolePermissions()
 })
 </script>
 
@@ -517,7 +497,6 @@ watch(visible, async (val) => {
   font-size: 13px;
 }
 
-/* 通用左右分栏布局 */
 .menu-layout,
 .api-layout {
   display: flex;
@@ -578,7 +557,6 @@ watch(visible, async (val) => {
   font-size: 12px;
 }
 
-/* 菜单右侧详情 */
 .menu-detail-list,
 .api-detail-list {
   flex: 1;
@@ -604,7 +582,6 @@ watch(visible, async (val) => {
   padding: 8px;
 }
 
-/* 菜单子项块 */
 .menu-child-block {
   margin-bottom: 12px;
   border: 1px solid #f0f0f0;
@@ -679,12 +656,6 @@ watch(visible, async (val) => {
 
 .btn-name {
   font-size: 13px;
-}
-
-.api-detail-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
 }
 
 .api-item {
