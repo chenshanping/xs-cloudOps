@@ -8,7 +8,11 @@
 
 ## Automated Checks
 
+<<<<<<< HEAD
 - [x] Run in `E:\go_project\go-base\server`:
+=======
+- [ ] Run in `E:\go_project\go-base\server`:
+>>>>>>> codex/add-department-permission-foundation
 
 ```powershell
 go test ./...
@@ -18,10 +22,14 @@ Expected:
 
 - All tests pass.
 
+<<<<<<< HEAD
 - Result:
   - Pass in worktree `E:\go_project\go-base\.worktrees\backend-structure-phase1`
 
 - [x] Run any new focused auth tests:
+=======
+- [ ] Run any new focused auth tests:
+>>>>>>> codex/add-department-permission-foundation
 
 ```powershell
 go test ./api/v1 ./service -run "Auth|Login|ResetPassword|UserInfo" -v
@@ -31,10 +39,14 @@ Expected:
 
 - Focused auth-related tests pass.
 
+<<<<<<< HEAD
 - Result:
   - Pass through focused `server/service` tests for `AuthFlowService`
 
 - [x] Run any new focused AI tests:
+=======
+- [ ] Run any new focused AI tests:
+>>>>>>> codex/add-department-permission-foundation
 
 ```powershell
 go test ./api/v1 ./service -run "AI|Chat|Conversation|Stream" -v
@@ -44,6 +56,7 @@ Expected:
 
 - Focused AI-related tests pass.
 
+<<<<<<< HEAD
 - Result:
   - Pass through focused `server/service` tests for `AIStreamAccumulator`
 
@@ -103,10 +116,43 @@ Expected:
     - Did not execute a valid email reset because it would require live mailbox state and mutate a real account password
 
 - [x] Get current user info:
+=======
+## Auth Manual Scenarios
+
+- [ ] Login success:
+  - valid username/password
+  - token returned
+  - user object returned
+
+- [ ] Login failure:
+  - wrong password
+  - proper error message returned
+
+- [ ] Login lock / retry path:
+  - repeated failures trigger retry count behavior
+  - lock response still works as before
+
+- [ ] Logout:
+  - token invalidation path still executes
+
+- [ ] Refresh token:
+  - refresh endpoint still returns a new token
+
+- [ ] Reset password by token:
+  - valid token succeeds
+  - invalid token fails
+
+- [ ] Reset password by email:
+  - valid email code succeeds
+  - invalid email code fails
+
+- [ ] Get current user info:
+>>>>>>> codex/add-department-permission-foundation
   - user data
   - menus
   - permissions
   all still return correctly
+<<<<<<< HEAD
   - Result:
     - Pass
     - Verified `code=200`, `user.username=admin`, `menu_count=2`, `permission_count=1`
@@ -172,6 +218,22 @@ Expected:
     - Pass as endpoint smoke
     - Verified invalid config returns a controlled outbound error instead of a handler crash
     - Valid provider behavior is also indirectly proven by successful `ai/chat` and `ai/chat/stream` calls in this environment
+=======
+
+## AI Manual Scenarios
+
+- [ ] Get models returns the same model list behavior as before.
+- [ ] Get conversations still paginates correctly.
+- [ ] Create conversation still creates a new conversation.
+- [ ] Get conversation details still returns conversation + messages.
+- [ ] Normal chat still creates/persists assistant message.
+- [ ] Stream chat still streams chunks to the client.
+- [ ] Stream chat still persists assistant message after completion when save is enabled.
+- [ ] Clear messages still clears only the intended conversation.
+- [ ] Clear context still updates the intended conversation state.
+- [ ] Delete message still enforces ownership checks.
+- [ ] Test AI config endpoint still works.
+>>>>>>> codex/add-department-permission-foundation
 
 ## Regression Watch List
 
@@ -183,6 +245,7 @@ Expected:
 
 ## Acceptance Record
 
+<<<<<<< HEAD
 - Test date: 2026-04-27
 - Tester: Codex
 - Focused auth test result: Pass
@@ -196,4 +259,15 @@ Expected:
   - Cross-user negative ownership for `DELETE /ai/messages/:id` was not exercised because no safe secondary account was prepared in this round
 - Decision:
   - [x] Pass, Phase 3 may start
+=======
+- Test date:
+- Tester:
+- Focused auth test result:
+- Focused AI test result:
+- Manual auth scenario result:
+- Manual AI scenario result:
+- Issues found:
+- Decision:
+  - [ ] Pass, Phase 3 may start
+>>>>>>> codex/add-department-permission-foundation
   - [ ] Fail, fix before Phase 3

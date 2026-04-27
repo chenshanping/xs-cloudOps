@@ -8,7 +8,11 @@
 
 ## Automated Checks
 
+<<<<<<< HEAD
 - [x] Run in `E:\go_project\go-base\server`:
+=======
+- [ ] Run in `E:\go_project\go-base\server`:
+>>>>>>> codex/add-department-permission-foundation
 
 ```powershell
 go test ./...
@@ -18,10 +22,14 @@ Expected:
 
 - All packages pass as they did before Phase 1.
 
+<<<<<<< HEAD
 - Result:
   - Pass in worktree `E:\go_project\go-base\.worktrees\backend-structure-phase1`
 
 - [x] Run:
+=======
+- [ ] Run:
+>>>>>>> codex/add-department-permission-foundation
 
 ```powershell
 go test ./router/... ./model/request/...
@@ -31,6 +39,7 @@ Expected:
 
 - No package-level compile or import errors after file moves and renames.
 
+<<<<<<< HEAD
 - Result:
   - Pass in worktree `E:\go_project\go-base\.worktrees\backend-structure-phase1`
 
@@ -47,6 +56,21 @@ Expected:
 - [x] Start the backend locally.
 - [x] Confirm server boot succeeds with no import/runtime panic caused by moved files.
 - [x] Open Swagger JSON endpoint and confirm it still returns data:
+=======
+## Manual Structure Checks
+
+- [ ] Confirm `R(...)` no longer lives in `server/router/modules/auth.go`.
+- [ ] Confirm route module files contain only feature route registration logic.
+- [ ] Confirm request DTOs are split by feature but still use `package request`.
+- [ ] Confirm no request type name changed externally.
+- [ ] Confirm no new top-level backend architecture layer was introduced.
+
+## Functional Smoke Checks
+
+- [ ] Start the backend locally.
+- [ ] Confirm server boot succeeds with no import/runtime panic caused by moved files.
+- [ ] Open Swagger JSON endpoint and confirm it still returns data:
+>>>>>>> codex/add-department-permission-foundation
 
 Suggested check:
 
@@ -59,6 +83,7 @@ Expected:
 - HTTP 200
 - Response body is JSON
 
+<<<<<<< HEAD
 - Current result:
   - `http://127.0.0.1:9000/swagger/doc.json` returns HTTP 200
   - Response contains Swagger JSON with title `Go Base Server API`
@@ -66,6 +91,11 @@ Expected:
 - [x] Confirm auth route registration still exists.
 - [x] Confirm AI route registration still exists.
 - [x] Confirm API sync route still exists.
+=======
+- [ ] Confirm auth route registration still exists.
+- [ ] Confirm AI route registration still exists.
+- [ ] Confirm API sync route still exists.
+>>>>>>> codex/add-department-permission-foundation
 
 ## Regression Watch List
 
@@ -76,6 +106,7 @@ Expected:
 
 ## Acceptance Record
 
+<<<<<<< HEAD
 - Test date: 2026-04-27
 - Tester: Codex
 - `go test ./...` result: Pass
@@ -85,4 +116,14 @@ Expected:
   - None for Phase 1 after switching smoke verification to port `9000`
 - Decision:
   - [x] Pass, Phase 2 may start
+=======
+- Test date:
+- Tester:
+- `go test ./...` result:
+- Swagger endpoint result:
+- Route registration check result:
+- Issues found:
+- Decision:
+  - [ ] Pass, Phase 2 may start
+>>>>>>> codex/add-department-permission-foundation
   - [ ] Fail, fix before Phase 2

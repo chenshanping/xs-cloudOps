@@ -8,7 +8,11 @@
 
 ## Automated Checks
 
+<<<<<<< HEAD
 - [x] Run in `E:\go_project\go-base\server`:
+=======
+- [ ] Run in `E:\go_project\go-base\server`:
+>>>>>>> codex/add-department-permission-foundation
 
 ```powershell
 go test ./...
@@ -18,10 +22,14 @@ Expected:
 
 - All tests pass.
 
+<<<<<<< HEAD
 - Result:
   - Pass in worktree `E:\go_project\go-base\.worktrees\backend-structure-phase1\server`
 
 - [x] Run focused AI service tests:
+=======
+- [ ] Run focused AI service tests:
+>>>>>>> codex/add-department-permission-foundation
 
 ```powershell
 go test ./service -run "AI|Conversation|Chat|Stream" -v
@@ -31,6 +39,7 @@ Expected:
 
 - All AI-related service tests pass after file split.
 
+<<<<<<< HEAD
 - Result:
   - Pass
   - Verified AI stream accumulator tests still pass
@@ -40,6 +49,9 @@ Expected:
     - local image to base64 conversion
 
 - [x] Run focused user service tests if `user.go` was split:
+=======
+- [ ] Run focused user service tests if `user.go` was split:
+>>>>>>> codex/add-department-permission-foundation
 
 ```powershell
 go test ./service -run "User|Profile|Password|Status" -v
@@ -49,6 +61,7 @@ Expected:
 
 - All touched user-related tests pass.
 
+<<<<<<< HEAD
 - Result:
   - Not needed in this phase
   - `server/service/user.go` was intentionally left untouched to keep Phase 3 scope controlled
@@ -56,11 +69,17 @@ Expected:
 ## AI Service Split Verification
 
 - [x] Confirm `service/ai.go` is no longer the single owner of:
+=======
+## AI Service Split Verification
+
+- [ ] Confirm `service/ai.go` is no longer the single owner of:
+>>>>>>> codex/add-department-permission-foundation
   - conversation CRUD
   - context building
   - file preprocessing
   - provider HTTP client
   - stream parsing
+<<<<<<< HEAD
   - Result:
     - `service/ai.go` now only keeps `AIService` declaration and global singleton
     - Conversation orchestration moved to `service/ai_conversation.go`
@@ -126,6 +145,23 @@ Expected:
     - `api/v1/api.go` still uses `registry.ParseStructFields`
     - Shared field parser tests cover embedded fields, `form/json` tag fallback, and `binding:\"required\"`
     - No dedicated live sync trigger was executed in this round to avoid mutating shared API metadata
+=======
+
+- [ ] Confirm exported AI service entry points still behave identically from the handler perspective.
+- [ ] Confirm SSE parsing has a single clear owner after the split.
+- [ ] Confirm local file read, remote file read, and image base64 conversion still work.
+
+## Request DTO Boundary Verification
+
+- [ ] For touched `auth`, `ai`, and `user` paths, confirm handlers map HTTP DTOs to service-local inputs instead of passing `request.*` through unchanged where refactoring was planned.
+- [ ] Confirm untouched modules were not unnecessarily migrated.
+
+## Metadata Verification
+
+- [ ] Confirm route metadata parsing has one shared rule set.
+- [ ] Confirm Swagger generation still works.
+- [ ] Confirm API sync still extracts request/response metadata correctly.
+>>>>>>> codex/add-department-permission-foundation
 
 Suggested checks:
 
@@ -138,11 +174,15 @@ Expected:
 - HTTP 200
 - JSON returned
 
+<<<<<<< HEAD
 - [x] If available in the local environment, trigger API sync and verify it completes without parsing errors.
   - Result:
     - Skipped intentionally in this round
     - Current environment appears to be a shared local admin instance; did not mutate API metadata just to prove parser wiring
     - Parser behavior is covered by new registry/swagger tests and compile verification
+=======
+- [ ] If available in the local environment, trigger API sync and verify it completes without parsing errors.
+>>>>>>> codex/add-department-permission-foundation
 
 ## End-to-End Regression Watch List
 
@@ -154,6 +194,7 @@ Expected:
 
 ## Acceptance Record
 
+<<<<<<< HEAD
 - Test date: 2026-04-27
 - Tester: Codex
 - `go test ./...` result: Pass
@@ -166,4 +207,15 @@ Expected:
   - Live API sync was not triggered to avoid mutating shared API metadata in the local environment.
 - Decision:
   - [x] Pass, 3-phase cleanup complete
+=======
+- Test date:
+- Tester:
+- `go test ./...` result:
+- AI split verification result:
+- DTO boundary verification result:
+- Swagger / metadata verification result:
+- Issues found:
+- Decision:
+  - [ ] Pass, 3-phase cleanup complete
+>>>>>>> codex/add-department-permission-foundation
   - [ ] Fail, fix before closing work
