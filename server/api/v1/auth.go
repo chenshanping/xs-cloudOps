@@ -2,11 +2,8 @@ package v1
 
 import (
 	"context"
-	"fmt"
 
-	"server/global"
 	"server/middleware"
-	"server/model"
 	"server/model/request"
 	"server/model/response"
 	"server/service"
@@ -18,6 +15,7 @@ import (
 type AuthApi struct{}
 
 var Auth = new(AuthApi)
+var authFlow = service.NewAuthFlowService()
 
 // Login 用户登录
 func (a *AuthApi) Login(c *gin.Context) {
@@ -27,101 +25,25 @@ func (a *AuthApi) Login(c *gin.Context) {
 		return
 	}
 
-	// 检查账户是否被锁定
-	if locked, minutes := service.Captcha.CheckLoginLock(req.Username); locked {
-		response.Fail(c, fmt.Sprintf("账户已被锁定，请%d分钟后重试", minutes))
+	result, flowErr := authFlow.Login(service.AuthLoginInput{
+		Username:  req.Username,
+		Password:  req.Password,
+		CaptchaID: req.CaptchaID,
+		Captcha:   req.Captcha,
+	}, c.ClientIP(), c.Request.UserAgent())
+	if flowErr != nil {
+		switch flowErr.Kind {
+		case service.AuthFlowErrorKindBadRequest:
+			response.BadRequest(c, flowErr.Message)
+		default:
+			response.Fail(c, flowErr.Message)
+		}
 		return
 	}
-
-	// 检查是否需要验证码
-	if service.Captcha.IsLoginCaptchaEnabled() {
-		captchaType := service.Captcha.GetCaptchaType()
-		if req.CaptchaID == "" || req.Captcha == "" {
-			response.BadRequest(c, "请完成验证")
-			return
-		}
-		
-		// 滑动验证码在前端已验证，后端只验证captchaID是否有效
-		if captchaType == "slider" {
-			if req.Captcha != "slider_verified" {
-				response.Fail(c, "请先完成滑动验证")
-				return
-			}
-			// 滑动验证码已在前端验证通过，这里只需确认captchaID格式正确
-		} else {
-			// 普通图形验证码
-			if !service.Captcha.VerifyCaptcha(req.CaptchaID, req.Captcha) {
-				response.Fail(c, "验证码错误")
-				return
-			}
-		}
-	}
-
-	// 获取客户端信息
-	ip := c.ClientIP()
-	clientInfo := utils.GetClientInfo(ip, c.Request.UserAgent())
-
-	user, err := service.User.Login(req.Username, req.Password)
-	if err != nil {
-		// 增加登录失败次数
-		retryCount, locked := service.Captcha.IncrLoginRetry(req.Username)
-		maxRetry := service.Captcha.GetLoginMaxRetry()
-		
-		errMsg := err.Error()
-		if locked {
-			lockTime := service.Captcha.GetLoginLockTime()
-			errMsg = fmt.Sprintf("登录失败次数过多，账户已锁定%d分钟", lockTime)
-		} else {
-			errMsg = fmt.Sprintf("%s，还剩%d次尝试机会", errMsg, maxRetry-retryCount)
-		}
-		
-		// 记录登录失败日志
-		service.Log.CreateLoginLog(&model.SysLoginLog{
-			Username: req.Username,
-			IP:       ip,
-			Location: clientInfo.Location,
-			Browser:  clientInfo.Browser,
-			OS:       clientInfo.OS,
-			Status:   0,
-			Msg:      err.Error(),
-		})
-		response.Fail(c, errMsg)
-		return
-	}
-	
-	// 登录成功，清除重试次数
-	service.Captcha.ClearLoginRetry(req.Username)
-
-	// 提取角色ID、编码列表
-	roleIDs := make([]uint, 0, len(user.Roles))
-	roleCodes := make([]string, 0, len(user.Roles))
-	for _, role := range user.Roles {
-		roleIDs = append(roleIDs, role.ID)
-		roleCodes = append(roleCodes, role.Code)
-	}
-
-	// 生成Token
-	token, err := utils.GenerateToken(user.ID, user.Username, roleIDs, roleCodes)
-	if err != nil {
-		response.Fail(c, "生成Token失败")
-		return
-	}
-
-	// 记录登录成功日志
-	service.Log.CreateLoginLog(&model.SysLoginLog{
-		UserID:   user.ID,
-		Username: user.Username,
-		IP:       ip,
-		Location: clientInfo.Location,
-		Browser:  clientInfo.Browser,
-		OS:       clientInfo.OS,
-		Status:   1,
-		Msg:      "登录成功",
-	})
 
 	response.OkWithData(c, gin.H{
-		"token": token,
-		"user":  user,
+		"token": result.Token,
+		"user":  result.User,
 	})
 }
 
@@ -211,36 +133,10 @@ func (a *AuthApi) ResetPasswordByToken(c *gin.Context) {
 		return
 	}
 
-	// 验证Token
-	ctx := context.Background()
-	key := "reset_password:" + req.Token
-	userIDStr, err := global.Redis.Get(ctx, key).Result()
-	if err != nil {
-		response.Fail(c, "链接已过期或无效")
+	if flowErr := authFlow.ResetPasswordByToken(context.Background(), req.Token, req.Password); flowErr != nil {
+		response.Fail(c, flowErr.Message)
 		return
 	}
-
-	// 转换userID
-	var userID uint
-	if _, err := global.Redis.Get(ctx, key).Uint64(); err == nil {
-		userID = uint(global.Redis.Get(ctx, key).Val()[0] - '0')
-	}
-	if userIDStr != "" {
-		var id uint64
-		for _, c := range userIDStr {
-			id = id*10 + uint64(c-'0')
-		}
-		userID = uint(id)
-	}
-
-	// 重置密码
-	if err := service.User.ResetPassword(userID, req.Password); err != nil {
-		response.Fail(c, "重置密码失败")
-		return
-	}
-
-	// 删除Token
-	global.Redis.Del(ctx, key)
 
 	response.OkWithMessage(c, "密码重置成功")
 }
@@ -324,47 +220,16 @@ func (a *AuthApi) Logout(c *gin.Context) {
 // GetUserInfo 获取当前用户信息（优先从 Redis 缓存获取）
 func (a *AuthApi) GetUserInfo(c *gin.Context) {
 	userID := middleware.GetUserID(c)
-
-	// 尝试从缓存获取
-	if cache, err := service.Cache.GetUserInfoFromCache(userID); err == nil {
-		response.OkWithData(c, gin.H{
-			"user":        cache.User,
-			"menus":       cache.Menus,
-			"permissions": cache.Permissions,
-		})
+	cache, flowErr := authFlow.GetCurrentUserInfo(userID)
+	if flowErr != nil {
+		response.Fail(c, flowErr.Message)
 		return
 	}
-
-	// 缓存未命中，查询数据库
-	user, err := service.User.GetUserInfo(userID)
-	if err != nil {
-		response.Fail(c, "获取用户信息失败")
-		return
-	}
-
-	menus, err := service.Menu.GetUserMenus(userID)
-	if err != nil {
-		response.Fail(c, "获取用户菜单失败")
-		return
-	}
-
-	permissions, err := service.Menu.GetUserPermissions(userID)
-	if err != nil {
-		response.Fail(c, "获取用户权限失败")
-		return
-	}
-
-	// 写入缓存
-	_ = service.Cache.SetUserInfoToCache(userID, &service.UserInfoCache{
-		User:        user,
-		Menus:       menus,
-		Permissions: permissions,
-	})
 
 	response.OkWithData(c, gin.H{
-		"user":        user,
-		"menus":       menus,
-		"permissions": permissions,
+		"user":        cache.User,
+		"menus":       cache.Menus,
+		"permissions": cache.Permissions,
 	})
 }
 

@@ -2,9 +2,7 @@ package v1
 
 import (
 	"bufio"
-	"encoding/json"
 	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -32,13 +30,18 @@ func (a *AIApi) GetConversations(c *gin.Context) {
 		return
 	}
 
-	conversations, total, err := service.AI.GetConversations(userID, &req)
+	input := service.ConversationListInput{
+		Page:     req.Page,
+		PageSize: req.PageSize,
+	}.Normalize()
+
+	conversations, total, err := service.AI.GetConversations(userID, input)
 	if err != nil {
 		response.Fail(c, "获取对话列表失败")
 		return
 	}
 
-	response.OkWithPage(c, conversations, total, req.Page, req.PageSize)
+	response.OkWithPage(c, conversations, total, input.Page, input.PageSize)
 }
 
 // 获取对话消息
@@ -68,7 +71,10 @@ func (a *AIApi) CreateConversation(c *gin.Context) {
 		return
 	}
 
-	conversation, err := service.AI.CreateConversation(userID, &req)
+	conversation, err := service.AI.CreateConversation(userID, service.CreateConversationInput{
+		Title: req.Title,
+		Model: req.Model,
+	})
 	if err != nil {
 		response.Fail(c, err.Error())
 		return
@@ -103,7 +109,15 @@ func (a *AIApi) Chat(c *gin.Context) {
 		return
 	}
 
-	message, err := service.AI.Chat(userID, &req)
+	message, err := service.AI.Chat(userID, service.AIChatInput{
+		ConversationID:   req.ConversationID,
+		Model:            req.Model,
+		Message:          req.Message,
+		FileIDs:          req.FileIDs,
+		EnableSearch:     req.EnableSearch,
+		EnableThinking:   req.EnableThinking,
+		SaveConversation: req.SaveConversation,
+	})
 	if err != nil {
 		response.Fail(c, err.Error())
 		return
@@ -121,7 +135,15 @@ func (a *AIApi) ChatStream(c *gin.Context) {
 		return
 	}
 
-	conversationID, reader, saveConversation, err := service.AI.ChatStream(userID, &req)
+	conversationID, reader, saveConversation, err := service.AI.ChatStream(userID, service.AIChatInput{
+		ConversationID:   req.ConversationID,
+		Model:            req.Model,
+		Message:          req.Message,
+		FileIDs:          req.FileIDs,
+		EnableSearch:     req.EnableSearch,
+		EnableThinking:   req.EnableThinking,
+		SaveConversation: req.SaveConversation,
+	})
 	if err != nil {
 		response.Fail(c, err.Error())
 		return
@@ -141,56 +163,25 @@ func (a *AIApi) ChatStream(c *gin.Context) {
 	}
 
 	// 收集完整响应用于保存
-	var fullContent strings.Builder
-	var fullReasoning strings.Builder
+	accumulator := service.NewAIStreamAccumulator()
 
 	// 解析并转发流式响应
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		line := scanner.Text()
-		if !strings.HasPrefix(line, "data: ") {
+		event, err := accumulator.HandleLine(scanner.Text())
+		if err != nil || event == nil {
 			continue
 		}
-
-		data := strings.TrimPrefix(line, "data: ")
-		if data == "[DONE]" {
-			c.SSEvent("message", "[DONE]")
-			c.Writer.Flush()
+		c.SSEvent(event.Name, event.Data)
+		c.Writer.Flush()
+		if event.Done {
 			break
-		}
-
-		var chunk service.ChatCompletionChunk
-		if err := json.Unmarshal([]byte(data), &chunk); err != nil {
-			continue
-		}
-
-		if len(chunk.Choices) > 0 {
-			delta := chunk.Choices[0].Delta
-
-			// 收集内容
-			if delta.Content != "" {
-				fullContent.WriteString(delta.Content)
-			}
-			if delta.ReasoningContent != "" {
-				fullReasoning.WriteString(delta.ReasoningContent)
-			}
-
-			// 构建前端需要的格式
-			eventData := map[string]interface{}{
-				"content":           delta.Content,
-				"reasoning_content": delta.ReasoningContent,
-				"finish_reason":     chunk.Choices[0].FinishReason,
-			}
-
-			jsonData, _ := json.Marshal(eventData)
-			c.SSEvent("message", string(jsonData))
-			c.Writer.Flush()
 		}
 	}
 
 	// 保存助手消息（只有启用保存时才保存）
-	if saveConversation && (fullContent.Len() > 0 || fullReasoning.Len() > 0) {
-		_ = service.AI.SaveAssistantMessage(conversationID, fullContent.String(), fullReasoning.String())
+	if saveConversation && (accumulator.FullContent() != "" || accumulator.FullReasoning() != "") {
+		_ = service.AI.SaveAssistantMessage(conversationID, accumulator.FullContent(), accumulator.FullReasoning())
 	}
 }
 
