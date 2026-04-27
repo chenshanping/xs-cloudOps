@@ -10,7 +10,6 @@ import (
 	"server/model/request"
 	"server/model/response"
 	"server/service"
-	"server/utils"
 )
 
 type UserApi struct{}
@@ -19,7 +18,8 @@ var User = new(UserApi)
 
 // 获取用户选项列表（轻量级，用于下拉选择）
 func (a *UserApi) GetUserOptions(c *gin.Context) {
-	list, err := service.User.GetUserOptions()
+	operatorID := middleware.GetUserID(c)
+	list, err := service.User.GetUserOptions(operatorID)
 	if err != nil {
 		response.Fail(c, "获取用户选项失败")
 		return
@@ -35,7 +35,8 @@ func (a *UserApi) GetUserList(c *gin.Context) {
 		return
 	}
 
-	users, total, err := service.User.GetUserList(&req)
+	operatorID := middleware.GetUserID(c)
+	users, total, err := service.User.GetUserList(operatorID, &req)
 	if err != nil {
 		response.Fail(c, "获取用户列表失败")
 		return
@@ -52,9 +53,10 @@ func (a *UserApi) GetUser(c *gin.Context) {
 		return
 	}
 
-	user, err := service.User.GetUserInfo(uint(id))
+	operatorID := middleware.GetUserID(c)
+	user, err := service.User.GetManagedUserInfo(operatorID, uint(id))
 	if err != nil {
-		response.Fail(c, "获取用户信息失败")
+		response.Fail(c, err.Error())
 		return
 	}
 
@@ -69,7 +71,8 @@ func (a *UserApi) CreateUser(c *gin.Context) {
 		return
 	}
 
-	if err := service.User.CreateUser(&req); err != nil {
+	operatorID := middleware.GetUserID(c)
+	if err := service.User.CreateUser(operatorID, &req); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
@@ -91,7 +94,8 @@ func (a *UserApi) UpdateUser(c *gin.Context) {
 		return
 	}
 
-	if err := service.User.UpdateUser(uint(id), &req); err != nil {
+	operatorID := middleware.GetUserID(c)
+	if err := service.User.UpdateUser(operatorID, uint(id), &req); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
@@ -107,7 +111,8 @@ func (a *UserApi) DeleteUser(c *gin.Context) {
 		return
 	}
 
-	if err := service.User.DeleteUser(uint(id)); err != nil {
+	operatorID := middleware.GetUserID(c)
+	if err := service.User.DeleteUser(operatorID, uint(id)); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
@@ -130,7 +135,8 @@ func (a *UserApi) BatchDeleteUsers(c *gin.Context) {
 		return
 	}
 
-	successCount, failedMsgs := service.User.BatchDeleteUsers(req.Ids)
+	operatorID := middleware.GetUserID(c)
+	successCount, failedMsgs := service.User.BatchDeleteUsers(operatorID, req.Ids)
 
 	if len(failedMsgs) == 0 {
 		response.OkWithMessage(c, "batch_delete_success")
@@ -161,7 +167,8 @@ func (a *UserApi) UpdateUserStatus(c *gin.Context) {
 		return
 	}
 
-	if err := service.User.UpdateUserStatus(uint(id), req.Status); err != nil {
+	operatorID := middleware.GetUserID(c)
+	if err := service.User.UpdateUserStatus(operatorID, uint(id), req.Status); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
@@ -200,7 +207,8 @@ func (a *UserApi) ResetPassword(c *gin.Context) {
 		return
 	}
 
-	if err := service.User.ResetPassword(uint(id), req.Password); err != nil {
+	operatorID := middleware.GetUserID(c)
+	if err := service.User.ResetManagedUserPassword(operatorID, uint(id), req.Password); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
@@ -285,13 +293,8 @@ func (a *UserApi) ForceOffline(c *gin.Context) {
 
 	// 不能强制下线自己
 	currentUserID := middleware.GetUserID(c)
-	if uint(id) == currentUserID {
-		response.Fail(c, "不能强制下线自己")
-		return
-	}
-
-	if err := utils.RemoveUserToken(uint(id)); err != nil {
-		response.Fail(c, "操作失败")
+	if err := service.User.ForceOffline(currentUserID, uint(id)); err != nil {
+		response.Fail(c, err.Error())
 		return
 	}
 
@@ -331,9 +334,10 @@ func (a *UserApi) GetUserProfilesById(c *gin.Context) {
 
 	// 获取用户角色编码列表
 	var userRoles []string
-	user, err := service.User.GetUserInfo(uint(id))
+	operatorID := middleware.GetUserID(c)
+	user, err := service.User.GetManagedUserInfo(operatorID, uint(id))
 	if err != nil {
-		response.Fail(c, "用户不存在")
+		response.Fail(c, err.Error())
 		return
 	}
 	for _, role := range user.Roles {

@@ -41,6 +41,16 @@
             </div>
           </a-form-item>
 
+          <a-form-item label="部门管理菜单">
+            <a-switch
+              :checked="formData.dept_module_enabled === 'true'"
+              @change="(checked: boolean) => formData.dept_module_enabled = checked ? 'true' : 'false'"
+            />
+            <div class="form-tip">
+              控制后台菜单中是否显示“部门管理”，保存后刷新页面生效
+            </div>
+          </a-form-item>
+
           
 
           <!-- 主题预设 -->
@@ -282,7 +292,8 @@ const SYSTEM_CONFIG_KEYS = [
   'header_bg_color',
   'header_text_color',
   'front_mode',
-  'user_profile_button_visible'
+  'user_profile_button_visible',
+  'dept_module_enabled'
 ] as const
 
 // 直接从 store 初始化数据
@@ -297,7 +308,8 @@ const formData = reactive({
   header_bg_color: configStore.get('header_bg_color'),
   header_text_color: configStore.get('header_text_color'),
   front_mode: configStore.get('front_mode') || 'full',
-  user_profile_button_visible: configStore.get('user_profile_button_visible') || 'false'
+  user_profile_button_visible: configStore.get('user_profile_button_visible') || 'false',
+  dept_module_enabled: configStore.get('dept_module_enabled') || 'true'
 })
 const updateHeaderBgColor = (e: Event) => {
   formData.header_bg_color = (e.target as HTMLInputElement).value
@@ -347,12 +359,20 @@ const updateTitle = () => {
 const handleSave = async () => {
   saving.value = true
   try {
+    const previousDeptModuleEnabled = configStore.get('dept_module_enabled')
     const configs: Record<string, string> = {}
     for (const key of SYSTEM_CONFIG_KEYS) {
       configs[key] = (formData as any)[key]
     }
     await configStore.updateConfigs(configs)
     updateTitle()
+    if (previousDeptModuleEnabled !== formData.dept_module_enabled) {
+      message.success('配置保存成功，页面即将刷新')
+      window.setTimeout(() => {
+        window.location.reload()
+      }, 300)
+      return
+    }
     message.success('配置保存成功')
   } catch (e) {
     message.error('保存失败')
@@ -373,6 +393,7 @@ const handleReset = () => {
   formData.header_bg_color = '#ffffff'
   formData.header_text_color = '#333333'
   formData.user_profile_button_visible = 'false'
+  formData.dept_module_enabled = 'true'
 }
 
 </script>

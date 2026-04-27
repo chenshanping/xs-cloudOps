@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"sort"
+	"strings"
 
 	"server/global"
 	"server/model"
@@ -160,12 +161,16 @@ func (s *MenuService) GetUserMenus(userID uint) ([]model.SysMenu, error) {
 	if err := global.DB.Order("sort ASC").Find(&allMenus).Error; err != nil {
 		return nil, err
 	}
+	deptModuleEnabled := s.isDeptModuleEnabled()
 
 	// 筛选有权限的菜单（包含父菜单）
 	menuMap := make(map[uint]model.SysMenu)
 	var toProcess []model.SysMenu
 
 	for _, menu := range allMenus {
+		if !deptModuleEnabled && (menu.Path == "/system/dept" || menu.Permission == "system:dept:list") {
+			continue
+		}
 		if allowedMenuIDs[menu.ID] {
 			toProcess = append(toProcess, menu)
 		}
@@ -196,4 +201,12 @@ func (s *MenuService) GetUserMenus(userID uint) ([]model.SysMenu, error) {
 	}
 
 	return s.buildMenuTree(menus, 0), nil
+}
+
+func (s *MenuService) isDeptModuleEnabled() bool {
+	config, err := Config.GetConfigByKey("dept_module_enabled")
+	if err != nil {
+		return true
+	}
+	return config.Value != "0" && strings.ToLower(config.Value) != "false"
 }

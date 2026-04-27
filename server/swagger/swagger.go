@@ -3,7 +3,6 @@ package swagger
 import (
 	"encoding/json"
 	"net/http"
-	"reflect"
 	"strings"
 
 	"server/router/registry"
@@ -235,12 +234,7 @@ func (g *Generator) addDefinition(obj interface{}) string {
 		return ""
 	}
 
-	t := reflect.TypeOf(obj)
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-
-	name := t.Name()
+	name := registry.GetTypeName(obj)
 	if _, exists := g.definitions[name]; exists {
 		return name
 	}
@@ -251,147 +245,38 @@ func (g *Generator) addDefinition(obj interface{}) string {
 		Required:   make([]string, 0),
 	}
 
-	g.parseStructFields(t, &def)
+	for _, field := range registry.ParseDefinitionFields(obj) {
+		def.Properties[field.Name] = Property{
+			Type:        field.SwaggerType,
+			Description: field.Description,
+		}
+		if field.Required {
+			def.Required = append(def.Required, field.Name)
+		}
+	}
 
 	g.definitions[name] = def
 	return name
 }
 
-// parseStructFields 递归解析结构体字段
-func (g *Generator) parseStructFields(t reflect.Type, def *Definition) {
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-
-		// 处理匿名嵌入结构体（如 PageRequest）
-		if field.Anonymous {
-			embeddedType := field.Type
-			if embeddedType.Kind() == reflect.Ptr {
-				embeddedType = embeddedType.Elem()
-			}
-			if embeddedType.Kind() == reflect.Struct {
-				g.parseStructFields(embeddedType, def)
-			}
-			continue
-		}
-
-		// 获取 json tag
-		jsonTag := field.Tag.Get("json")
-		if jsonTag == "" || jsonTag == "-" {
-			// 尝试使用 form tag
-			jsonTag = field.Tag.Get("form")
-			if jsonTag == "" || jsonTag == "-" {
-				continue
-			}
-		}
-		jsonName := strings.Split(jsonTag, ",")[0]
-
-		// 获取字段描述: 优先从 comment tag 获取
-		description := field.Tag.Get("comment")
-		if description == "" {
-			// 从 label tag 获取
-			description = field.Tag.Get("label")
-		}
-
-		prop := Property{
-			Type:        g.goTypeToSwagger(field.Type),
-			Description: description,
-		}
-
-		// 解析 binding tag 获取是否必填
-		bindingTag := field.Tag.Get("binding")
-		if strings.Contains(bindingTag, "required") {
-			def.Required = append(def.Required, jsonName)
-		}
-
-		def.Properties[jsonName] = prop
-	}
-}
-
 // parseQueryParams 解析 query 参数
 func (g *Generator) parseQueryParams(obj interface{}) []Parameter {
-	if obj == nil {
+	fields := registry.ParseDefinitionFields(obj)
+	if len(fields) == 0 {
 		return nil
 	}
 
-	t := reflect.TypeOf(obj)
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-	if t.Kind() != reflect.Struct {
-		return nil
-	}
-
-	var params []Parameter
-	g.parseQueryParamsRecursive(t, &params)
-	return params
-}
-
-// parseQueryParamsRecursive 递归解析 query 参数
-func (g *Generator) parseQueryParamsRecursive(t reflect.Type, params *[]Parameter) {
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-
-		// 处理匿名嵌入结构体
-		if field.Anonymous {
-			embeddedType := field.Type
-			if embeddedType.Kind() == reflect.Ptr {
-				embeddedType = embeddedType.Elem()
-			}
-			if embeddedType.Kind() == reflect.Struct {
-				g.parseQueryParamsRecursive(embeddedType, params)
-			}
-			continue
-		}
-
-		// 优先使用 form tag, 然后 json tag
-		paramName := field.Tag.Get("form")
-		if paramName == "" || paramName == "-" {
-			paramName = field.Tag.Get("json")
-			if paramName == "" || paramName == "-" {
-				continue
-			}
-		}
-		paramName = strings.Split(paramName, ",")[0]
-
-		// 获取描述
-		description := field.Tag.Get("comment")
-		if description == "" {
-			description = field.Tag.Get("label")
-		}
-
-		// 检查是否必填
-		bindingTag := field.Tag.Get("binding")
-		required := strings.Contains(bindingTag, "required")
-
-		*params = append(*params, Parameter{
-			Name:        paramName,
+	params := make([]Parameter, 0, len(fields))
+	for _, field := range fields {
+		params = append(params, Parameter{
+			Name:        field.Name,
 			In:          "query",
-			Description: description,
-			Required:    required,
-			Type:        g.goTypeToSwagger(field.Type),
+			Description: field.Description,
+			Required:    field.Required,
+			Type:        field.SwaggerType,
 		})
 	}
-}
-
-// goTypeToSwagger Go 类型转 Swagger 类型
-func (g *Generator) goTypeToSwagger(t reflect.Type) string {
-	switch t.Kind() {
-	case reflect.String:
-		return "string"
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return "integer"
-	case reflect.Float32, reflect.Float64:
-		return "number"
-	case reflect.Bool:
-		return "boolean"
-	case reflect.Slice, reflect.Array:
-		return "array"
-	case reflect.Ptr:
-		return g.goTypeToSwagger(t.Elem())
-	default:
-		return "object"
-	}
+	return params
 }
 
 // generateOperationID 生成操作 ID

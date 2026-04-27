@@ -1,7 +1,7 @@
 server:
-  port: 8080
+  port: 9000
   mode: debug  # debug, release, test
-  host: localhost:8080
+  host: localhost:9000
 mysql:
   host: 127.0.0.1
   port: 3306

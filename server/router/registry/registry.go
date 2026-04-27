@@ -2,7 +2,6 @@ package registry
 
 import (
 	"reflect"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -94,99 +93,4 @@ func GetTypeName(i interface{}) string {
 		t = t.Elem()
 	}
 	return t.Name()
-}
-
-// ParseStructFields 解析结构体字段信息
-func ParseStructFields(obj interface{}, paramIn string) []FieldInfo {
-	if obj == nil {
-		return nil
-	}
-
-	t := reflect.TypeOf(obj)
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-	if t.Kind() != reflect.Struct {
-		return nil
-	}
-
-	var fields []FieldInfo
-	parseStructFieldsRecursive(t, paramIn, &fields)
-	return fields
-}
-
-// parseStructFieldsRecursive 递归解析结构体字段
-func parseStructFieldsRecursive(t reflect.Type, paramIn string, fields *[]FieldInfo) {
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-
-		// 处理匿名嵌入结构体（如 PageRequest）
-		if field.Anonymous {
-			embeddedType := field.Type
-			if embeddedType.Kind() == reflect.Ptr {
-				embeddedType = embeddedType.Elem()
-			}
-			if embeddedType.Kind() == reflect.Struct {
-				parseStructFieldsRecursive(embeddedType, paramIn, fields)
-			}
-			continue
-		}
-
-		// 获取 json tag
-		jsonTag := field.Tag.Get("json")
-		if jsonTag == "" || jsonTag == "-" {
-			// 尝试使用 form tag
-			jsonTag = field.Tag.Get("form")
-			if jsonTag == "" || jsonTag == "-" {
-				continue
-			}
-		}
-		jsonName := strings.Split(jsonTag, ",")[0]
-
-		// 获取字段描述: 优先从 comment tag 获取
-		description := field.Tag.Get("comment")
-		if description == "" {
-			// 从 label tag 获取
-			description = field.Tag.Get("label")
-		}
-		if description == "" {
-			// 使用字段名作为默认描述
-			description = field.Name
-		}
-
-		// 检查是否必填
-		bindingTag := field.Tag.Get("binding")
-		required := strings.Contains(bindingTag, "required")
-
-		*fields = append(*fields, FieldInfo{
-			Name:        jsonName,
-			Type:        goTypeToString(field.Type),
-			Description: description,
-			Required:    required,
-			In:          paramIn,
-		})
-	}
-}
-
-// goTypeToString Go 类型转字符串
-func goTypeToString(t reflect.Type) string {
-	switch t.Kind() {
-	case reflect.String:
-		return "string"
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return "integer"
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return "integer"
-	case reflect.Float32, reflect.Float64:
-		return "number"
-	case reflect.Bool:
-		return "boolean"
-	case reflect.Slice, reflect.Array:
-		elemType := goTypeToString(t.Elem())
-		return "array[" + elemType + "]"
-	case reflect.Ptr:
-		return goTypeToString(t.Elem())
-	default:
-		return "object"
-	}
 }

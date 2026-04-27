@@ -13,6 +13,7 @@ func InitDBTables() {
 	err := global.DB.AutoMigrate(
 		&model.SysUser{},
 		&model.SysRole{},
+		&model.SysDept{},
 		&model.SysMenu{},
 		&model.SysApi{},
 		&model.SysOperationLog{},
@@ -55,13 +56,24 @@ func initDefaultData() {
 
 	// 创建默认角色
 	adminRole := model.SysRole{
-		Name:   "超级管理员",
-		Code:   "admin",
-		Sort:   1,
-		Status: 1,
-		Remark: "拥有所有权限",
+		Name:      "超级管理员",
+		Code:      "admin",
+		Sort:      1,
+		Status:    1,
+		DataScope: model.DataScopeAll,
+		Remark:    "拥有所有权限",
 	}
 	global.DB.Create(&adminRole)
+
+	rootDept := model.SysDept{
+		ParentID:  0,
+		Ancestors: "0",
+		Name:      "平台",
+		Sort:      1,
+		Status:    1,
+		Remark:    "系统根部门",
+	}
+	global.DB.Create(&rootDept)
 
 	// 创建默认用户
 	hashedPassword, _ := utils.HashPassword("123456")
@@ -70,6 +82,7 @@ func initDefaultData() {
 		Password: hashedPassword,
 		Nickname: "管理员",
 		Status:   1,
+		DeptID:   rootDept.ID,
 		Roles:    []model.SysRole{adminRole},
 	}
 	global.DB.Create(&adminUser)
@@ -84,11 +97,12 @@ func initDefaultData() {
 	menus := []model.SysMenu{
 		{ParentID: sysMgmt.ID, Name: "用户管理", Path: "/system/user", Component: "system/user/index", Icon: "user", Sort: 1, Type: 2, Permission: "system:user:list", Status: 1},
 		{ParentID: sysMgmt.ID, Name: "角色管理", Path: "/system/role", Component: "system/role/index", Icon: "team", Sort: 2, Type: 2, Permission: "system:role:list", Status: 1},
-		{ParentID: sysMgmt.ID, Name: "菜单管理", Path: "/system/menu", Component: "system/menu/index", Icon: "menu", Sort: 3, Type: 2, Permission: "system:menu:list", Status: 1},
-		{ParentID: sysMgmt.ID, Name: "API管理", Path: "/system/api", Component: "system/api/index", Icon: "api", Sort: 4, Type: 2, Permission: "system:api:list", Status: 1},
-		{ParentID: sysMgmt.ID, Name: "参数配置", Path: "/system/config", Component: "system/config/index", Icon: "setting", Sort: 5, Type: 2, Permission: "system:config:list", Status: 1},
-		{ParentID: sysMgmt.ID, Name: "存储管理", Path: "/system/storage", Component: "system/storage/index", Icon: "cloud-server", Sort: 6, Type: 2, Permission: "system:storage:list", Status: 1},
-		{ParentID: sysMgmt.ID, Name: "文件管理", Path: "/system/file", Component: "system/file/index", Icon: "folder", Sort: 7, Type: 2, Permission: "system:file:list", Status: 1},
+		{ParentID: sysMgmt.ID, Name: "部门管理", Path: "/system/dept", Component: "system/dept/index", Icon: "apartment", Sort: 3, Type: 2, Permission: "system:dept:list", Status: 1},
+		{ParentID: sysMgmt.ID, Name: "菜单管理", Path: "/system/menu", Component: "system/menu/index", Icon: "menu", Sort: 4, Type: 2, Permission: "system:menu:list", Status: 1},
+		{ParentID: sysMgmt.ID, Name: "API管理", Path: "/system/api", Component: "system/api/index", Icon: "api", Sort: 5, Type: 2, Permission: "system:api:list", Status: 1},
+		{ParentID: sysMgmt.ID, Name: "参数配置", Path: "/system/config", Component: "system/config/index", Icon: "setting", Sort: 6, Type: 2, Permission: "system:config:list", Status: 1},
+		{ParentID: sysMgmt.ID, Name: "存储管理", Path: "/system/storage", Component: "system/storage/index", Icon: "cloud-server", Sort: 7, Type: 2, Permission: "system:storage:list", Status: 1},
+		{ParentID: sysMgmt.ID, Name: "文件管理", Path: "/system/file", Component: "system/file/index", Icon: "folder", Sort: 8, Type: 2, Permission: "system:file:list", Status: 1},
 		{ParentID: monitor.ID, Name: "操作日志", Path: "/monitor/operation-log", Component: "monitor/operation-log/index", Icon: "file-text", Sort: 1, Type: 2, Permission: "monitor:operation-log:list", Status: 1},
 		{ParentID: monitor.ID, Name: "登录日志", Path: "/monitor/login-log", Component: "monitor/login-log/index", Icon: "login", Sort: 2, Type: 2, Permission: "monitor:login-log:list", Status: 1},
 		{ParentID: monitor.ID, Name: "慢查询日志", Path: "/monitor/show-log", Component: "monitor/show-log/index", Icon: "login", Sort: 2, Type: 2, Permission: "monitor:show-log:list", Status: 1},
@@ -116,6 +130,12 @@ func initDefaultData() {
 		{Path: "/api/v1/roles/:id", Method: "DELETE", Group: "角色管理", Description: "删除角色"},
 		{Path: "/api/v1/roles/:id/menus", Method: "PUT", Group: "角色管理", Description: "分配菜单"},
 		{Path: "/api/v1/roles/:id/apis", Method: "PUT", Group: "角色管理", Description: "分配API"},
+		// 部门管理
+		{Path: "/api/v1/depts/tree", Method: "GET", Group: "部门管理", Description: "部门树"},
+		{Path: "/api/v1/depts/:id", Method: "GET", Group: "部门管理", Description: "部门详情"},
+		{Path: "/api/v1/depts", Method: "POST", Group: "部门管理", Description: "创建部门"},
+		{Path: "/api/v1/depts/:id", Method: "PUT", Group: "部门管理", Description: "更新部门"},
+		{Path: "/api/v1/depts/:id", Method: "DELETE", Group: "部门管理", Description: "删除部门"},
 		// 菜单管理
 		{Path: "/api/v1/menus", Method: "GET", Group: "菜单管理", Description: "菜单列表"},
 		{Path: "/api/v1/menus/tree-with-apis", Method: "GET", Group: "菜单管理", Description: "菜单树(带API)"},
@@ -207,6 +227,7 @@ func initDefaultConfigs() {
 		{Name: "AI配置", Key: "ai_config", Value: `{"default_provider":"阿里云百炼","providers":[{"name":"阿里云百炼","api_key":"","base_url":"https://dashscope.aliyuncs.com/compatible-mode/v1","models":[{"id":"deepseek-v3.2","name":"DeepSeek-V3.2","description":"DeepSeek最新模型,支持联网和思考"},{"id":"qwen3-max","name":"通义千问3-Max","description":"通义千问3系列Max模型"}]}]}`, ValueType: "json", Remark: "AI平台配置，包含平台名称、API Key、基础URL和模型列表"},
 		{Name: "前台模式", Key: "front_mode", Value: "full", ValueType: "string", Remark: "前台模式: full=完整前台, profile=仅个人中心(用于身份认证)"},
 		{Name: "用户身份按钮显示", Key: "user_profile_button_visible", Value: "false", ValueType: "string", Remark: "后台用户管理列表是否显示身份按钮"},
+		{Name: "部门模块显示", Key: "dept_module_enabled", Value: "true", ValueType: "string", Remark: "后台菜单中是否显示部门管理模块"},
 	}
 	global.DB.Create(&configs)
 	global.Log.Info("系统配置初始化成功")
@@ -220,6 +241,19 @@ func ensureBuiltInData() {
 		ValueType: "string",
 		Remark:    "后台用户管理列表是否显示身份按钮",
 	})
+	ensureConfigExists(model.SysConfig{
+		Name:      "部门模块显示",
+		Key:       "dept_module_enabled",
+		Value:     "true",
+		ValueType: "string",
+		Remark:    "后台菜单中是否显示部门管理模块",
+	})
+
+	rootDept := ensureRootDeptExists()
+	backfillDepartmentFoundation(rootDept.ID)
+
+	ensureDeptApiAccess()
+	ensureDeptMenus()
 
 	ensureApiAccessInheritedFrom(model.SysApi{
 		Path:        "/api/v1/users/batch-status",
@@ -240,6 +274,161 @@ func ensureConfigExists(config model.SysConfig) {
 			global.Log.Errorf("补齐系统配置失败(%s): %v", config.Key, err)
 		}
 	}
+}
+
+func ensureRootDeptExists() model.SysDept {
+	rootDept := model.SysDept{
+		ParentID:  0,
+		Ancestors: "0",
+		Name:      "平台",
+		Sort:      1,
+		Status:    1,
+		Remark:    "系统根部门",
+	}
+
+	if err := global.DB.
+		Where("parent_id = ? AND name = ?", 0, rootDept.Name).
+		Assign(model.SysDept{
+			Ancestors: rootDept.Ancestors,
+			Sort:      rootDept.Sort,
+			Status:    rootDept.Status,
+			Remark:    rootDept.Remark,
+		}).
+		FirstOrCreate(&rootDept).Error; err != nil {
+		global.Log.Errorf("补齐根部门失败: %v", err)
+	}
+
+	return rootDept
+}
+
+func backfillDepartmentFoundation(rootDeptID uint) {
+	if rootDeptID == 0 {
+		return
+	}
+
+	if err := global.DB.Model(&model.SysUser{}).
+		Where("dept_id = 0 OR dept_id IS NULL").
+		Update("dept_id", rootDeptID).Error; err != nil {
+		global.Log.Errorf("回填用户部门失败: %v", err)
+	}
+
+	if err := global.DB.Model(&model.SysRole{}).
+		Where("data_scope = 0 OR data_scope IS NULL").
+		Update("data_scope", model.DataScopeAll).Error; err != nil {
+		global.Log.Errorf("回填角色数据范围失败: %v", err)
+	}
+}
+
+func ensureDeptApiAccess() {
+	ensureApiAccessInheritedFrom(model.SysApi{
+		Path:        "/api/v1/depts/tree",
+		Method:      "GET",
+		Group:       "部门管理",
+		Description: "部门树",
+		NeedAuth:    true,
+	}, "/api/v1/menus", "GET")
+	ensureApiAccessInheritedFrom(model.SysApi{
+		Path:        "/api/v1/depts/manageable-tree",
+		Method:      "GET",
+		Group:       "部门管理",
+		Description: "可管理部门树",
+		NeedAuth:    true,
+	}, "/api/v1/depts/tree", "GET")
+	ensureApiAccessInheritedFrom(model.SysApi{
+		Path:        "/api/v1/depts/:id",
+		Method:      "GET",
+		Group:       "部门管理",
+		Description: "部门详情",
+		NeedAuth:    true,
+	}, "/api/v1/menus/:id", "GET")
+	ensureApiAccessInheritedFrom(model.SysApi{
+		Path:        "/api/v1/depts",
+		Method:      "POST",
+		Group:       "部门管理",
+		Description: "创建部门",
+		NeedAuth:    true,
+	}, "/api/v1/menus", "POST")
+	ensureApiAccessInheritedFrom(model.SysApi{
+		Path:        "/api/v1/depts/:id",
+		Method:      "PUT",
+		Group:       "部门管理",
+		Description: "更新部门",
+		NeedAuth:    true,
+	}, "/api/v1/menus/:id", "PUT")
+	ensureApiAccessInheritedFrom(model.SysApi{
+		Path:        "/api/v1/depts/:id",
+		Method:      "DELETE",
+		Group:       "部门管理",
+		Description: "删除部门",
+		NeedAuth:    true,
+	}, "/api/v1/menus/:id", "DELETE")
+}
+
+func ensureDeptMenus() {
+	var systemMenu model.SysMenu
+	if err := global.DB.Where("path = ? AND type = ?", "/system", 1).First(&systemMenu).Error; err != nil {
+		global.Log.Errorf("查询系统管理目录失败: %v", err)
+		return
+	}
+
+	deptMenu := model.SysMenu{
+		ParentID:   systemMenu.ID,
+		Name:       "部门管理",
+		Path:       "/system/dept",
+		Component:  "system/dept/index",
+		Icon:       "apartment",
+		Sort:       3,
+		Type:       2,
+		Permission: "system:dept:list",
+		Status:     1,
+		Hidden:     0,
+	}
+
+	if err := global.DB.
+		Where("permission = ?", deptMenu.Permission).
+		Attrs(model.SysMenu{
+			ParentID:  deptMenu.ParentID,
+			Name:      deptMenu.Name,
+			Path:      deptMenu.Path,
+			Component: deptMenu.Component,
+			Icon:      deptMenu.Icon,
+			Sort:      deptMenu.Sort,
+			Type:      deptMenu.Type,
+			Status:    deptMenu.Status,
+			Hidden:    deptMenu.Hidden,
+		}).
+		FirstOrCreate(&deptMenu).Error; err != nil {
+		global.Log.Errorf("补齐部门管理菜单失败: %v", err)
+		return
+	}
+
+	buttonDefinitions := []model.SysMenu{
+		{ParentID: deptMenu.ID, Name: "新增", Sort: 1, Type: 3, Permission: "system:dept:add", Status: 1},
+		{ParentID: deptMenu.ID, Name: "编辑", Sort: 2, Type: 3, Permission: "system:dept:edit", Status: 1},
+		{ParentID: deptMenu.ID, Name: "删除", Sort: 3, Type: 3, Permission: "system:dept:delete", Status: 1},
+	}
+
+	menuIDs := []uint{deptMenu.ID}
+	for _, definition := range buttonDefinitions {
+		menu := definition
+		if err := global.DB.
+			Where("permission = ?", menu.Permission).
+			Attrs(model.SysMenu{
+				ParentID: menu.ParentID,
+				Name:     menu.Name,
+				Sort:     menu.Sort,
+				Type:     menu.Type,
+				Status:   menu.Status,
+				Hidden:   0,
+			}).
+			FirstOrCreate(&menu).Error; err != nil {
+			global.Log.Errorf("补齐部门按钮权限失败(%s): %v", definition.Permission, err)
+			continue
+		}
+		menuIDs = append(menuIDs, menu.ID)
+	}
+
+	grantMenusToRoleCodes(menuIDs, []string{"admin", "system_admin"})
 }
 
 func ensureApiAccessInheritedFrom(api model.SysApi, sourcePath, sourceMethod string) {
@@ -336,7 +525,7 @@ func ensureUserBatchStatusMenus() {
 		menu := definition
 		if err := global.DB.
 			Where("permission = ?", menu.Permission).
-			Assign(model.SysMenu{
+			Attrs(model.SysMenu{
 				ParentID:  menu.ParentID,
 				Name:      menu.Name,
 				Path:      menu.Path,
@@ -390,6 +579,34 @@ func grantMenuToRolesWithPermission(menuID uint, sourcePermission string) {
 				roleID, menuID,
 			).Error; err != nil {
 				global.Log.Errorf("补齐角色菜单权限失败(role=%d, menu=%d): %v", roleID, menuID, err)
+			}
+		}
+	}
+}
+
+func grantMenusToRoleCodes(menuIDs []uint, roleCodes []string) {
+	if len(menuIDs) == 0 || len(roleCodes) == 0 {
+		return
+	}
+
+	var roles []model.SysRole
+	if err := global.DB.Where("code IN ?", roleCodes).Find(&roles).Error; err != nil {
+		global.Log.Errorf("查询内置角色失败: %v", err)
+		return
+	}
+
+	for _, role := range roles {
+		for _, menuID := range menuIDs {
+			var count int64
+			if err := global.DB.Table("sys_role_menu").
+				Where("sys_role_id = ? AND sys_menu_id = ?", role.ID, menuID).
+				Count(&count).Error; err == nil && count == 0 {
+				if err := global.DB.Exec(
+					"INSERT INTO sys_role_menu (sys_role_id, sys_menu_id) VALUES (?, ?)",
+					role.ID, menuID,
+				).Error; err != nil {
+					global.Log.Errorf("补齐角色菜单权限失败(role=%d, menu=%d): %v", role.ID, menuID, err)
+				}
 			}
 		}
 	}

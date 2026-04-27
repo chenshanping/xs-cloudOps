@@ -20,6 +20,8 @@ Discover the live module shape first, then extend it.
 
 Inspect these anchors before editing:
 
+- `go-base.sql`
+- `server/sql/`
 - `server/api/v1/user.go`
 - `server/api/v1/role.go`
 - `server/api/v1/menu.go`
@@ -62,6 +64,7 @@ When a target file does not exist, search the nearest real module and follow tha
 - Keep frontend APIs flat under `web/src/api/*.ts` unless the neighboring module already uses another pattern.
 - For frontend pages, default to `web/src/views/system/<module>/`.
 - For frontend types, choose between `web/src/types/index.ts` and `web/src/types/<module>.ts` by following the nearest live example.
+- For incremental SQL work, inspect `go-base.sql` first and then the nearest file under `server/sql/`.
 
 Do not cite or depend on external docs that are not present in the current workspace.
 
@@ -137,6 +140,31 @@ Do not introduce a new backend package tree unless the repo already uses that pa
 - Keep association writes in the service layer transaction
 - Follow the existing soft-delete unique-field protection pattern when a unique field exists
 
+### Incremental SQL Upgrade Conventions
+
+- Treat the repo database dialect as `Oracle MySQL` by default, not MariaDB.
+- When editing `server/sql/*.sql`, read `go-base.sql` and the nearest related upgrade script first.
+- Keep upgrade scripts additive, minimal, and safe to rerun.
+- Do not use unverified MySQL DDL shortcuts such as:
+  - `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...`
+  - `ALTER TABLE ... ADD INDEX IF NOT EXISTS ...`
+  - other `ALTER TABLE` forms copied from MariaDB syntax
+- For additive DDL on shared tables, prefer `information_schema` guards plus dynamic SQL when idempotence is required.
+- Keep seed, menu, API, permission, and config inserts duplicate-safe.
+- Do not rewrite `go-base.sql` for normal feature delivery unless the user explicitly asks for a baseline refresh.
+
+### Built-In Bootstrap and Seed Repair Conventions
+
+- When touching `server/initialize/` startup repair or built-in menu/config/API bootstrap code, default to `fill missing only`.
+- Do not treat startup bootstrap as a full desired-state sync unless the user explicitly asks for forced reset behavior.
+- Existing admin-maintained UI metadata must survive restart:
+  - menu `icon`, `name`, `sort`, `hidden`, `path`, `component`
+  - config display values
+  - similar presentation-oriented built-in fields
+- Prefer patterns like `FirstOrCreate + Attrs`, `OnConflict DoNothing`, or explicit missing-field updates.
+- Avoid `Assign(...)` in startup bootstrap for user-editable records, because it will overwrite customized existing rows on restart.
+- If you change built-in bootstrap logic, add a regression test that simulates an existing customized record and verifies startup repair does not overwrite it.
+
 ### Permission and Auth Side Effects
 
 When a mutation changes roles, menus, APIs, or current-user access behavior:
@@ -200,6 +228,8 @@ After substantial edits, prefer these checks when available:
 - backend: `go test ./...`
 - frontend typecheck: `npm run typecheck`
 - frontend build when the change is broad: `npm run build`
+- SQL upgrade scripts: verify MySQL syntax compatibility and rerun safety, or explicitly report if no real SQL execution verification was run
+- Startup bootstrap changes: verify rerun safety and confirm customized built-in data is preserved
 
 Run narrower commands when the workspace has known unrelated failures and the change only affects one side.
 
@@ -214,6 +244,7 @@ Run narrower commands when the workspace has known unrelated failures and the ch
 - Do not leave an empty action column.
 - Do not leave clickable frontend affordances without a real handler.
 - Do not default to modal-based create or edit flows unless the user explicitly asks for a modal.
+- Do not assume MySQL accepts MariaDB `IF NOT EXISTS` DDL forms in incremental upgrade scripts.
 
 ## Self-Check
 
@@ -225,3 +256,4 @@ Before finishing, verify:
 - Did I reuse `ProTable`, permission helpers, and shared upload/preview components where applicable?
 - Did I avoid introducing Spring Boot or `XTMS` path assumptions?
 - Did I keep newly exposed interactions usable instead of placeholder-only?
+- If I changed `server/initialize/`, did I prove restart-safe behavior for existing customized data?

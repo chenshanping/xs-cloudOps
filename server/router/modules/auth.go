@@ -39,19 +39,3 @@ func (m *AuthModule) RegisterPrivateRoutes(rg *gin.RouterGroup) {
 	R(rg, "POST", "/auth/logout", m.Name(), "登出", v1.Auth.Logout, registry.WithAuth())
 	R(rg, "GET", "/auth/userinfo", m.Name(), "获取用户信息", v1.Auth.GetUserInfo, registry.WithAuth())
 }
-
-// R 注册路由并记录元信息
-func R(rg *gin.RouterGroup, method, path, group, summary string, handler gin.HandlerFunc, opts ...registry.RouteOption) {
-	fullPath := rg.BasePath() + path
-	registry.Register(method, fullPath, group, summary, handler, opts...)
-	switch method {
-	case "GET":
-		rg.GET(path, handler)
-	case "POST":
-		rg.POST(path, handler)
-	case "PUT":
-		rg.PUT(path, handler)
-	case "DELETE":
-		rg.DELETE(path, handler)
-	}
-}

@@ -48,6 +48,7 @@ Skip any step = lying, not verifying
 | Regression test works | Red-green cycle verified | Test passes once |
 | Agent completed | VCS diff shows changes | Agent reports "success" |
 | Requirements met | Line-by-line checklist | Tests passing |
+| SQL upgrade script is safe | MySQL syntax check plus rerun/idempotence evidence, or an explicit statement that runtime SQL verification was not run | "Looks valid", ORM tests passing, baseline schema existing |
 
 ## Red Flags - STOP
 
@@ -99,6 +100,12 @@ Skip any step = lying, not verifying
 ❌ "Tests pass, phase complete"
 ```
 
+**Incremental SQL:**
+```
+✅ Read baseline/upgrade context → Check dialect assumptions → Verify MySQL syntax and rerun safety, or explicitly report that DB execution verification was not run
+❌ "SQL is fine" / "DDL looks standard"
+```
+
 **Agent delegation:**
 ```
 ✅ Agent reports success → Check VCS diff → Verify changes → Report actual state
@@ -123,6 +130,7 @@ From 24 failure memories:
 - Committing, PR creation, task completion
 - Moving to next task
 - Delegating to agents
+- Claiming a migration, seed script, or upgrade SQL is safe
 
 **Rule applies to:**
 - Exact phrases

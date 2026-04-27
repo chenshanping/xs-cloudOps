@@ -19,7 +19,7 @@ var Role = new(RoleService)
 // 获取角色列表
 func (s *RoleService) GetRoleList() ([]model.SysRole, error) {
 	var roles []model.SysRole
-	if err := global.DB.Order("sort ASC").Find(&roles).Error; err != nil {
+	if err := global.DB.Preload("Depts").Order("sort ASC").Find(&roles).Error; err != nil {
 		return nil, err
 	}
 	return roles, nil
@@ -28,7 +28,7 @@ func (s *RoleService) GetRoleList() ([]model.SysRole, error) {
 // 获取角色详情
 func (s *RoleService) GetRole(id uint) (*model.SysRole, error) {
 	var role model.SysRole
-	if err := global.DB.Preload("Menus").Preload("Apis").First(&role, id).Error; err != nil {
+	if err := global.DB.Preload("Menus").Preload("Apis").Preload("Depts").First(&role, id).Error; err != nil {
 		return nil, err
 	}
 	return &role, nil
@@ -43,15 +43,30 @@ func (s *RoleService) CreateRole(req *request.CreateRoleRequest) error {
 		return errors.New("角色编码已存在")
 	}
 
-	role := model.SysRole{
-		Name:   req.Name,
-		Code:   req.Code,
-		Sort:   req.Sort,
-		Status: req.Status,
-		Remark: req.Remark,
+	dataScope := req.DataScope
+	if dataScope == 0 {
+		dataScope = model.DataScopeAll
+	}
+	if err := validateRoleDataScope(dataScope, req.DeptIds); err != nil {
+		return err
 	}
 
-	return global.DB.Create(&role).Error
+	role := model.SysRole{
+		Name:      req.Name,
+		Code:      req.Code,
+		Sort:      req.Sort,
+		Status:    req.Status,
+		DataScope: dataScope,
+		Remark:    req.Remark,
+	}
+
+	return global.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&role).Error; err != nil {
+			return err
+		}
+
+		return replaceRoleCustomDepts(tx, &role, dataScope, req.DeptIds)
+	})
 }
 
 // 更新角色
@@ -81,8 +96,22 @@ func (s *RoleService) UpdateRole(id uint, req *request.UpdateRoleRequest) error 
 	role.Code = req.Code
 	role.Sort = req.Sort
 	role.Status = req.Status
+	if req.DataScope == 0 {
+		role.DataScope = model.DataScopeAll
+	} else {
+		role.DataScope = req.DataScope
+	}
 	role.Remark = req.Remark
-	err := global.DB.Save(&role).Error
+	if err := validateRoleDataScope(role.DataScope, req.DeptIds); err != nil {
+		return err
+	}
+
+	err := global.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(&role).Error; err != nil {
+			return err
+		}
+		return replaceRoleCustomDepts(tx, &role, role.DataScope, req.DeptIds)
+	})
 	if err == nil {
 		Cache.ClearUserCacheByRoleID(id) // 清除该角色用户的缓存
 	}
@@ -121,6 +150,41 @@ func (s *RoleService) DeleteRole(id uint) error {
 		}
 		return tx.Delete(&role).Error
 	})
+}
+
+func validateRoleDataScope(dataScope int, deptIDs []uint) error {
+	switch dataScope {
+	case model.DataScopeAll, model.DataScopeCustom, model.DataScopeDept, model.DataScopeDeptAndChildren, model.DataScopeSelf:
+	default:
+		return errors.New("数据范围值无效")
+	}
+
+	if dataScope == model.DataScopeCustom && len(normalizeUserIDs(deptIDs)) == 0 {
+		return errors.New("自定义数据范围至少选择一个部门")
+	}
+
+	return nil
+}
+
+func replaceRoleCustomDepts(tx *gorm.DB, role *model.SysRole, dataScope int, deptIDs []uint) error {
+	if err := tx.Model(role).Association("Depts").Clear(); err != nil {
+		return err
+	}
+
+	if dataScope != model.DataScopeCustom {
+		return nil
+	}
+
+	normalized := normalizeUserIDs(deptIDs)
+	var depts []model.SysDept
+	if err := tx.Where("id IN ?", normalized).Find(&depts).Error; err != nil {
+		return err
+	}
+	if len(depts) != len(normalized) {
+		return errors.New("部分自定义部门不存在")
+	}
+
+	return tx.Model(role).Association("Depts").Replace(depts)
 }
 
 // 分配菜单

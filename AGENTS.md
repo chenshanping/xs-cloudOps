@@ -127,6 +127,32 @@ Known caveat:
 - Keep business logic in services, not handlers.
 - Reuse existing response helpers, auth flow, cache invalidation, and permission refresh patterns.
 
+## Built-In Bootstrap Rules
+
+- Treat startup repair and built-in data bootstrap under `server/initialize/` as `fill missing data only` by default, not `sync defaults back into existing rows`.
+- Do not overwrite user-editable menu/config/API metadata on restart unless the user explicitly asks for a forced reset or a versioned migration:
+  - menu fields such as `name`, `icon`, `sort`, `hidden`, `path`, `component`
+  - config display values
+  - other admin-maintained presentation metadata
+- For built-in menu/config/API repair, prefer create-only or missing-field-only patterns such as `FirstOrCreate + Attrs`, `OnConflict DoNothing`, or explicit null/missing checks.
+- Do not use `Assign(...)` in startup repair paths unless the requirement is explicitly to push defaults into existing records.
+- Any change to startup bootstrap, seed repair, or built-in menu/API/config补齐 logic must include a regression test proving that customized existing data is not overwritten on restart.
+
+## SQL Upgrade Rules
+
+- Any change under `server/sql/` must use the `sql-upgrade-guardrails` skill before writing or modifying the script.
+- Treat this repository as `Oracle MySQL` by default, not MariaDB. Do not assume MySQL supports MariaDB DDL syntax.
+- Before editing an incremental SQL script, inspect the baseline snapshot `go-base.sql` and the nearest related upgrade scripts.
+- Do not use unsupported MySQL incremental DDL patterns such as:
+  - `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...`
+  - `ALTER TABLE ... ADD INDEX IF NOT EXISTS ...`
+  - other unverified `IF [NOT] EXISTS` forms inside `ALTER TABLE`
+- For additive DDL that may run on mixed states, use idempotent guards based on `information_schema`, dynamic SQL, or the repository's migration mechanism.
+- Seed data, permission rows, menu rows, API rows, and config rows in upgrade scripts must be duplicate-safe.
+- Keep incremental SQL limited to the current feature. Do not mix unrelated schema cleanup into the same script.
+- Do not rewrite `go-base.sql` for normal feature delivery unless the user explicitly asks for a baseline refresh.
+- If SQL compatibility is uncertain, search first and verify the exact MySQL syntax before editing.
+
 ## OpenSpec Conventions In This Repo
 
 - Project config lives at `openspec/config.yaml`.
@@ -155,3 +181,5 @@ Before declaring work complete, verify:
 - Code changes match the agreed scope
 - Verification commands were actually run
 - Any known blocker or existing unrelated failure is reported clearly
+- If `server/sql/` changed, report whether the upgrade script was verified for MySQL syntax and whether rerun idempotence was checked
+- If `server/initialize/` changed, report whether startup rerun behavior was verified and whether customized built-in data survives restart.
