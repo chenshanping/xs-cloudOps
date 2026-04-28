@@ -21,6 +21,19 @@ const request = axios.create({
   timeout: 10000,
 })
 
+function extractErrorMessage(payload: any, fallback: string) {
+  if (!payload || typeof payload !== 'object') {
+    return fallback
+  }
+
+  const messageText = payload.message || payload.msg || payload.error
+  if (typeof messageText === 'string' && messageText.trim()) {
+    return messageText.trim()
+  }
+
+  return fallback
+}
+
 function createHandledRequestError(errorMessage: string): HandledRequestError {
   const error = new Error(errorMessage) as HandledRequestError
   error.handledByMessage = true
@@ -68,8 +81,9 @@ request.interceptors.response.use(
         // 将 blob 转换为 JSON 读取错误信息
         const text = await response.data.text()
         const errorData = JSON.parse(text)
-        message.error(errorData.message || '操作失败')
-        return Promise.reject(createHandledRequestError(errorData.message || '操作失败'))
+        const errorMessage = extractErrorMessage(errorData, '操作失败')
+        message.error(errorMessage)
+        return Promise.reject(createHandledRequestError(errorMessage))
       }
       // 正常的文件响应，直接返回
       return response.data
@@ -85,11 +99,12 @@ request.interceptors.response.use(
       }
       
       // 其他错误
+      const errorMessage = extractErrorMessage(res, '请求失败')
       if (!silent) {
-        message.error(res.message || '请求失败')
+        message.error(errorMessage)
       }
       
-      return Promise.reject(createHandledRequestError(res.message || '请求失败'))
+      return Promise.reject(createHandledRequestError(errorMessage))
     }
     return res
   },
@@ -101,21 +116,32 @@ request.interceptors.response.use(
     if (error.response) {
       // 服务器返回了错误状态码
       const status = error.response.status
-      switch (status) {
-        case 500:
-          errorMessage = '服务器内部错误'
-          break
-        case 502:
-          errorMessage = '网关错误'
-          break
-        case 503:
-          errorMessage = '服务不可用'
-          break
-        case 504:
-          errorMessage = '网关超时'
-          break
-        default:
-          errorMessage = `请求失败 (${status})`
+      const responseData = error.response.data
+
+      if (responseData instanceof Blob) {
+        errorMessage = `请求失败 (${status})`
+      } else {
+        const backendMessage = extractErrorMessage(responseData, '')
+        if (backendMessage) {
+          errorMessage = backendMessage
+        } else {
+          switch (status) {
+            case 500:
+              errorMessage = '服务器内部错误'
+              break
+            case 502:
+              errorMessage = '网关错误'
+              break
+            case 503:
+              errorMessage = '服务不可用'
+              break
+            case 504:
+              errorMessage = '网关超时'
+              break
+            default:
+              errorMessage = `请求失败 (${status})`
+          }
+        }
       }
     } else if (error.code === 'ECONNABORTED') {
       errorMessage = '请求超时'

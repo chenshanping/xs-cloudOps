@@ -2,7 +2,9 @@ package v1
 
 import (
 	"bufio"
+	"encoding/json"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -14,6 +16,28 @@ import (
 type AIApi struct{}
 
 var AI = new(AIApi)
+
+func batchConversationDeleteFailureMessage(failedMsgs []string) string {
+	if len(failedMsgs) == 0 {
+		return "删除失败"
+	}
+
+	normalized := make([]string, 0, len(failedMsgs))
+	for _, failedMsg := range failedMsgs {
+		message := strings.TrimSpace(failedMsg)
+		if message != "" {
+			normalized = append(normalized, message)
+		}
+	}
+
+	if len(normalized) == 0 {
+		return "删除失败"
+	}
+	if len(normalized) == 1 {
+		return normalized[0]
+	}
+	return strings.Join(normalized, "；")
+}
 
 // 获取模型列表
 func (a *AIApi) GetModels(c *gin.Context) {
@@ -100,6 +124,36 @@ func (a *AIApi) DeleteConversation(c *gin.Context) {
 	response.OkWithMessage(c, "删除成功")
 }
 
+func (a *AIApi) BatchDeleteConversations(c *gin.Context) {
+	userID := c.GetUint("user_id")
+	var req request.BatchConversationDeleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	if len(req.Ids) == 0 {
+		response.BadRequest(c, "请选择要删除的对话")
+		return
+	}
+
+	successCount, failedMsgs := service.AI.BatchDeleteConversations(userID, req.Ids)
+	if len(failedMsgs) == 0 {
+		response.OkWithMessage(c, "batch_delete_success")
+		return
+	}
+	if successCount > 0 {
+		response.OkWithData(c, gin.H{
+			"success_count": successCount,
+			"failed_count":  len(failedMsgs),
+			"failed_msgs":   failedMsgs,
+		})
+		return
+	}
+
+	response.Fail(c, batchConversationDeleteFailureMessage(failedMsgs))
+}
+
 // 普通对话（非流式）
 func (a *AIApi) Chat(c *gin.Context) {
 	userID := c.GetUint("user_id")
@@ -135,7 +189,7 @@ func (a *AIApi) ChatStream(c *gin.Context) {
 		return
 	}
 
-	conversationID, reader, saveConversation, err := service.AI.ChatStream(userID, service.AIChatInput{
+	conversationID, reader, saveConversation, sourcesMarkdown, err := service.AI.ChatStream(userID, service.AIChatInput{
 		ConversationID:   req.ConversationID,
 		Model:            req.Model,
 		Message:          req.Message,
@@ -179,9 +233,25 @@ func (a *AIApi) ChatStream(c *gin.Context) {
 		}
 	}
 
+	if sourcesMarkdown != "" {
+		footerData := map[string]string{
+			"content":           "\n\n---\n" + sourcesMarkdown,
+			"reasoning_content": "",
+			"finish_reason":     "",
+		}
+		if payload, marshalErr := json.Marshal(footerData); marshalErr == nil {
+			c.SSEvent("message", string(payload))
+			c.Writer.Flush()
+		}
+	}
+
 	// 保存助手消息（只有启用保存时才保存）
 	if saveConversation && (accumulator.FullContent() != "" || accumulator.FullReasoning() != "") {
-		_ = service.AI.SaveAssistantMessage(conversationID, accumulator.FullContent(), accumulator.FullReasoning())
+		content := accumulator.FullContent()
+		if sourcesMarkdown != "" {
+			content = content + "\n\n---\n" + sourcesMarkdown
+		}
+		_ = service.AI.SaveAssistantMessage(conversationID, content, accumulator.FullReasoning())
 	}
 }
 

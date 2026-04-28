@@ -18,6 +18,39 @@ type FileApi struct{}
 
 var File = new(FileApi)
 
+func fileDeleteFailureMessage(err error) string {
+	if err == nil {
+		return "删除失败"
+	}
+	message := strings.TrimSpace(err.Error())
+	if message == "" {
+		return "删除失败"
+	}
+	return message
+}
+
+func batchFileDeleteFailureMessage(failedMsgs []string) string {
+	if len(failedMsgs) == 0 {
+		return "删除失败"
+	}
+
+	normalized := make([]string, 0, len(failedMsgs))
+	for _, failedMsg := range failedMsgs {
+		message := strings.TrimSpace(failedMsg)
+		if message != "" {
+			normalized = append(normalized, message)
+		}
+	}
+
+	if len(normalized) == 0 {
+		return "删除失败"
+	}
+	if len(normalized) == 1 {
+		return normalized[0]
+	}
+	return strings.Join(normalized, "；")
+}
+
 // GetFileList 获取文件列表
 func (a *FileApi) GetFileList(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -49,7 +82,7 @@ func (a *FileApi) DeleteFile(c *gin.Context) {
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err := service.File.DeleteFile(uint(id)); err != nil {
 		global.Log.Warnf("删除文件失败: file_id=%d, path=%s, err=%v", id, c.FullPath(), err)
-		response.Fail(c, "删除文件失败")
+		response.Fail(c, fileDeleteFailureMessage(err))
 		return
 	}
 	response.OkWithMessage(c, "删除成功")
@@ -84,7 +117,7 @@ func (a *FileApi) BatchDeleteFiles(c *gin.Context) {
 		return
 	}
 	global.Log.Warnf("批量删除文件全部失败: ids=%v, failed=%v", req.Ids, failedMsgs)
-	response.Fail(c, "删除失败")
+	response.Fail(c, batchFileDeleteFailureMessage(failedMsgs))
 }
 
 // PreviewFileMigration 预览文件迁移

@@ -246,6 +246,7 @@ export function resetRouter() {
 router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore()
   const configStore = useConfigStore()
+
   
   // 判断是否是前台路由
   const isFrontRoute = to.path.startsWith('/front')
@@ -275,7 +276,7 @@ router.beforeEach(async (to, from, next) => {
         console.error('加载用户信息失败', error)
       }
     }
-    
+
     // 检查前台模式：如果是 profile 模式，只允许访问个人中心
     const frontMode = configStore.get('front_mode')
     if (frontMode === 'profile' && to.name !== 'FrontProfile') {
@@ -293,7 +294,6 @@ router.beforeEach(async (to, from, next) => {
     next('/login')
     return
   }
-
   if (!userStore.user) {
     try {
       await userStore.getUserInfoAction()
@@ -301,7 +301,7 @@ router.beforeEach(async (to, from, next) => {
       await configStore.loadConfigs()
       // 添加动态路由
       addDynamicRoutes(userStore.menus)
-      
+      console.log(userStore)
       // 检查是否有后台菜单权限（普通用户没有菜单，重定向到前台）
       if (!userStore.menus || userStore.menus.length === 0) {
         const frontMode = configStore.get('front_mode')

@@ -131,6 +131,7 @@ import { useConfigStore } from '@/store/config'
 import { formatFileSize } from '@/utils/upload'
 import { formatTime } from '@/utils/format'
 import { storageTypeOptions } from '@/types/storage'
+import { getFilePreviewDescriptor } from '@/components/file-preview-utils'
 
 const configStore = useConfigStore()
 
@@ -259,6 +260,15 @@ const handleTableChange = (pag: any) => {
 }
 
 const handlePreview = (record: FileInfo) => {
+  const descriptor = getFilePreviewDescriptor({
+    ext: record.ext,
+    mimeType: record.mime_type,
+    size: record.size,
+    name: record.name,
+  })
+  if (descriptor.kind === 'unsupported') {
+    message.info('当前文件将提供下载查看')
+  }
   previewFile.value = record
   previewVisible.value = true
 }
@@ -298,7 +308,9 @@ const handleBatchDelete = () => {
       try {
         const res = await batchDeleteFiles(selectedRowKeys.value)
         if (res.data?.failed_count > 0) {
-          message.warning(`成功删除 ${res.data.success_count} 个，失败 ${res.data.failed_count} 个`)
+          const firstFailedMessage = Array.isArray(res.data.failed_msgs) ? res.data.failed_msgs[0] : ''
+          const detailSuffix = firstFailedMessage ? `，原因：${firstFailedMessage}` : ''
+          message.warning(`成功删除 ${res.data.success_count} 个，失败 ${res.data.failed_count} 个${detailSuffix}`)
         } else {
           message.success('批量删除成功')
         }

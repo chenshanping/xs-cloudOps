@@ -3,10 +3,34 @@
     <!-- 左侧对话列表 -->
     <div class="conversation-sidebar">
       <div class="sidebar-header">
-        <a-button type="primary" block @click="handleNewChat">
+        <a-button v-if="!batchMode" type="primary" block @click="handleNewChat">
           <template #icon><PlusOutlined /></template>
           新对话
         </a-button>
+        <div v-else class="batch-toolbar">
+          <a-checkbox
+            :checked="allVisibleSelected"
+            :indeterminate="partiallyVisibleSelected"
+            @change="handleToggleSelectAllVisible"
+          >
+            全选
+          </a-checkbox>
+          <span class="batch-count">已选 {{ selectedConversationIds.length }}</span>
+        </div>
+        <div class="sidebar-actions">
+          <a-button size="small" @click="toggleBatchMode">
+            {{ batchMode ? '完成' : '批量删除' }}
+          </a-button>
+          <a-popconfirm
+            v-if="batchMode"
+            :title="`确定删除选中的 ${selectedConversationIds.length} 个对话吗？`"
+            @confirm="handleBatchDeleteConversations"
+          >
+            <a-button danger size="small" :disabled="selectedConversationIds.length === 0">
+              删除选中
+            </a-button>
+          </a-popconfirm>
+        </div>
         <a-input
           v-model:value="searchKeyword"
           placeholder="搜索对话"
@@ -22,9 +46,19 @@
         <div
           v-for="conv in filteredConversations"
           :key="conv.id"
-          :class="['conversation-item', { active: aiStore.currentConversation?.id === conv.id }]"
-          @click="handleSelectConversation(conv.id)"
+          :class="['conversation-item', {
+            active: aiStore.currentConversation?.id === conv.id,
+            selected: isConversationSelected(conv.id),
+            'batch-mode': batchMode
+          }]"
+          @click="handleConversationItemClick(conv.id)"
         >
+          <div v-if="batchMode" class="conv-checkbox" @click.stop>
+            <a-checkbox
+              :checked="isConversationSelected(conv.id)"
+              @change="() => toggleConversationSelection(conv.id)"
+            />
+          </div>
           <MessageOutlined v-if="frontStyle" class="conv-icon" />
           <!-- 编辑模式 -->
           <a-input
@@ -37,10 +71,10 @@
             @blur="saveConvTitle(conv.id)"
             ref="titleInputRef"
           />
-          <span v-else class="conv-title" @dblclick.stop="startEditTitle(conv)">
+          <span v-else class="conv-title" @dblclick.stop="!batchMode && startEditTitle(conv)">
             {{ conv.title }}
           </span>
-          <div class="conv-actions">
+          <div v-if="!batchMode" class="conv-actions">
             <EditOutlined class="edit-icon" @click.stop="startEditTitle(conv)" />
             <a-popconfirm
               title="确定删除这个对话吗？"
@@ -459,6 +493,8 @@ const userStore = useUserStore()
 const inputMessage = ref('')
 const messageListRef = ref<HTMLElement | null>(null)
 const expandedReasoning = reactive<Record<number, boolean>>({})
+const batchMode = ref(false)
+const selectedConversationIds = ref<number[]>([])
 
 // 侧栏搜索
 const searchKeyword = ref('')
@@ -467,6 +503,10 @@ const filteredConversations = computed(() => {
   const kw = searchKeyword.value.toLowerCase()
   return aiStore.conversations.filter(c => c.title.toLowerCase().includes(kw))
 })
+const visibleConversationIds = computed(() => filteredConversations.value.map(c => c.id))
+const selectedVisibleCount = computed(() => visibleConversationIds.value.filter(id => selectedConversationIds.value.includes(id)).length)
+const allVisibleSelected = computed(() => visibleConversationIds.value.length > 0 && selectedVisibleCount.value === visibleConversationIds.value.length)
+const partiallyVisibleSelected = computed(() => selectedVisibleCount.value > 0 && selectedVisibleCount.value < visibleConversationIds.value.length)
 
 // 对话标题编辑
 const editingConvId = ref<number | null>(null)
@@ -638,11 +678,22 @@ function scrollToBottom() {
 
 // 新建对话
 function handleNewChat() {
+  if (batchMode.value) {
+    exitBatchMode()
+  }
   aiStore.currentConversation = null
   aiStore.messages = []
 }
 
 // 选择对话
+function handleConversationItemClick(id: number) {
+  if (batchMode.value) {
+    toggleConversationSelection(id)
+    return
+  }
+  handleSelectConversation(id)
+}
+
 async function handleSelectConversation(id: number) {
   try {
     await aiStore.selectConversation(id)
@@ -656,8 +707,65 @@ async function handleDeleteConversation(id: number) {
   try {
     await aiStore.removeConversation(id)
     message.success('删除成功')
-  } catch (error) {
-    message.error('删除失败')
+  } catch {
+    // 错误已由 request 拦截器处理
+  }
+}
+
+function toggleBatchMode() {
+  if (batchMode.value) {
+    exitBatchMode()
+    return
+  }
+  batchMode.value = true
+  selectedConversationIds.value = []
+}
+
+function exitBatchMode() {
+  batchMode.value = false
+  selectedConversationIds.value = []
+}
+
+function isConversationSelected(id: number) {
+  return selectedConversationIds.value.includes(id)
+}
+
+function toggleConversationSelection(id: number) {
+  if (isConversationSelected(id)) {
+    selectedConversationIds.value = selectedConversationIds.value.filter(item => item !== id)
+    return
+  }
+  selectedConversationIds.value = [...selectedConversationIds.value, id]
+}
+
+function handleToggleSelectAllVisible() {
+  if (allVisibleSelected.value) {
+    selectedConversationIds.value = selectedConversationIds.value.filter(id => !visibleConversationIds.value.includes(id))
+    return
+  }
+
+  const selectedSet = new Set(selectedConversationIds.value)
+  visibleConversationIds.value.forEach(id => selectedSet.add(id))
+  selectedConversationIds.value = Array.from(selectedSet)
+}
+
+async function handleBatchDeleteConversations() {
+  if (selectedConversationIds.value.length === 0) {
+    return
+  }
+
+  try {
+    const res = await aiStore.removeConversationsBatch(selectedConversationIds.value)
+    if (res.data?.failed_count > 0) {
+      const firstFailedMessage = Array.isArray(res.data.failed_msgs) ? res.data.failed_msgs[0] : ''
+      const detailSuffix = firstFailedMessage ? `，原因：${firstFailedMessage}` : ''
+      message.warning(`成功删除 ${res.data.success_count} 个，失败 ${res.data.failed_count} 个${detailSuffix}`)
+    } else {
+      message.success('批量删除成功')
+    }
+    exitBatchMode()
+  } catch {
+    // 错误已由 request 拦截器处理
   }
 }
 
@@ -784,6 +892,24 @@ function renderMarkdown(text: string): string {
   .sidebar-header {
     padding: 16px;
     border-bottom: 1px solid #e8e8e8;
+
+    .batch-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .batch-count {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .sidebar-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
   }
   
   .conversation-list {
@@ -811,6 +937,23 @@ function renderMarkdown(text: string): string {
       &.active {
         background: #e6f7ff;
         border: 1px solid #91d5ff;
+      }
+
+      &.selected {
+        background: #f0f5ff;
+        border: 1px solid #adc6ff;
+      }
+
+      &.batch-mode {
+        .conv-actions {
+          display: none;
+        }
+      }
+
+      .conv-checkbox {
+        display: flex;
+        align-items: center;
+        margin-right: 8px;
       }
       
       .conv-icon {

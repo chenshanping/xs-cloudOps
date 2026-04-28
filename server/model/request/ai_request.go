@@ -22,6 +22,10 @@ type ConversationListRequest struct {
 	PageRequest
 }
 
+type BatchConversationDeleteRequest struct {
+	Ids []uint `json:"ids" binding:"required" comment:"对话ID列表"`
+}
+
 // 对话消息列表请求
 type MessageListRequest struct {
 	ConversationID uint `json:"conversation_id" form:"conversation_id" binding:"required" comment:"对话ID"`

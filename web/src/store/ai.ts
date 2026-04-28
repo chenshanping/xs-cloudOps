@@ -1,11 +1,12 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import {
   getModels,
   getConversations,
   createConversation,
   getConversation,
   deleteConversation,
+  deleteConversations,
   clearMessages,
   clearContext,
   deleteMessage,
@@ -13,10 +14,18 @@ import {
   type ModelInfo,
   type AIConversation,
   type AIMessage,
-  type ChatRequest
+  type ChatRequest,
+  type BatchDeleteConversationResult
 } from '@/api/ai'
+import type { ApiResponse } from '@/types'
+import {
+  loadAIPreferences,
+  persistAIPreferences,
+} from './ai-preferences'
 
 export const useAIStore = defineStore('ai', () => {
+  const savedPreferences = loadAIPreferences()
+
   // 状态
   const models = ref<ModelInfo[]>([])
   const conversations = ref<AIConversation[]>([])
@@ -25,8 +34,8 @@ export const useAIStore = defineStore('ai', () => {
   const loading = ref(false)
   const streaming = ref(false)
   const currentModel = ref('')
-  const enableSearch = ref(false)
-  const enableThinking = ref(true)
+  const enableSearch = ref(savedPreferences.enableSearch)
+  const enableThinking = ref(savedPreferences.enableThinking)
   
   // 临时的流式内容
   const streamingContent = ref('')
@@ -34,6 +43,15 @@ export const useAIStore = defineStore('ai', () => {
   
   // 计算属性
   const hasConversations = computed(() => conversations.value.length > 0)
+
+  function persistPreferences() {
+    persistAIPreferences(undefined, {
+      enableSearch: enableSearch.value,
+      enableThinking: enableThinking.value,
+    })
+  }
+
+  watch([enableSearch, enableThinking], persistPreferences)
   
   // 获取模型列表
   async function fetchModels() {
@@ -98,6 +116,26 @@ export const useAIStore = defineStore('ai', () => {
       }
     } catch (error) {
       console.error('删除对话失败:', error)
+      throw error
+    }
+  }
+
+  async function removeConversationsBatch(ids: number[]) {
+    try {
+      const res = await deleteConversations(ids)
+      await fetchConversations()
+
+      if (currentConversation.value) {
+        const stillExists = conversations.value.some(c => c.id === currentConversation.value?.id)
+        if (!stillExists) {
+          currentConversation.value = null
+          messages.value = []
+        }
+      }
+
+      return res as ApiResponse<BatchDeleteConversationResult>
+    } catch (error) {
+      console.error('批量删除对话失败:', error)
       throw error
     }
   }
@@ -297,6 +335,7 @@ export const useAIStore = defineStore('ai', () => {
     newConversation,
     selectConversation,
     removeConversation,
+    removeConversationsBatch,
     clearCurrentMessages,
     clearCurrentContext,
     sendMessage,

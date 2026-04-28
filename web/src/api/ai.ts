@@ -30,6 +30,12 @@ export interface AIMessage {
   created_at: string
 }
 
+export interface BatchDeleteConversationResult {
+  success_count: number
+  failed_count: number
+  failed_msgs: string[]
+}
+
 // 对话请求
 export interface ChatRequest {
   conversation_id?: number
@@ -69,6 +75,10 @@ export function updateConversationTitle(id: number, title: string) {
 // 删除对话
 export function deleteConversation(id: number) {
   return request.delete<any, ApiResponse>(`/ai/conversations/${id}`)
+}
+
+export function deleteConversations(ids: number[]) {
+  return request.delete<any, ApiResponse<BatchDeleteConversationResult>>('/ai/conversations/batch', { data: { ids } })
 }
 
 // 获取对话消息

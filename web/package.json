@@ -13,13 +13,18 @@
     "test:tabs-state": "node scripts/test-tabs-state.mjs",
     "test:storage-config-state": "node scripts/test-storage-config-state.mjs",
     "test:ai-config-state": "node scripts/test-ai-config-state.mjs",
+    "test:ai-preferences": "node scripts/test-ai-preferences.mjs",
     "test:storage-wording": "node scripts/test-storage-wording.mjs",
+    "test:file-preview": "node scripts/test-file-preview.mjs",
     "test:view-resolver": "node scripts/test-view-resolver.mjs",
     "typecheck": "vue-tsc --noEmit",
     "preview": "vite preview --mode development"
   },
   "dependencies": {
     "@ant-design/icons-vue": "^7.0.1",
+    "@vue-office/docx": "^1.6.3",
+    "@vue-office/excel": "^1.7.14",
+    "@vue-office/pptx": "^1.0.1",
     "@wangeditor/editor": "^5.1.23",
     "@wangeditor/editor-for-vue": "^5.1.12",
     "ant-design-vue": "^4.1.0",
