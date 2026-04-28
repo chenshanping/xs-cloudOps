@@ -48,8 +48,13 @@ export function batchUpdateUserStatus(ids: number[], status: number) {
 }
 
 // 重置密码
-export function resetPassword(id: number, password: string) {
-  return request.put<any, ApiResponse>(`/users/${id}/password`, { password })
+export function resetPassword(id: number) {
+  return request.put<any, ApiResponse>(`/users/${id}/password`, {})
+}
+
+// 批量重置密码
+export function batchResetPassword(ids: number[]) {
+  return request.put<any, ApiResponse>('/users/batch-password', { ids })
 }
 
 // 修改密码

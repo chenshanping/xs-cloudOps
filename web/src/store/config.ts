@@ -38,6 +38,7 @@ export const CONFIG_KEYS = [
   // 前台模式配置
   'front_mode',  // 'full': 完整前台, 'profile': 仅个人中心(用于身份认证)
   'user_profile_button_visible',
+  'user_default_password',
   'file_delete_mode',
   'storage_type',
   'storage_local_config',
@@ -85,6 +86,7 @@ const DEFAULT_CONFIG: Record<string, string> = {
   // 前台模式: 'full' = 完整前台, 'profile' = 仅个人中心
   front_mode: 'full',
   user_profile_button_visible: 'false',
+  user_default_password: '123456',
   file_delete_mode: 'logical',
   storage_type: 'local',
   storage_local_config: JSON.stringify({

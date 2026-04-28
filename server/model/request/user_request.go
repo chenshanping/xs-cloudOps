@@ -34,11 +34,6 @@ type ChangePasswordRequest struct {
 	NewPassword string `json:"new_password" binding:"required,min=6" comment:"新密码"`
 }
 
-// 重置密码请求
-type ResetPasswordRequest struct {
-	Password string `json:"password" binding:"required,min=6" comment:"新密码"`
-}
-
 // 用户列表请求
 type UserListRequest struct {
 	PageRequest
@@ -54,6 +49,11 @@ type UserListRequest struct {
 type BatchUserStatusRequest struct {
 	Ids    []uint `json:"ids" binding:"required" comment:"用户ID列表"`
 	Status int    `json:"status" binding:"oneof=0 1" comment:"状态(0:禁用,1:启用)"`
+}
+
+// 批量重置密码请求
+type BatchResetPasswordRequest struct {
+	Ids []uint `json:"ids" binding:"required" comment:"用户ID列表"`
 }
 
 // 更新个人资料请求

@@ -2,14 +2,22 @@
   <div class="user-page">
     <div class="page-layout">
       <div class="left-tree">
-        <div class="tree-header">部门用户</div>
+        <div class="tree-header">
+          <span>部门用户</span>
+          <a-space :size="4">
+            <a-button type="link" size="small" @click="expandAllTree">全部展开</a-button>
+            <a-button type="link" size="small" @click="collapseAllTree">全部收缩</a-button>
+          </a-space>
+        </div>
         <a-spin :spinning="deptLoading">
           <a-tree
             v-if="deptTreeNodes.length"
             block-node
             :tree-data="deptTreeNodes"
             :selected-keys="selectedTreeKeys"
+            :expanded-keys="expandedTreeKeys"
             @select="handleDeptSelect"
+            @expand="handleTreeExpand"
           />
           <a-empty v-else description="暂无部门" :image="simpleImage" />
         </a-spin>
@@ -65,6 +73,10 @@
                 批量禁用
                 <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
               </a-button>
+              <a-button :disabled="selectedRowKeys.length === 0" @click="handleBatchResetPwd" v-permission="'system:user:batchResetPwd'">
+                批量重置密码
+                <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
+              </a-button>
               <a-button type="primary" danger :disabled="selectedRowKeys.length === 0" @click="handleBatchDelete" v-permission="'system:user:delete'">
                 <DeleteOutlined /> 批量删除
                 <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
@@ -95,7 +107,8 @@
               </a-tag>
             </template>
             <template v-if="column.key === 'dept'">
-              {{ record.dept?.name || '未绑定部门' }}
+              <span v-if="record.dept?.name">{{ record.dept.name }}</span>
+              <a-tag v-else color="error">未绑定部门</a-tag>
             </template>
             <template v-if="column.key === 'created_at'">{{ formatTime(record.created_at) }}</template>
             <template v-if="column.key === 'action'">
@@ -145,6 +158,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { h } from 'vue'
 import { Empty, message, Modal } from 'ant-design-vue'
 import { ExclamationCircleOutlined, PlusOutlined, UserOutlined, DownOutlined, DeleteOutlined } from '@ant-design/icons-vue'
 import { createVNode } from 'vue'
@@ -160,6 +174,7 @@ import {
   batchDeleteUsers,
   updateUserStatus,
   batchUpdateUserStatus,
+  batchResetPassword,
   resetPassword,
   forceUserOffline,
   getUserProfilesById,
@@ -176,7 +191,7 @@ import { normalizeGenderDictOptions, resolveGenderOption, type GenderOption } fr
 
 interface DeptTreeNode {
   key: string
-  title: string
+  title: any
   deptId?: number
   selectableType: 'all' | 'unassigned' | 'dept'
   children?: DeptTreeNode[]
@@ -203,6 +218,8 @@ const genderOptions = ref<GenderOption[]>([])
 const deptTree = ref<Dept[]>([])
 const unassignedUserCount = ref(0)
 const selectedTreeKey = ref<string>('all')
+const expandedTreeKeys = ref<string[]>([])
+const treeInitialized = ref(false)
 const drawerVisible = ref(false)
 const drawerTitle = ref('新增用户')
 const isEdit = ref(false)
@@ -266,7 +283,7 @@ const deptTreeNodes = computed<DeptTreeNode[]>(() => {
         ...deptChildren,
         {
           key: 'unassigned',
-          title: `未绑定部门 (${unassignedUserCount.value})`,
+          title: h('span', { class: 'unassigned-tree-node' }, `未绑定部门 (${unassignedUserCount.value})`),
           selectableType: 'unassigned'
         }
       ]
@@ -323,17 +340,24 @@ const fetchDeptTree = async () => {
     const res = await getManageableDeptTree()
     deptTree.value = res.data.tree
     unassignedUserCount.value = res.data.unassigned_user_count
+    const allKeys = collectTreeKeys(res.data.tree)
+    expandedTreeKeys.value = treeInitialized.value
+      ? expandedTreeKeys.value.filter(key => allKeys.includes(key))
+      : allKeys
+    treeInitialized.value = true
   } finally {
     deptLoading.value = false
   }
 }
 
 const handleSearch = () => {
+  clearSelectedRows()
   pagination.current = 1
   fetchData()
 }
 
 const handleReset = () => {
+  clearSelectedRows()
   searchForm.username = ''
   searchForm.status = undefined
   searchForm.gender = undefined
@@ -343,15 +367,21 @@ const handleReset = () => {
 }
 
 const handleTableChange = (pag: any) => {
+  clearSelectedRows()
   pagination.current = pag.current
   pagination.pageSize = pag.pageSize
   fetchData()
 }
 
 const handleDeptSelect = (keys: string[]) => {
+  clearSelectedRows()
   selectedTreeKey.value = keys[0] ?? 'all'
   pagination.current = 1
   fetchData()
+}
+
+const handleTreeExpand = (keys: string[]) => {
+  expandedTreeKeys.value = keys
 }
 
 const handleAdd = () => {
@@ -420,8 +450,18 @@ const handleStatusChange = async (record: User, checked: boolean) => {
 }
 
 const handleResetPwd = async (record: User) => {
-  await resetPassword(record.id, '123456')
-  message.success('密码已重置为 123456')
+  Modal.confirm({
+    title: '确认重置密码',
+    icon: createVNode(ExclamationCircleOutlined),
+    content: `确定要将用户「${record.username}」的密码重置为系统设置中的用户默认密码吗？`,
+    okText: '确认重置',
+    okType: 'danger',
+    cancelText: '取消',
+    async onOk() {
+      await resetPassword(record.id)
+      message.success('密码已重置为系统默认密码')
+    }
+  })
 }
 
 const confirmDelete = (record: User) => {
@@ -442,6 +482,10 @@ const confirmDelete = (record: User) => {
 
 const onSelectChange = (keys: number[]) => {
   selectedRowKeys.value = keys
+}
+
+const clearSelectedRows = () => {
+  selectedRowKeys.value = []
 }
 
 const isProtectedBatchStatusRecord = (record: User) => {
@@ -487,8 +531,30 @@ const handleBatchStatusChange = (status: number) => {
     async onOk() {
       await batchUpdateUserStatus(targetIds, status)
       message.success(`批量${actionText}成功`)
-      selectedRowKeys.value = []
+      clearSelectedRows()
       await Promise.all([fetchDeptTree(), fetchData()])
+    }
+  })
+}
+
+const handleBatchResetPwd = () => {
+  if (selectedRowKeys.value.length === 0) {
+    message.warning('请选择要重置密码的用户')
+    return
+  }
+
+  Modal.confirm({
+    title: '确认批量重置密码',
+    icon: createVNode(ExclamationCircleOutlined),
+    content: `确定要将选中的 ${selectedRowKeys.value.length} 个用户密码重置为系统设置中的用户默认密码吗？`,
+    okText: '确认重置',
+    okType: 'danger',
+    cancelText: '取消',
+    async onOk() {
+      await batchResetPassword(selectedRowKeys.value)
+      message.success('批量重置密码成功')
+      clearSelectedRows()
+      await fetchData()
     }
   })
 }
@@ -512,7 +578,7 @@ const handleBatchDelete = () => {
       } else {
         message.success('批量删除成功')
       }
-      selectedRowKeys.value = []
+      clearSelectedRows()
       await Promise.all([fetchDeptTree(), fetchData()])
     }
   })
@@ -594,6 +660,30 @@ const buildDeptTreeNodes = (depts: Dept[]): DeptTreeNode[] =>
     children: dept.children ? buildDeptTreeNodes(dept.children) : undefined
   }))
 
+const collectTreeKeys = (depts: Dept[]) => {
+  const keys = ['all', 'unassigned']
+
+  const walk = (items: Dept[]) => {
+    items.forEach((dept) => {
+      keys.push(`dept-${dept.id}`)
+      if (dept.children?.length) {
+        walk(dept.children)
+      }
+    })
+  }
+
+  walk(depts)
+  return keys
+}
+
+const expandAllTree = () => {
+  expandedTreeKeys.value = collectTreeKeys(deptTree.value)
+}
+
+const collapseAllTree = () => {
+  expandedTreeKeys.value = ['all']
+}
+
 const buildDeptSelectOptions = (depts: Dept[]): TreeSelectOption[] =>
   depts.map(dept => ({
     key: `dept-option-${dept.id}`,
@@ -632,6 +722,9 @@ onMounted(async () => {
 }
 
 .tree-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   font-weight: 500;
   margin-bottom: 12px;
   padding-bottom: 8px;
@@ -646,5 +739,10 @@ onMounted(async () => {
 .right-content {
   flex: 1;
   min-width: 0;
+}
+
+.left-tree :deep(.unassigned-tree-node) {
+  color: #cf1322;
+  font-weight: 500;
 }
 </style>

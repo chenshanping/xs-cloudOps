@@ -201,14 +201,25 @@ func (a *UserApi) ResetPassword(c *gin.Context) {
 		return
 	}
 
-	var req request.ResetPasswordRequest
+	operatorID := middleware.GetUserID(c)
+	if err := service.User.ResetManagedUserPassword(operatorID, uint(id)); err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+
+	response.OkWithMessage(c, "重置成功")
+}
+
+// 批量重置密码
+func (a *UserApi) BatchResetPassword(c *gin.Context) {
+	var req request.BatchResetPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "参数错误")
 		return
 	}
 
 	operatorID := middleware.GetUserID(c)
-	if err := service.User.ResetManagedUserPassword(operatorID, uint(id), req.Password); err != nil {
+	if err := service.User.BatchResetManagedUserPasswords(operatorID, req.Ids); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}

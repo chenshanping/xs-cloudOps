@@ -21,6 +21,11 @@ type UserService struct{}
 
 var Default = &UserService{}
 
+const (
+	userDefaultPasswordConfigKey = "user_default_password"
+	userDefaultPasswordFallback  = "123456"
+)
+
 func isProtectedBatchStatusUser(user model.SysUser) bool {
 	if user.ID == 1 || user.Username == "admin" {
 		return true
@@ -426,11 +431,38 @@ func (s *UserService) BatchUpdateUserStatus(operatorID uint, req *request.BatchU
 	return nil
 }
 
-func (s *UserService) ResetManagedUserPassword(operatorID, id uint, password string) error {
+func (s *UserService) managedUserDefaultPassword() string {
+	config, err := configsvc.Default.GetConfigByKey(userDefaultPasswordConfigKey)
+	if err != nil {
+		return userDefaultPasswordFallback
+	}
+
+	password := strings.TrimSpace(config.Value)
+	if password == "" {
+		return userDefaultPasswordFallback
+	}
+
+	return password
+}
+
+func (s *UserService) ResetManagedUserPassword(operatorID, id uint) error {
 	if _, err := core.EnsureUserManageable(operatorID, id); err != nil {
 		return err
 	}
-	return s.ResetPassword(id, password)
+	return s.ResetPassword(id, s.managedUserDefaultPassword())
+}
+
+func (s *UserService) BatchResetManagedUserPasswords(operatorID uint, ids []uint) error {
+	normalized := core.NormalizeIDs(ids)
+	if len(normalized) == 0 {
+		return errors.New("请选择要重置密码的用户")
+	}
+
+	if _, err := core.EnsureUsersManageable(operatorID, normalized); err != nil {
+		return err
+	}
+
+	return s.ResetUsersPassword(normalized, s.managedUserDefaultPassword())
 }
 
 func (s *UserService) ForceOffline(operatorID, id uint) error {
@@ -448,7 +480,28 @@ func (s *UserService) ResetPassword(id uint, password string) error {
 	if err != nil {
 		return err
 	}
-	return global.DB.Model(&model.SysUser{}).Where("id = ?", id).Update("password", hashedPassword).Error
+	err = global.DB.Model(&model.SysUser{}).Where("id = ?", id).Update("password", hashedPassword).Error
+	if err == nil {
+		core.Default.ClearUserInfoCache(id)
+	}
+	return err
+}
+
+func (s *UserService) ResetUsersPassword(ids []uint, password string) error {
+	hashedPassword, err := utils.HashPassword(password)
+	if err != nil {
+		return err
+	}
+
+	if err := global.DB.Model(&model.SysUser{}).Where("id IN ?", ids).Update("password", hashedPassword).Error; err != nil {
+		return err
+	}
+
+	for _, id := range ids {
+		core.Default.ClearUserInfoCache(id)
+	}
+
+	return nil
 }
 
 func (s *UserService) ChangePassword(id uint, oldPassword, newPassword string) error {

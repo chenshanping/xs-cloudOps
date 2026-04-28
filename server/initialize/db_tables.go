@@ -215,6 +215,7 @@ func initDefaultConfigs() {
 		{Name: "AI配置", Key: "ai_config", Value: `{"default_provider":"阿里云百炼","providers":[{"name":"阿里云百炼","api_key":"","base_url":"https://dashscope.aliyuncs.com/compatible-mode/v1","models":[{"id":"deepseek-v3.2","name":"DeepSeek-V3.2","description":"DeepSeek最新模型,支持联网和思考"},{"id":"qwen3-max","name":"通义千问3-Max","description":"通义千问3系列Max模型"}]}]}`, ValueType: "json", Remark: "AI平台配置，包含平台名称、API Key、基础URL和模型列表"},
 		{Name: "前台模式", Key: "front_mode", Value: "full", ValueType: "string", Remark: "前台模式: full=完整前台, profile=仅个人中心(用于身份认证)"},
 		{Name: "用户身份按钮显示", Key: "user_profile_button_visible", Value: "false", ValueType: "string", Remark: "后台用户管理列表是否显示身份按钮"},
+		{Name: "用户默认密码", Key: "user_default_password", Value: "123456", ValueType: "string", Remark: "后台用户管理单条/批量重置密码默认值"},
 		{Name: "文件删除方式", Key: service.FileDeleteModeConfigKey, Value: service.FileDeleteModeLogical, ValueType: "string", Remark: "文件删除方式: logical=逻辑删除, physical=物理删除"},
 		{Name: "存储类型", Key: service.StorageTypeConfigKey, Value: string(service.Storage.DefaultStorageType()), ValueType: "string", Remark: "当前文件上传使用的存储类型"},
 	}
@@ -243,6 +244,13 @@ func ensureBuiltInData() {
 		Remark:    "后台用户管理列表是否显示身份按钮",
 	})
 	ensureConfigExists(model.SysConfig{
+		Name:      "用户默认密码",
+		Key:       "user_default_password",
+		Value:     "123456",
+		ValueType: "string",
+		Remark:    "后台用户管理单条/批量重置密码默认值",
+	})
+	ensureConfigExists(model.SysConfig{
 		Name:      "文件删除方式",
 		Key:       service.FileDeleteModeConfigKey,
 		Value:     service.FileDeleteModeLogical,
@@ -266,8 +274,15 @@ func ensureBuiltInData() {
 		Description: "批量修改用户状态",
 		NeedAuth:    true,
 	}, "/api/v1/users/:id/status", "PUT")
+	ensureApiAccessInheritedFrom(model.SysApi{
+		Path:        "/api/v1/users/batch-password",
+		Method:      "PUT",
+		Group:       "用户管理",
+		Description: "批量重置密码",
+		NeedAuth:    true,
+	}, "/api/v1/users/:id/password", "PUT")
 
-	ensureUserBatchStatusMenus()
+	ensureUserOperationMenus()
 }
 
 func ensureGenderDictData() {
@@ -851,7 +866,7 @@ func ensureApiAccessForRoleCodes(api model.SysApi, roleCodes []string) {
 	}
 }
 
-func ensureUserBatchStatusMenus() {
+func ensureUserOperationMenus() {
 	var userMenu model.SysMenu
 	if err := global.DB.Where("permission = ? AND type = ?", "system:user:list", 2).First(&userMenu).Error; err != nil {
 		global.Log.Errorf("查询用户管理菜单失败: %v", err)
@@ -859,6 +874,18 @@ func ensureUserBatchStatusMenus() {
 	}
 
 	menuDefinitions := []model.SysMenu{
+		{
+			ParentID:   userMenu.ID,
+			Name:       "用户重置密码",
+			Path:       "",
+			Component:  "",
+			Icon:       "",
+			Sort:       4,
+			Type:       3,
+			Permission: "system:user:resetPwd",
+			Status:     1,
+			Hidden:     0,
+		},
 		{
 			ParentID:   userMenu.ID,
 			Name:       "批量启用",
@@ -883,6 +910,18 @@ func ensureUserBatchStatusMenus() {
 			Status:     1,
 			Hidden:     0,
 		},
+		{
+			ParentID:   userMenu.ID,
+			Name:       "批量重置密码",
+			Path:       "",
+			Component:  "",
+			Icon:       "",
+			Sort:       7,
+			Type:       3,
+			Permission: "system:user:batchResetPwd",
+			Status:     1,
+			Hidden:     0,
+		},
 	}
 
 	for _, definition := range menuDefinitions {
@@ -901,11 +940,15 @@ func ensureUserBatchStatusMenus() {
 				Hidden:    menu.Hidden,
 			}).
 			FirstOrCreate(&menu).Error; err != nil {
-			global.Log.Errorf("补齐用户批量状态按钮失败(%s): %v", definition.Permission, err)
+			global.Log.Errorf("补齐用户操作按钮失败(%s): %v", definition.Permission, err)
 			continue
 		}
 
-		grantMenuToRolesWithPermission(menu.ID, "system:user:edit")
+		sourcePermission := "system:user:edit"
+		if definition.Permission == "system:user:batchResetPwd" {
+			sourcePermission = "system:user:resetPwd"
+		}
+		grantMenuToRolesWithPermission(menu.ID, sourcePermission)
 	}
 }
 

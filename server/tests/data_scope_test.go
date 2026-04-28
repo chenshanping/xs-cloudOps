@@ -11,6 +11,7 @@ import (
 	"server/model"
 	"server/model/request"
 	. "server/service"
+	"server/utils"
 )
 
 func setupDataScopeTestDB(t *testing.T) *gorm.DB {
@@ -23,6 +24,7 @@ func setupDataScopeTestDB(t *testing.T) *gorm.DB {
 
 	if err := db.AutoMigrate(
 		&model.SysFile{},
+		&model.SysConfig{},
 		&model.SysDept{},
 		&model.SysRole{},
 		&model.SysUser{},
@@ -361,5 +363,150 @@ func TestUserServiceUpdateUserAllowsUnchangedLegacyParentDept(t *testing.T) {
 	}
 	if updated.Nickname != "已更新昵称" {
 		t.Fatalf("updated nickname = %s, want %s", updated.Nickname, "已更新昵称")
+	}
+}
+
+func TestUserServiceResetManagedUserPasswordUsesConfiguredDefault(t *testing.T) {
+	db := setupDataScopeTestDB(t)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+
+	roleAdmin := model.SysRole{Name: "管理员", Code: "admin", DataScope: model.DataScopeAll, Status: 1}
+	if err := db.Create(&roleAdmin).Error; err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+
+	operator := model.SysUser{Username: "admin-reset", Password: "old-hash", Nickname: "管理员", Status: 1, DeptID: root.ID, Roles: []model.SysRole{roleAdmin}}
+	target := model.SysUser{Username: "target-reset", Password: "before-hash", Nickname: "目标用户", Status: 1, DeptID: root.ID}
+	for _, user := range []*model.SysUser{&operator, &target} {
+		if err := db.Create(user).Error; err != nil {
+			t.Fatalf("create user %s: %v", user.Username, err)
+		}
+	}
+
+	if err := db.Create(&model.SysConfig{
+		Name:      "用户默认密码",
+		Key:       "user_default_password",
+		Value:     "ResetAbc1234",
+		ValueType: "string",
+		Remark:    "后台用户管理重置密码默认值",
+	}).Error; err != nil {
+		t.Fatalf("create config: %v", err)
+	}
+
+	if err := User.ResetManagedUserPassword(operator.ID, target.ID); err != nil {
+		t.Fatalf("ResetManagedUserPassword error: %v", err)
+	}
+
+	var updated model.SysUser
+	if err := db.First(&updated, target.ID).Error; err != nil {
+		t.Fatalf("reload target: %v", err)
+	}
+	if !utils.CheckPassword("ResetAbc1234", updated.Password) {
+		t.Fatalf("expected configured default password to be applied")
+	}
+}
+
+func TestUserServiceResetManagedUserPasswordFallsBackToBuiltInDefault(t *testing.T) {
+	db := setupDataScopeTestDB(t)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+
+	roleAdmin := model.SysRole{Name: "管理员", Code: "admin", DataScope: model.DataScopeAll, Status: 1}
+	if err := db.Create(&roleAdmin).Error; err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+
+	operator := model.SysUser{Username: "admin-fallback", Password: "old-hash", Nickname: "管理员", Status: 1, DeptID: root.ID, Roles: []model.SysRole{roleAdmin}}
+	target := model.SysUser{Username: "target-fallback", Password: "before-hash", Nickname: "目标用户", Status: 1, DeptID: root.ID}
+	for _, user := range []*model.SysUser{&operator, &target} {
+		if err := db.Create(user).Error; err != nil {
+			t.Fatalf("create user %s: %v", user.Username, err)
+		}
+	}
+
+	if err := User.ResetManagedUserPassword(operator.ID, target.ID); err != nil {
+		t.Fatalf("ResetManagedUserPassword error: %v", err)
+	}
+
+	var updated model.SysUser
+	if err := db.First(&updated, target.ID).Error; err != nil {
+		t.Fatalf("reload target: %v", err)
+	}
+	if !utils.CheckPassword("123456", updated.Password) {
+		t.Fatalf("expected built-in fallback password to be applied")
+	}
+}
+
+func TestUserServiceBatchResetManagedUserPasswords(t *testing.T) {
+	db := setupDataScopeTestDB(t)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+	deptA := model.SysDept{Name: "研发部", ParentID: root.ID, Ancestors: fmt.Sprintf("0,%d", root.ID), Sort: 1, Status: 1}
+	if err := db.Create(&deptA).Error; err != nil {
+		t.Fatalf("create deptA: %v", err)
+	}
+	deptB := model.SysDept{Name: "市场部", ParentID: root.ID, Ancestors: fmt.Sprintf("0,%d", root.ID), Sort: 2, Status: 1}
+	if err := db.Create(&deptB).Error; err != nil {
+		t.Fatalf("create deptB: %v", err)
+	}
+
+	roleAdmin := model.SysRole{Name: "管理员", Code: "admin", DataScope: model.DataScopeAll, Status: 1}
+	roleDept := model.SysRole{Name: "本部门", Code: "dept", DataScope: model.DataScopeDept, Status: 1}
+	for _, role := range []*model.SysRole{&roleAdmin, &roleDept} {
+		if err := db.Create(role).Error; err != nil {
+			t.Fatalf("create role %s: %v", role.Code, err)
+		}
+	}
+
+	admin := model.SysUser{Username: "admin-batch-reset", Password: "pwd", Nickname: "管理员", Status: 1, DeptID: root.ID, Roles: []model.SysRole{roleAdmin}}
+	deptOperator := model.SysUser{Username: "dept-operator-reset", Password: "pwd", Nickname: "部门管理员", Status: 1, DeptID: deptA.ID, Roles: []model.SysRole{roleDept}}
+	inScopeA := model.SysUser{Username: "in-scope-a", Password: "old-a", Nickname: "范围内A", Status: 1, DeptID: deptA.ID}
+	inScopeB := model.SysUser{Username: "in-scope-b", Password: "old-b", Nickname: "范围内B", Status: 1, DeptID: deptA.ID}
+	outOfScope := model.SysUser{Username: "out-of-scope", Password: "old-c", Nickname: "范围外", Status: 1, DeptID: deptB.ID}
+	for _, user := range []*model.SysUser{&admin, &deptOperator, &inScopeA, &inScopeB, &outOfScope} {
+		if err := db.Create(user).Error; err != nil {
+			t.Fatalf("create user %s: %v", user.Username, err)
+		}
+	}
+
+	if err := db.Create(&model.SysConfig{
+		Name:      "用户默认密码",
+		Key:       "user_default_password",
+		Value:     "BatchPwd9988",
+		ValueType: "string",
+		Remark:    "后台用户管理重置密码默认值",
+	}).Error; err != nil {
+		t.Fatalf("create config: %v", err)
+	}
+
+	if err := User.BatchResetManagedUserPasswords(deptOperator.ID, []uint{inScopeA.ID, outOfScope.ID}); err == nil {
+		t.Fatalf("expected out-of-scope batch reset to fail")
+	}
+
+	if err := User.BatchResetManagedUserPasswords(admin.ID, []uint{inScopeA.ID, inScopeB.ID}); err != nil {
+		t.Fatalf("BatchResetManagedUserPasswords error: %v", err)
+	}
+
+	var users []model.SysUser
+	if err := db.Where("id IN ?", []uint{inScopeA.ID, inScopeB.ID}).Find(&users).Error; err != nil {
+		t.Fatalf("reload users: %v", err)
+	}
+	if len(users) != 2 {
+		t.Fatalf("reloaded users len = %d, want 2", len(users))
+	}
+	for _, user := range users {
+		if !utils.CheckPassword("BatchPwd9988", user.Password) {
+			t.Fatalf("expected configured batch password for user %s", user.Username)
+		}
 	}
 }
