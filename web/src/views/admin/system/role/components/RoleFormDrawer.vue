@@ -22,8 +22,8 @@
       <a-form-item label="超管角色">
         <a-switch v-model:checked="formState.is_super_admin" />
       </a-form-item>
-      <a-form-item label="数据范围" name="data_scope">
-        <a-select v-model:value="formState.data_scope" placeholder="请选择数据范围">
+      <a-form-item label="默认数据范围" name="data_scope">
+        <a-select v-model:value="formState.data_scope" placeholder="请选择默认数据范围">
           <a-select-option :value="1">全部数据</a-select-option>
           <a-select-option :value="2">自定义部门</a-select-option>
           <a-select-option :value="3">本部门</a-select-option>
@@ -116,7 +116,7 @@ const formState = reactive<RoleFormValue>({
 const formRules = computed<Record<string, Rule[]>>(() => ({
   name: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
   code: [{ required: true, message: '请输入角色编码', trigger: 'blur' }],
-  data_scope: [{ required: true, message: '请选择数据范围', trigger: 'change' }],
+  data_scope: [{ required: true, message: '请选择默认数据范围', trigger: 'change' }],
   dept_ids: formState.data_scope === 2 ? [{ required: true, message: '请选择自定义部门', trigger: 'change' }] : []
 }))
 

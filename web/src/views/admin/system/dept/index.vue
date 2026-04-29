@@ -25,13 +25,14 @@
             {{ formatTime(record.created_at) }}
           </template>
           <template v-if="column.key === 'action'">
-            <a-space :size="0">
+            <a-space v-if="record.manageable !== false" :size="0">
               <a-button type="link" size="small" @click="handleAdd(record.id)" v-permission="'system:dept:add'">新增下级</a-button>
               <a-button type="link" size="small" @click="handleEdit(record)" v-permission="'system:dept:edit'">编辑</a-button>
               <a-popconfirm title="确定删除该部门吗？" @confirm="handleDelete(record)">
                 <a-button type="link" size="small" danger v-permission="'system:dept:delete'">删除</a-button>
               </a-popconfirm>
             </a-space>
+            <span v-else>-</span>
           </template>
         </template>
       </a-table>
@@ -52,7 +53,7 @@ import { computed, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import DeptFormDrawer from './components/DeptFormDrawer.vue'
-import { createDept, deleteDept, getDeptTree, updateDept } from '@/api/dept'
+import { createDept, deleteDept, getManageableDeptTree, updateDept } from '@/api/dept'
 import type { Dept } from '@/types'
 import { formatTime } from '@/utils/format'
 
@@ -83,8 +84,8 @@ const treeOptions = computed(() => [
 const fetchData = async () => {
   loading.value = true
   try {
-    const res = await getDeptTree()
-    tableData.value = res.data
+    const res = await getManageableDeptTree('system:dept-management')
+    tableData.value = Array.isArray(res.data?.tree) ? res.data.tree : []
   } finally {
     loading.value = false
   }

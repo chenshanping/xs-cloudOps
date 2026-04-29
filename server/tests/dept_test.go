@@ -25,6 +25,7 @@ func setupDeptTestDB(t *testing.T) *gorm.DB {
 		&model.SysFile{},
 		&model.SysDept{},
 		&model.SysRole{},
+		&model.SysRoleDataScope{},
 		&model.SysUser{},
 	); err != nil {
 		t.Fatalf("auto migrate: %v", err)
@@ -268,5 +269,210 @@ func TestDeptServiceDeleteDeptRejectsWhenReferencedByRoleDataScope(t *testing.T)
 
 	if err := Dept.DeleteDept(target.ID); err == nil {
 		t.Fatalf("expected delete to fail when dept is referenced by role data scope")
+	}
+}
+
+func TestDeptServiceDeleteDeptRejectsWhenReferencedByFeatureDataScope(t *testing.T) {
+	db := setupDeptTestDB(t)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+
+	target := model.SysDept{Name: "市场部", ParentID: root.ID, Ancestors: fmt.Sprintf("0,%d", root.ID), Sort: 1, Status: 1}
+	if err := db.Create(&target).Error; err != nil {
+		t.Fatalf("create target dept: %v", err)
+	}
+
+	role := model.SysRole{Name: "功能范围角色", Code: "dept-feature-scope-role", DataScope: model.DataScopeAll, Status: 1}
+	if err := db.Create(&role).Error; err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+
+	scope := model.SysRoleDataScope{
+		RoleID:       role.ID,
+		ResourceCode: "system:user-management",
+		DataScope:    model.DataScopeCustom,
+	}
+	if err := db.Create(&scope).Error; err != nil {
+		t.Fatalf("create feature scope: %v", err)
+	}
+	if err := db.Model(&scope).Association("Depts").Append(&target); err != nil {
+		t.Fatalf("bind feature scope dept: %v", err)
+	}
+
+	if err := Dept.DeleteDept(target.ID); err == nil {
+		t.Fatalf("expected delete to fail when dept is referenced by feature data scope")
+	}
+}
+
+func TestDeptServiceGetManagedDeptUsesDeptManagementScope(t *testing.T) {
+	db := setupDeptTestDB(t)
+	createRoleFeatureScopeTables(t, db)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+	deptA := model.SysDept{Name: "开发部", ParentID: root.ID, Ancestors: fmt.Sprintf("0,%d", root.ID), Sort: 1, Status: 1}
+	if err := db.Create(&deptA).Error; err != nil {
+		t.Fatalf("create deptA: %v", err)
+	}
+	deptChild := model.SysDept{Name: "后端组", ParentID: deptA.ID, Ancestors: fmt.Sprintf("0,%d,%d", root.ID, deptA.ID), Sort: 1, Status: 1}
+	if err := db.Create(&deptChild).Error; err != nil {
+		t.Fatalf("create deptChild: %v", err)
+	}
+	deptB := model.SysDept{Name: "市场部", ParentID: root.ID, Ancestors: fmt.Sprintf("0,%d", root.ID), Sort: 2, Status: 1}
+	if err := db.Create(&deptB).Error; err != nil {
+		t.Fatalf("create deptB: %v", err)
+	}
+
+	roleAll := model.SysRole{Name: "默认全部", Code: "dept-managed-detail-all", DataScope: model.DataScopeAll, Status: 1}
+	if err := db.Create(&roleAll).Error; err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+
+	operator := model.SysUser{
+		Username: "dept-managed-detail-operator",
+		Password: "pwd",
+		Nickname: "部门详情范围操作员",
+		Status:   1,
+		DeptID:   deptA.ID,
+		Roles:    []model.SysRole{roleAll},
+	}
+	if err := db.Create(&operator).Error; err != nil {
+		t.Fatalf("create operator: %v", err)
+	}
+
+	insertRoleFeatureScope(t, db, roleAll.ID, "system:dept-management", model.DataScopeDeptAndChildren)
+
+	if _, err := Dept.GetManagedDept(operator.ID, deptChild.ID); err != nil {
+		t.Fatalf("GetManagedDept should allow in-scope dept: %v", err)
+	}
+	if _, err := Dept.GetManagedDept(operator.ID, deptB.ID); err == nil {
+		t.Fatalf("GetManagedDept should reject out-of-scope dept")
+	}
+}
+
+func TestDeptServiceCreateDeptUsesDeptManagementScope(t *testing.T) {
+	db := setupDeptTestDB(t)
+	createRoleFeatureScopeTables(t, db)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+	deptA := model.SysDept{Name: "开发部", ParentID: root.ID, Ancestors: fmt.Sprintf("0,%d", root.ID), Sort: 1, Status: 1}
+	if err := db.Create(&deptA).Error; err != nil {
+		t.Fatalf("create deptA: %v", err)
+	}
+	deptB := model.SysDept{Name: "市场部", ParentID: root.ID, Ancestors: fmt.Sprintf("0,%d", root.ID), Sort: 2, Status: 1}
+	if err := db.Create(&deptB).Error; err != nil {
+		t.Fatalf("create deptB: %v", err)
+	}
+
+	roleAll := model.SysRole{Name: "默认全部", Code: "dept-create-scope-all", DataScope: model.DataScopeAll, Status: 1}
+	if err := db.Create(&roleAll).Error; err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+
+	operator := model.SysUser{
+		Username: "dept-create-scope-operator",
+		Password: "pwd",
+		Nickname: "部门创建范围操作员",
+		Status:   1,
+		DeptID:   deptA.ID,
+		Roles:    []model.SysRole{roleAll},
+	}
+	if err := db.Create(&operator).Error; err != nil {
+		t.Fatalf("create operator: %v", err)
+	}
+
+	insertRoleFeatureScope(t, db, roleAll.ID, "system:dept-management", model.DataScopeDeptAndChildren)
+
+	if err := Dept.CreateManagedDept(operator.ID, &request.CreateDeptRequest{
+		ParentID: deptA.ID,
+		Name:     "测试子部门",
+		Sort:     1,
+		Status:   1,
+		Remark:   "",
+	}); err != nil {
+		t.Fatalf("CreateManagedDept should allow in-scope parent: %v", err)
+	}
+
+	if err := Dept.CreateManagedDept(operator.ID, &request.CreateDeptRequest{
+		ParentID: deptB.ID,
+		Name:     "越权子部门",
+		Sort:     1,
+		Status:   1,
+		Remark:   "",
+	}); err == nil {
+		t.Fatalf("CreateManagedDept should reject out-of-scope parent")
+	}
+}
+
+func TestDeptServiceUpdateAndDeleteDeptUseDeptManagementScope(t *testing.T) {
+	db := setupDeptTestDB(t)
+	createRoleFeatureScopeTables(t, db)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+	deptA := model.SysDept{Name: "开发部", ParentID: root.ID, Ancestors: fmt.Sprintf("0,%d", root.ID), Sort: 1, Status: 1}
+	if err := db.Create(&deptA).Error; err != nil {
+		t.Fatalf("create deptA: %v", err)
+	}
+	deptChild := model.SysDept{Name: "后端组", ParentID: deptA.ID, Ancestors: fmt.Sprintf("0,%d,%d", root.ID, deptA.ID), Sort: 1, Status: 1}
+	if err := db.Create(&deptChild).Error; err != nil {
+		t.Fatalf("create deptChild: %v", err)
+	}
+	deptB := model.SysDept{Name: "市场部", ParentID: root.ID, Ancestors: fmt.Sprintf("0,%d", root.ID), Sort: 2, Status: 1}
+	if err := db.Create(&deptB).Error; err != nil {
+		t.Fatalf("create deptB: %v", err)
+	}
+
+	roleAll := model.SysRole{Name: "默认全部", Code: "dept-update-scope-all", DataScope: model.DataScopeAll, Status: 1}
+	if err := db.Create(&roleAll).Error; err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+
+	operator := model.SysUser{
+		Username: "dept-update-scope-operator",
+		Password: "pwd",
+		Nickname: "部门编辑范围操作员",
+		Status:   1,
+		DeptID:   deptA.ID,
+		Roles:    []model.SysRole{roleAll},
+	}
+	if err := db.Create(&operator).Error; err != nil {
+		t.Fatalf("create operator: %v", err)
+	}
+
+	insertRoleFeatureScope(t, db, roleAll.ID, "system:dept-management", model.DataScopeDeptAndChildren)
+
+	if err := Dept.UpdateManagedDept(operator.ID, deptChild.ID, &request.UpdateDeptRequest{
+		ParentID: deptA.ID,
+		Name:     "后端组-更新",
+		Sort:     2,
+		Status:   1,
+		Remark:   "范围内更新",
+	}); err != nil {
+		t.Fatalf("UpdateManagedDept should allow in-scope dept: %v", err)
+	}
+
+	if err := Dept.UpdateManagedDept(operator.ID, deptB.ID, &request.UpdateDeptRequest{
+		ParentID: root.ID,
+		Name:     "市场部-更新",
+		Sort:     3,
+		Status:   1,
+		Remark:   "范围外更新",
+	}); err == nil {
+		t.Fatalf("UpdateManagedDept should reject out-of-scope dept")
+	}
+
+	if err := Dept.DeleteManagedDept(operator.ID, deptB.ID); err == nil {
+		t.Fatalf("DeleteManagedDept should reject out-of-scope dept")
 	}
 }

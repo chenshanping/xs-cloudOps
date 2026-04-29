@@ -34,4 +34,6 @@ func (m *RoleModule) RegisterPrivateRoutes(rg *gin.RouterGroup) {
 		registry.WithAuth(), registry.WithRequest(request.AssignMenusRequest{}))
 	R(rg, "PUT", "/roles/:id/apis", m.Name(), "分配API", v1.Role.AssignApis,
 		registry.WithAuth(), registry.WithRequest(request.AssignApisRequest{}))
+	R(rg, "PUT", "/roles/:id/data-scopes", m.Name(), "分配数据权限", v1.Role.AssignDataScopes,
+		registry.WithAuth(), registry.WithRequest(request.AssignRoleDataScopesRequest{}))
 }

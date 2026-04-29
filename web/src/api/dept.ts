@@ -6,8 +6,14 @@ export function getDeptTree() {
   return request.get<any, ApiResponse<Dept[]>>('/depts/tree')
 }
 
-export function getManageableDeptTree(config?: AxiosRequestConfig) {
-  return request.get<any, ApiResponse<ManageableDeptTreeData>>('/depts/manageable-tree', config)
+export function getManageableDeptTree(resourceCode?: string, config?: AxiosRequestConfig) {
+  return request.get<any, ApiResponse<ManageableDeptTreeData>>(
+    '/depts/manageable-tree',
+    {
+      params: resourceCode ? { resource_code: resourceCode } : undefined,
+      ...config
+    }
+  )
 }
 
 export function getDept(id: number) {

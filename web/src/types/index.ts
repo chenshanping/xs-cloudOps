@@ -64,6 +64,14 @@ export interface RoleUserSummary {
   status?: number
 }
 
+export interface RoleFeatureDataScope {
+  id?: number
+  role_id?: number
+  resource_code: string
+  data_scope: number
+  depts?: Dept[]
+}
+
 export interface Role {
   id: number
   name: string
@@ -77,6 +85,7 @@ export interface Role {
   menus?: Menu[]
   apis?: Api[]
   depts?: Dept[]
+  feature_data_scopes?: RoleFeatureDataScope[]
   users?: RoleUserSummary[]
   created_at: string
   updated_at: string

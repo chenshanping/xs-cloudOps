@@ -78,6 +78,7 @@
       v-model:open="permissionDrawerVisible"
       :role-id="currentId"
       :role-name="currentRoleName"
+      :dept-options="deptSelectOptions"
     />
 
     <RoleUsersDrawer

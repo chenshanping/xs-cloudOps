@@ -23,3 +23,13 @@ type UpdateRoleRequest struct {
 	Remark       string `json:"remark" comment:"备注"`
 	DeptIds      []uint `json:"dept_ids" comment:"自定义数据范围部门ID列表"`
 }
+
+type RoleFeatureDataScopeAssignment struct {
+	ResourceCode string `json:"resource_code" comment:"业务功能资源码"`
+	DataScope    int    `json:"data_scope" comment:"数据范围"`
+	DeptIds      []uint `json:"dept_ids" comment:"自定义数据范围部门ID列表"`
+}
+
+type AssignRoleDataScopesRequest struct {
+	Scopes []RoleFeatureDataScopeAssignment `json:"scopes" comment:"角色业务功能数据范围列表"`
+}

@@ -19,6 +19,7 @@ type UserDataScope struct {
 	OperatorDept uint
 	All          bool
 	AllowSelf    bool
+	CreatorIDs   []uint
 	DeptIDs      []uint
 }
 
@@ -39,24 +40,46 @@ func NormalizeIDs(ids []uint) []uint {
 	return result
 }
 
-// ResolveUserDataScope resolves the data scope for the given operator.
+// ResolveUserDataScope resolves the default data scope for the given operator.
 func ResolveUserDataScope(operatorID uint) (*UserDataScope, error) {
+	return ResolveUserDataScopeForResource(operatorID, "")
+}
+
+// ResolveUserDataScopeForResource resolves the data scope for the given operator and resource.
+func ResolveUserDataScopeForResource(operatorID uint, resourceCode string) (*UserDataScope, error) {
 	var user model.SysUser
-	if err := global.DB.Preload("Roles.Depts").First(&user, operatorID).Error; err != nil {
+	query := global.DB.Preload("Roles.Depts")
+	if resourceCode != "" {
+		query = query.Preload("Roles.FeatureDataScopes", "resource_code = ?", resourceCode).
+			Preload("Roles.FeatureDataScopes.Depts")
+	}
+	if err := query.First(&user, operatorID).Error; err != nil {
 		return nil, fmt.Errorf("获取用户信息失败: %v", err)
 	}
 
+	return buildUserDataScope(&user, resourceCode)
+}
+
+func buildUserDataScope(user *model.SysUser, resourceCode string) (*UserDataScope, error) {
 	scope := &UserDataScope{
-		OperatorID:   operatorID,
+		OperatorID:   user.ID,
 		OperatorDept: user.DeptID,
 	}
 
+	creatorSet := make(map[uint]struct{})
 	deptSet := make(map[uint]struct{})
 	hasConfiguredScope := false
 	allowSelf := false
 
 	for _, role := range user.Roles {
 		dataScope := role.DataScope
+		scopeDepts := role.Depts
+		if resourceCode != "" {
+			if featureScope := findRoleFeatureDataScope(role.FeatureDataScopes, resourceCode); featureScope != nil {
+				dataScope = featureScope.DataScope
+				scopeDepts = featureScope.Depts
+			}
+		}
 		if dataScope == 0 {
 			dataScope = model.DataScopeAll
 		}
@@ -72,7 +95,7 @@ func ResolveUserDataScope(operatorID uint) (*UserDataScope, error) {
 
 		switch dataScope {
 		case model.DataScopeCustom:
-			for _, dept := range role.Depts {
+			for _, dept := range scopeDepts {
 				deptSet[dept.ID] = struct{}{}
 			}
 		case model.DataScopeDept:
@@ -90,6 +113,10 @@ func ResolveUserDataScope(operatorID uint) (*UserDataScope, error) {
 				}
 			}
 		case model.DataScopeSelf:
+			if resourceCode == DataScopeResourceUserManagement {
+				creatorSet[user.ID] = struct{}{}
+				continue
+			}
 			allowSelf = true
 		}
 	}
@@ -99,8 +126,21 @@ func ResolveUserDataScope(operatorID uint) (*UserDataScope, error) {
 	}
 
 	scope.AllowSelf = allowSelf
+	scope.CreatorIDs = mapKeysToSortedSlice(creatorSet)
 	scope.DeptIDs = mapKeysToSortedSlice(deptSet)
 	return scope, nil
+}
+
+func findRoleFeatureDataScope(
+	featureScopes []model.SysRoleDataScope,
+	resourceCode string,
+) *model.SysRoleDataScope {
+	for i := range featureScopes {
+		if featureScopes[i].ResourceCode == resourceCode {
+			return &featureScopes[i]
+		}
+	}
+	return nil
 }
 
 // ApplyUserDataScope applies the data scope filter to a query.
@@ -119,6 +159,10 @@ func ApplyUserDataScope(db *gorm.DB, scope *UserDataScope, userTable string) *go
 		conditions = append(conditions, fmt.Sprintf("%s.dept_id IN ?", userTable))
 		args = append(args, scope.DeptIDs)
 	}
+	if len(scope.CreatorIDs) > 0 {
+		conditions = append(conditions, fmt.Sprintf("%s.created_by IN ?", userTable))
+		args = append(args, scope.CreatorIDs)
+	}
 	if scope.AllowSelf {
 		conditions = append(conditions, fmt.Sprintf("%s.id = ?", userTable))
 		args = append(args, scope.OperatorID)
@@ -131,33 +175,53 @@ func ApplyUserDataScope(db *gorm.DB, scope *UserDataScope, userTable string) *go
 	return db.Where(strings.Join(conditions, " OR "), args...)
 }
 
-// EnsureDeptManageable validates that the operator can manage the given department.
-func EnsureDeptManageable(operatorID, deptID uint) error {
+func deptIDInScope(scope *UserDataScope, deptID uint) bool {
+	if scope == nil || deptID == 0 {
+		return false
+	}
+	if scope.All {
+		return true
+	}
+	for _, allowedDeptID := range scope.DeptIDs {
+		if allowedDeptID == deptID {
+			return true
+		}
+	}
+	return false
+}
+
+func ensureDeptInScopeForResource(
+	operatorID,
+	deptID uint,
+	resourceCode string,
+) (*model.SysDept, *UserDataScope, error) {
 	if deptID == 0 {
-		return errors.New("请选择所属部门")
+		return nil, nil, errors.New("请选择所属部门")
 	}
 
 	var dept model.SysDept
 	if err := global.DB.First(&dept, deptID).Error; err != nil {
-		return errors.New("所属部门不存在")
+		return nil, nil, errors.New("所属部门不存在")
 	}
 
-	scope, err := ResolveUserDataScope(operatorID)
+	scope, err := ResolveUserDataScopeForResource(operatorID, resourceCode)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
+	if !deptIDInScope(scope, deptID) {
+		return nil, nil, errors.New("无权操作该部门")
+	}
+	return &dept, scope, nil
+}
 
-	allowed := scope.All
-	if !allowed {
-		for _, allowedDeptID := range scope.DeptIDs {
-			if allowedDeptID == deptID {
-				allowed = true
-				break
-			}
-		}
-	}
-	if !allowed {
-		return errors.New("无权操作该部门")
+// EnsureDeptManageable validates that the operator can manage the given department.
+func EnsureDeptManageable(operatorID, deptID uint) error {
+	return EnsureDeptManageableForResource(operatorID, deptID, "")
+}
+
+func EnsureDeptManageableForResource(operatorID, deptID uint, resourceCode string) error {
+	if _, _, err := ensureDeptInScopeForResource(operatorID, deptID, resourceCode); err != nil {
+		return err
 	}
 
 	var childCount int64
@@ -168,6 +232,37 @@ func EnsureDeptManageable(operatorID, deptID uint) error {
 		return errors.New("存在下级部门的部门不能直接绑定用户")
 	}
 	return nil
+}
+
+func EnsureDeptAccessibleForResource(
+	operatorID,
+	deptID uint,
+	resourceCode string,
+) (*model.SysDept, error) {
+	dept, _, err := ensureDeptInScopeForResource(operatorID, deptID, resourceCode)
+	if err != nil {
+		return nil, err
+	}
+	return dept, nil
+}
+
+func EnsureDeptParentManageableForResource(
+	operatorID,
+	parentID uint,
+	resourceCode string,
+) error {
+	if parentID == 0 {
+		scope, err := ResolveUserDataScopeForResource(operatorID, resourceCode)
+		if err != nil {
+			return err
+		}
+		if !scope.All {
+			return errors.New("无权在顶级部门下创建或移动部门")
+		}
+		return nil
+	}
+	_, err := EnsureDeptAccessibleForResource(operatorID, parentID, resourceCode)
+	return err
 }
 
 // IsDeptLeaf checks whether the given department has no children.
@@ -185,7 +280,15 @@ func IsDeptLeaf(deptID uint) (bool, error) {
 
 // EnsureUserManageable validates and returns the user if it's within the operator's scope.
 func EnsureUserManageable(operatorID, targetUserID uint) (*model.SysUser, error) {
-	scope, err := ResolveUserDataScope(operatorID)
+	return EnsureUserManageableForResource(operatorID, targetUserID, "")
+}
+
+func EnsureUserManageableForResource(
+	operatorID,
+	targetUserID uint,
+	resourceCode string,
+) (*model.SysUser, error) {
+	scope, err := ResolveUserDataScopeForResource(operatorID, resourceCode)
 	if err != nil {
 		return nil, err
 	}
@@ -206,12 +309,20 @@ func EnsureUserManageable(operatorID, targetUserID uint) (*model.SysUser, error)
 
 // EnsureUsersManageable validates that all the given user IDs are within the operator's scope.
 func EnsureUsersManageable(operatorID uint, ids []uint) ([]model.SysUser, error) {
+	return EnsureUsersManageableForResource(operatorID, ids, "")
+}
+
+func EnsureUsersManageableForResource(
+	operatorID uint,
+	ids []uint,
+	resourceCode string,
+) ([]model.SysUser, error) {
 	normalized := NormalizeIDs(ids)
 	if len(normalized) == 0 {
 		return nil, errors.New("请选择要操作的用户")
 	}
 
-	scope, err := ResolveUserDataScope(operatorID)
+	scope, err := ResolveUserDataScopeForResource(operatorID, resourceCode)
 	if err != nil {
 		return nil, err
 	}

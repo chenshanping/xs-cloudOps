@@ -29,7 +29,7 @@ func setupRoleAssignmentTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("open sqlite db: %v", err)
 	}
 
-	if err := db.AutoMigrate(&model.SysRole{}, &model.SysMenu{}, &model.SysApi{}); err != nil {
+	if err := db.AutoMigrate(&model.SysRole{}, &model.SysRoleDataScope{}, &model.SysMenu{}, &model.SysApi{}); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
 

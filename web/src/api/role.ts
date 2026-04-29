@@ -13,6 +13,12 @@ export interface RoleUpsertPayload {
   remark: string
 }
 
+export interface RoleFeatureDataScopePayload {
+  resource_code: string
+  data_scope: number
+  dept_ids: number[]
+}
+
 // 获取角色列表
 export function getRoleList() {
   return request.get<any, ApiResponse<Role[]>>('/roles')
@@ -46,4 +52,12 @@ export function assignMenus(id: number, menuIds: number[], config?: AxiosRequest
 // 分配API
 export function assignApis(id: number, apiIds: number[], config?: AxiosRequestConfig) {
   return request.put<any, ApiResponse>(`/roles/${id}/apis`, { api_ids: apiIds }, config)
+}
+
+export function assignDataScopes(
+  id: number,
+  scopes: RoleFeatureDataScopePayload[],
+  config?: AxiosRequestConfig
+) {
+  return request.put<any, ApiResponse>(`/roles/${id}/data-scopes`, { scopes }, config)
 }

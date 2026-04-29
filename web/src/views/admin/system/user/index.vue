@@ -216,6 +216,7 @@ const tableData = ref<User[]>([])
 const roleList = ref<Role[]>([])
 const genderOptions = ref<GenderOption[]>([])
 const deptTree = ref<Dept[]>([])
+const deptSelectTree = ref<Dept[]>([])
 const unassignedUserCount = ref(0)
 const selectedTreeKey = ref<string>('all')
 const expandedTreeKeys = ref<string[]>([])
@@ -291,7 +292,7 @@ const deptTreeNodes = computed<DeptTreeNode[]>(() => {
   ]
 })
 
-const deptSelectOptions = computed<TreeSelectOption[]>(() => buildDeptSelectOptions(deptTree.value))
+const deptSelectOptions = computed<TreeSelectOption[]>(() => buildDeptSelectOptions(deptSelectTree.value))
 
 const drawerInitialValue = ref<Record<string, any>>({})
 
@@ -345,14 +346,21 @@ const showDeptTreeErrorModal = (content: string) => {
 const fetchDeptTree = async () => {
   deptLoading.value = true
   try {
-    const res = await getManageableDeptTree({ silent: true })
-    const tree = Array.isArray(res.data?.tree) ? res.data.tree : []
-    const unassignedCount = typeof res.data?.unassigned_user_count === 'number' ? res.data.unassigned_user_count : 0
-    if (!Array.isArray(res.data?.tree)) {
+    const [userTreeRes, deptSelectRes] = await Promise.all([
+      getManageableDeptTree('system:user-management', { silent: true }),
+      getManageableDeptTree('system:user-management', { silent: true })
+    ])
+
+    const tree = Array.isArray(userTreeRes.data?.tree) ? userTreeRes.data.tree : []
+    const unassignedCount = typeof userTreeRes.data?.unassigned_user_count === 'number' ? userTreeRes.data.unassigned_user_count : 0
+    const selectTree = Array.isArray(deptSelectRes.data?.tree) ? deptSelectRes.data.tree : []
+
+    if (!Array.isArray(userTreeRes.data?.tree)) {
       showDeptTreeErrorModal('可管理部门树数据异常，请刷新页面后重试。')
     }
 
     deptTree.value = tree
+    deptSelectTree.value = selectTree
     unassignedUserCount.value = unassignedCount
     const allKeys = collectTreeKeys(tree)
     expandedTreeKeys.value = treeInitialized.value
@@ -362,6 +370,7 @@ const fetchDeptTree = async () => {
   } catch (error) {
     console.error('获取可管理部门树失败:', error)
     deptTree.value = []
+    deptSelectTree.value = []
     unassignedUserCount.value = 0
     showDeptTreeErrorModal('获取可管理部门树失败，请稍后重试。')
   } finally {
@@ -663,17 +672,23 @@ const getDefaultDeptIdFromSelection = () => {
   if (!deptId) {
     return undefined
   }
-  const dept = findDeptById(deptTree.value, deptId)
+  const dept = findDeptById(deptSelectTree.value, deptId)
   if (!dept || !dept.bindable) {
     return undefined
   }
   return dept.id
 }
 
+const getDeptDisplayCount = (dept: Dept) =>
+  dept.has_children ? dept.total_user_count || 0 : dept.direct_user_count || 0
+
+const getDeptTreeTotalUsers = (depts: Dept[]): number =>
+  depts.reduce((sum, dept) => sum + (dept.total_user_count || dept.direct_user_count || 0), 0)
+
 const buildDeptTreeNodes = (depts: Dept[]): DeptTreeNode[] =>
   depts.map(dept => ({
     key: `dept-${dept.id}`,
-    title: `${dept.name} (${dept.has_children ? dept.total_user_count || 0 : dept.direct_user_count || 0})`,
+    title: `${dept.name} (${getDeptDisplayCount(dept)})`,
     deptId: dept.id,
     selectableType: 'dept',
     children: dept.children ? buildDeptTreeNodes(dept.children) : undefined
@@ -706,16 +721,13 @@ const collapseAllTree = () => {
 const buildDeptSelectOptions = (depts: Dept[]): TreeSelectOption[] =>
   depts.map(dept => ({
     key: `dept-option-${dept.id}`,
-    title: `${dept.name} (${dept.has_children ? dept.total_user_count || 0 : dept.direct_user_count || 0})`,
+    title: `${dept.name} (${getDeptDisplayCount(dept)})`,
     value: dept.id,
     disabled: dept.manageable === false || dept.bindable !== true,
     selectable: dept.bindable === true,
     isLeaf: !dept.has_children,
     children: dept.children ? buildDeptSelectOptions(dept.children) : undefined
   }))
-
-const getDeptTreeTotalUsers = (depts: Dept[]) =>
-  depts.reduce((sum, dept) => sum + (dept.parent_id === 0 ? dept.total_user_count || 0 : 0), 0)
 
 const getGenderOption = (value: number) => resolveGenderOption(genderOptions.value, value)
 

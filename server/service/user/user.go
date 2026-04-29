@@ -72,7 +72,7 @@ func validateUserGender(gender int) error {
 
 func (s *UserService) GetUserOptions(operatorID uint) ([]map[string]interface{}, error) {
 	var results []map[string]interface{}
-	scope, err := core.ResolveUserDataScope(operatorID)
+	scope, err := core.ResolveUserDataScopeForResource(operatorID, core.DataScopeResourceUserManagement)
 	if err != nil {
 		return nil, err
 	}
@@ -117,14 +117,14 @@ func (s *UserService) GetUserInfo(userID uint) (*model.SysUser, error) {
 }
 
 func (s *UserService) GetManagedUserInfo(operatorID, targetUserID uint) (*model.SysUser, error) {
-	return core.EnsureUserManageable(operatorID, targetUserID)
+	return core.EnsureUserManageableForResource(operatorID, targetUserID, core.DataScopeResourceUserManagement)
 }
 
 func (s *UserService) GetUserList(operatorID uint, req *request.UserListRequest) ([]model.SysUser, int64, error) {
 	var users []model.SysUser
 	var total int64
 
-	scope, err := core.ResolveUserDataScope(operatorID)
+	scope, err := core.ResolveUserDataScopeForResource(operatorID, core.DataScopeResourceUserManagement)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -177,7 +177,7 @@ func (s *UserService) CreateUser(operatorID uint, req *request.CreateUserRequest
 	if err := validateUserGender(req.Gender); err != nil {
 		return err
 	}
-	if err := core.EnsureDeptManageable(operatorID, req.DeptID); err != nil {
+	if err := core.EnsureDeptManageableForResource(operatorID, req.DeptID, core.DataScopeResourceUserManagement); err != nil {
 		return err
 	}
 
@@ -193,14 +193,15 @@ func (s *UserService) CreateUser(operatorID uint, req *request.CreateUserRequest
 	}
 
 	user := model.SysUser{
-		Username: req.Username,
-		Password: hashedPassword,
-		Nickname: req.Nickname,
-		Gender:   req.Gender,
-		Email:    req.Email,
-		Phone:    req.Phone,
-		Status:   req.Status,
-		DeptID:   req.DeptID,
+		Username:  req.Username,
+		Password:  hashedPassword,
+		Nickname:  req.Nickname,
+		Gender:    req.Gender,
+		Email:     req.Email,
+		Phone:     req.Phone,
+		Status:    req.Status,
+		DeptID:    req.DeptID,
+		CreatedBy: operatorID,
 	}
 
 	if req.AvatarFileID > 0 {
@@ -234,7 +235,7 @@ func (s *UserService) UpdateUser(operatorID, id uint, req *request.UpdateUserReq
 	if err := validateUserGender(req.Gender); err != nil {
 		return err
 	}
-	user, err := core.EnsureUserManageable(operatorID, id)
+	user, err := core.EnsureUserManageableForResource(operatorID, id, core.DataScopeResourceUserManagement)
 	if err != nil {
 		return err
 	}
@@ -248,7 +249,7 @@ func (s *UserService) UpdateUser(operatorID, id uint, req *request.UpdateUserReq
 		allowLegacyDeptRetain = !isLeaf
 	}
 	if !allowLegacyDeptRetain {
-		if err := core.EnsureDeptManageable(operatorID, req.DeptID); err != nil {
+		if err := core.EnsureDeptManageableForResource(operatorID, req.DeptID, core.DataScopeResourceUserManagement); err != nil {
 			return err
 		}
 	}
@@ -321,7 +322,7 @@ func (s *UserService) UpdateUser(operatorID, id uint, req *request.UpdateUserReq
 }
 
 func (s *UserService) DeleteUser(operatorID, id uint) error {
-	if _, err := core.EnsureUserManageable(operatorID, id); err != nil {
+	if _, err := core.EnsureUserManageableForResource(operatorID, id, core.DataScopeResourceUserManagement); err != nil {
 		return err
 	}
 	return s.deleteUserByID(id)
@@ -359,7 +360,7 @@ func (s *UserService) BatchDeleteUsers(operatorID uint, ids []uint) (int, []stri
 	var failedMsgs []string
 
 	normalized := core.NormalizeIDs(ids)
-	if _, err := core.EnsureUsersManageable(operatorID, normalized); err != nil {
+	if _, err := core.EnsureUsersManageableForResource(operatorID, normalized, core.DataScopeResourceUserManagement); err != nil {
 		return 0, []string{err.Error()}
 	}
 
@@ -378,7 +379,7 @@ func (s *UserService) UpdateUserStatus(operatorID, id uint, status int) error {
 	if status != 0 && status != 1 {
 		return errors.New("状态值无效")
 	}
-	if _, err := core.EnsureUserManageable(operatorID, id); err != nil {
+	if _, err := core.EnsureUserManageableForResource(operatorID, id, core.DataScopeResourceUserManagement); err != nil {
 		return err
 	}
 
@@ -395,7 +396,7 @@ func (s *UserService) BatchUpdateUserStatus(operatorID uint, req *request.BatchU
 		return errors.New("请选择要修改状态的用户")
 	}
 
-	users, err := core.EnsureUsersManageable(operatorID, ids)
+	users, err := core.EnsureUsersManageableForResource(operatorID, ids, core.DataScopeResourceUserManagement)
 	if err != nil {
 		return err
 	}
@@ -446,7 +447,7 @@ func (s *UserService) managedUserDefaultPassword() string {
 }
 
 func (s *UserService) ResetManagedUserPassword(operatorID, id uint) error {
-	if _, err := core.EnsureUserManageable(operatorID, id); err != nil {
+	if _, err := core.EnsureUserManageableForResource(operatorID, id, core.DataScopeResourceUserManagement); err != nil {
 		return err
 	}
 	return s.ResetPassword(id, s.managedUserDefaultPassword())
@@ -458,7 +459,7 @@ func (s *UserService) BatchResetManagedUserPasswords(operatorID uint, ids []uint
 		return errors.New("请选择要重置密码的用户")
 	}
 
-	if _, err := core.EnsureUsersManageable(operatorID, normalized); err != nil {
+	if _, err := core.EnsureUsersManageableForResource(operatorID, normalized, core.DataScopeResourceUserManagement); err != nil {
 		return err
 	}
 
@@ -469,7 +470,7 @@ func (s *UserService) ForceOffline(operatorID, id uint) error {
 	if operatorID == id {
 		return errors.New("不能强制下线自己")
 	}
-	if _, err := core.EnsureUserManageable(operatorID, id); err != nil {
+	if _, err := core.EnsureUserManageableForResource(operatorID, id, core.DataScopeResourceUserManagement); err != nil {
 		return err
 	}
 	return utils.RemoveUserToken(id)

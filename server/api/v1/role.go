@@ -138,3 +138,25 @@ func (a *RoleApi) AssignApis(c *gin.Context) {
 
 	response.OkWithMessage(c, "分配成功")
 }
+
+// 分配业务功能数据权限
+func (a *RoleApi) AssignDataScopes(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	var req request.AssignRoleDataScopesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	if err := service.Role.AssignDataScopes(uint(id), req.Scopes); err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+
+	response.OkWithMessage(c, "分配成功")
+}

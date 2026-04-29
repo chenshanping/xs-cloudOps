@@ -10,6 +10,7 @@
       <span class="selected-count">已选菜单 {{ assignableSelectedMenuKeys.length }} 个</span>
       <span class="selected-count">已选 API {{ checkedApiIds.length }} 个</span>
       <a-input-search
+        v-if="activeTab !== 'dataScopes'"
         v-model:value="searchText"
         :placeholder="searchPlaceholder"
         style="width: 280px; margin-left: auto"
@@ -17,8 +18,11 @@
       />
     </div>
 
-    <div class="permission-layout">
-      <div class="permission-sidebar">
+    <div
+      class="permission-layout"
+      :class="{ 'permission-layout--full': activeTab === 'dataScopes' }"
+    >
+      <div v-if="activeTab !== 'dataScopes'" class="permission-sidebar">
         <RolePermissionDrawerSidebar
           :top-menus="topMenus"
           :selected-top-menu-id="selectedTopMenuId"
@@ -28,99 +32,104 @@
       </div>
 
       <div class="permission-content">
-        <template v-if="topMenus.length">
-          <a-tabs v-model:activeKey="activeTab" class="permission-tabs">
-            <a-tab-pane key="menus" tab="菜单权限">
-              <a-tabs
-                v-if="menuTabSections.length"
-                v-model:activeKey="activeMenuSectionId"
-                size="small"
-                class="section-tabs"
+        <a-tabs v-model:activeKey="activeTab" class="permission-tabs">
+          <a-tab-pane key="menus" tab="菜单权限">
+            <a-tabs
+              v-if="menuTabSections.length"
+              v-model:activeKey="activeMenuSectionId"
+              size="small"
+              class="section-tabs"
+            >
+              <a-tab-pane
+                v-for="section in menuTabSections"
+                :key="section.id"
+                :tab="section.raw.pageMenu.name"
               >
-                <a-tab-pane
-                  v-for="section in menuTabSections"
-                  :key="section.id"
-                  :tab="section.raw.pageMenu.name"
-                >
-                  <RolePermissionPageSection
-                    mode="menu"
-                    :section="section.raw"
-                    :visible-menu-items="section.visibleMenuItems"
-                    :visible-apis="section.visibleApis"
-                    :exact-checked-menu-keys="assignableSelectedMenuKeys"
-                    :checked-menu-keys="checkedMenuKeys"
-                    :checked-api-ids="checkedApiIds"
-                    @toggle-menu="handleMenuToggle"
-                    @toggle-section-menus="handleSectionMenusToggle"
-                    @keep-page-only="handleSectionKeepPageOnly"
-                    @select-child-permissions="handleSectionSelectChildPermissions"
-                    @clear-child-permissions="handleSectionClearChildPermissions"
-                    @toggle-api="handleApiToggle"
-                    @toggle-section-apis="handleSectionApisToggle"
-                  />
-                </a-tab-pane>
-              </a-tabs>
-              <a-empty
-                v-else
-                class="content-empty"
-                description="当前一级菜单下暂无匹配的菜单权限项"
-              />
-            </a-tab-pane>
+                <RolePermissionPageSection
+                  mode="menu"
+                  :section="section.raw"
+                  :visible-menu-items="section.visibleMenuItems"
+                  :visible-apis="section.visibleApis"
+                  :exact-checked-menu-keys="assignableSelectedMenuKeys"
+                  :checked-menu-keys="checkedMenuKeys"
+                  :checked-api-ids="checkedApiIds"
+                  @toggle-menu="handleMenuToggle"
+                  @toggle-section-menus="handleSectionMenusToggle"
+                  @keep-page-only="handleSectionKeepPageOnly"
+                  @select-child-permissions="handleSectionSelectChildPermissions"
+                  @clear-child-permissions="handleSectionClearChildPermissions"
+                  @toggle-api="handleApiToggle"
+                  @toggle-section-apis="handleSectionApisToggle"
+                />
+              </a-tab-pane>
+            </a-tabs>
+            <a-empty
+              v-else
+              class="content-empty"
+              description="当前一级菜单下暂无匹配的菜单权限项"
+            />
+          </a-tab-pane>
 
-            <a-tab-pane key="apis" tab="API权限">
-              <a-tabs
-                v-if="apiTabItems.length"
-                v-model:activeKey="activeApiSectionId"
-                size="small"
-                class="section-tabs"
+          <a-tab-pane key="apis" tab="API权限">
+            <a-tabs
+              v-if="apiTabItems.length"
+              v-model:activeKey="activeApiSectionId"
+              size="small"
+              class="section-tabs"
+            >
+              <a-tab-pane
+                v-for="item in apiTabItems"
+                :key="item.id"
+                :tab="item.label"
               >
-                <a-tab-pane
-                  v-for="item in apiTabItems"
-                  :key="item.id"
-                  :tab="item.label"
-                >
-                  <RolePermissionPageSection
-                    v-if="item.kind === 'section' && item.section"
-                    mode="api"
-                    :section="item.section.raw"
-                    :visible-menu-items="item.section.visibleMenuItems"
-                    :visible-apis="item.section.visibleApis"
-                    :exact-checked-menu-keys="assignableSelectedMenuKeys"
-                    :checked-menu-keys="checkedMenuKeys"
-                    :checked-api-ids="checkedApiIds"
-                    @toggle-menu="handleMenuToggle"
-                    @toggle-section-menus="handleSectionMenusToggle"
-                    @keep-page-only="handleSectionKeepPageOnly"
-                    @select-child-permissions="handleSectionSelectChildPermissions"
-                    @clear-child-permissions="handleSectionClearChildPermissions"
-                    @toggle-api="handleApiToggle"
-                    @toggle-section-apis="handleSectionApisToggle"
-                  />
+                <RolePermissionPageSection
+                  v-if="item.kind === 'section' && item.section"
+                  mode="api"
+                  :section="item.section.raw"
+                  :visible-menu-items="item.section.visibleMenuItems"
+                  :visible-apis="item.section.visibleApis"
+                  :exact-checked-menu-keys="assignableSelectedMenuKeys"
+                  :checked-menu-keys="checkedMenuKeys"
+                  :checked-api-ids="checkedApiIds"
+                  @toggle-menu="handleMenuToggle"
+                  @toggle-section-menus="handleSectionMenusToggle"
+                  @keep-page-only="handleSectionKeepPageOnly"
+                  @select-child-permissions="handleSectionSelectChildPermissions"
+                  @clear-child-permissions="handleSectionClearChildPermissions"
+                  @toggle-api="handleApiToggle"
+                  @toggle-section-apis="handleSectionApisToggle"
+                />
 
-                  <div v-else class="system-api-groups">
-                    <RolePermissionUncategorizedApis
-                      v-for="group in item.groups"
-                      :key="group.id"
-                      :title="group.label"
-                      :checked="getApiGroupChecked(group.apis)"
-                      :indeterminate="getApiGroupIndeterminate(group.apis)"
-                      :checked-api-ids="checkedApiIds"
-                      :visible-apis="group.apis"
-                      @toggle-all="handleApiGroupToggle(group.apis, $event)"
-                      @toggle-api="handleApiToggle"
-                    />
-                  </div>
-                </a-tab-pane>
-              </a-tabs>
-              <a-empty
-                v-else
-                class="content-empty"
-                description="当前一级菜单下暂无匹配的 API 权限项"
-              />
-            </a-tab-pane>
-          </a-tabs>
-        </template>
-        <a-empty v-else class="content-empty" description="暂无可分配权限数据" />
+                <div v-else class="system-api-groups">
+                  <RolePermissionUncategorizedApis
+                    v-for="group in item.groups"
+                    :key="group.id"
+                    :title="group.label"
+                    :checked="getApiGroupChecked(group.apis)"
+                    :indeterminate="getApiGroupIndeterminate(group.apis)"
+                    :checked-api-ids="checkedApiIds"
+                    :visible-apis="group.apis"
+                    @toggle-all="handleApiGroupToggle(group.apis, $event)"
+                    @toggle-api="handleApiToggle"
+                  />
+                </div>
+              </a-tab-pane>
+            </a-tabs>
+            <a-empty
+              v-else
+              class="content-empty"
+              description="当前一级菜单下暂无匹配的 API 权限项"
+            />
+          </a-tab-pane>
+
+          <a-tab-pane key="dataScopes" tab="数据权限">
+            <RolePermissionDataScopePanel
+              v-model:model-value="featureDataScopes"
+              :dept-options="deptOptions"
+              :default-data-scope-label="formatDataScopeLabel(defaultDataScope)"
+            />
+          </a-tab-pane>
+        </a-tabs>
       </div>
     </div>
 
@@ -136,6 +145,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import RolePermissionDrawerSidebar from './RolePermissionDrawerSidebar.vue'
+import RolePermissionDataScopePanel from './RolePermissionDataScopePanel.vue'
 import RolePermissionPageSection from './RolePermissionPageSection.vue'
 import RolePermissionUncategorizedApis from './RolePermissionUncategorizedApis.vue'
 import {
@@ -145,15 +155,17 @@ import {
 } from './permissionDrawer'
 import { useRolePermissionDrawer } from './useRolePermissionDrawer'
 import type { Api } from '@/types'
+import type { RolePermissionDeptOption } from './dataScopeResources'
 
 interface Props {
   roleId: number
   roleName: string
+  deptOptions: RolePermissionDeptOption[]
 }
 
 const props = defineProps<Props>()
 const visible = defineModel<boolean>('open', { default: false })
-const activeTab = ref<'menus' | 'apis'>('menus')
+const activeTab = ref<'menus' | 'apis' | 'dataScopes'>('menus')
 const activeMenuSectionId = ref('')
 const activeApiSectionId = ref('')
 
@@ -161,8 +173,11 @@ const {
   assignableSelectedMenuKeys,
   checkedApiIds,
   checkedMenuKeys,
+  defaultDataScope,
+  featureDataScopes,
   filteredSections,
   filteredUncategorizedApis,
+  formatDataScopeLabel,
   handleApiToggle,
   handleMenuToggle,
   handleSavePermissions,
@@ -296,6 +311,10 @@ watch(selectedTopMenuId, () => {
   flex-direction: column;
   gap: 16px;
   background: #fafafa;
+}
+
+.permission-layout--full .permission-content {
+  padding-top: 20px;
 }
 
 .permission-tabs :deep(.ant-tabs-content-holder) {

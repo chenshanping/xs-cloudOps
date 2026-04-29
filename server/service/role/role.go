@@ -35,7 +35,13 @@ func (s *RoleService) GetRoleList() ([]model.SysRole, error) {
 // 获取角色详情
 func (s *RoleService) GetRole(id uint) (*model.SysRole, error) {
 	var role model.SysRole
-	if err := global.DB.Preload("Menus").Preload("Apis").Preload("Depts").First(&role, id).Error; err != nil {
+	if err := global.DB.
+		Preload("Menus").
+		Preload("Apis").
+		Preload("Depts").
+		Preload("FeatureDataScopes").
+		Preload("FeatureDataScopes.Depts").
+		First(&role, id).Error; err != nil {
 		return nil, err
 	}
 	return &role, nil
@@ -250,6 +256,53 @@ func (s *RoleService) AssignApis(roleID uint, apiIDs []uint) error {
 	return nil
 }
 
+func (s *RoleService) AssignDataScopes(
+	roleID uint,
+	assignments []request.RoleFeatureDataScopeAssignment,
+) error {
+	var role model.SysRole
+	if err := global.DB.First(&role, roleID).Error; err != nil {
+		return err
+	}
+
+	normalizedAssignments, err := normalizeRoleFeatureDataScopeAssignments(assignments)
+	if err != nil {
+		return err
+	}
+
+	return global.DB.Transaction(func(tx *gorm.DB) error {
+		var existingScopes []model.SysRoleDataScope
+		if err := tx.Preload("Depts").Where("role_id = ?", roleID).Find(&existingScopes).Error; err != nil {
+			return err
+		}
+		for i := range existingScopes {
+			if err := tx.Model(&existingScopes[i]).Association("Depts").Replace([]model.SysDept{}); err != nil {
+				return err
+			}
+		}
+		if err := tx.Unscoped().Where("role_id = ?", roleID).Delete(&model.SysRoleDataScope{}).Error; err != nil {
+			return err
+		}
+
+		for _, assignment := range normalizedAssignments {
+			scope := model.SysRoleDataScope{
+				RoleID:       roleID,
+				ResourceCode: assignment.ResourceCode,
+				DataScope:    assignment.DataScope,
+			}
+			if err := tx.Create(&scope).Error; err != nil {
+				return err
+			}
+			if err := replaceRoleFeatureScopeCustomDepts(tx, &scope, assignment.DataScope, assignment.DeptIds); err != nil {
+				return err
+			}
+		}
+
+		core.Default.ClearUserCacheByRoleID(roleID)
+		return nil
+	})
+}
+
 func syncRoleApiPolicies(role *model.SysRole, apis []model.SysApi) error {
 	if global.Enforcer == nil {
 		return nil
@@ -314,4 +367,55 @@ func replaceRoleCustomDepts(tx *gorm.DB, role *model.SysRole, dataScope int, dep
 		return err
 	}
 	return tx.Model(role).Association("Depts").Replace(depts)
+}
+
+func normalizeRoleFeatureDataScopeAssignments(
+	assignments []request.RoleFeatureDataScopeAssignment,
+) ([]request.RoleFeatureDataScopeAssignment, error) {
+	normalized := make([]request.RoleFeatureDataScopeAssignment, 0, len(assignments))
+	indexByCode := make(map[string]int, len(assignments))
+	for _, assignment := range assignments {
+		if !core.IsSupportedDataScopeResource(assignment.ResourceCode) {
+			return nil, fmt.Errorf("不支持的数据权限资源: %s", assignment.ResourceCode)
+		}
+		if err := validateRoleDataScope(assignment.DataScope, assignment.DeptIds); err != nil {
+			return nil, err
+		}
+
+		normalizedAssignment := request.RoleFeatureDataScopeAssignment{
+			ResourceCode: assignment.ResourceCode,
+			DataScope:    assignment.DataScope,
+			DeptIds:      core.NormalizeIDs(assignment.DeptIds),
+		}
+
+		if idx, exists := indexByCode[assignment.ResourceCode]; exists {
+			normalized[idx] = normalizedAssignment
+			continue
+		}
+
+		indexByCode[assignment.ResourceCode] = len(normalized)
+		normalized = append(normalized, normalizedAssignment)
+	}
+
+	return normalized, nil
+}
+
+func replaceRoleFeatureScopeCustomDepts(
+	tx *gorm.DB,
+	scope *model.SysRoleDataScope,
+	dataScope int,
+	deptIDs []uint,
+) error {
+	if dataScope != model.DataScopeCustom {
+		return tx.Model(scope).Association("Depts").Replace([]model.SysDept{})
+	}
+	ids := core.NormalizeIDs(deptIDs)
+	if len(ids) == 0 {
+		return tx.Model(scope).Association("Depts").Replace([]model.SysDept{})
+	}
+	var depts []model.SysDept
+	if err := tx.Where("id IN ?", ids).Find(&depts).Error; err != nil {
+		return err
+	}
+	return tx.Model(scope).Association("Depts").Replace(depts)
 }

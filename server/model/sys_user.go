@@ -13,6 +13,7 @@ type SysUser struct {
 	AvatarFileURL string    `json:"avatar_file_url" gorm:"-"`
 	Status        int       `json:"status" gorm:"default:1;comment:状态 1启用 0禁用"`
 	DeptID        uint      `json:"dept_id" gorm:"default:0;index;comment:部门ID"`
+	CreatedBy     uint      `json:"created_by" gorm:"default:0;index;comment:创建人ID"`
 	Dept          *SysDept  `json:"dept,omitempty" gorm:"foreignKey:DeptID;references:ID"`
 	Roles         []SysRole `json:"roles" gorm:"many2many:sys_user_role;"`
 }

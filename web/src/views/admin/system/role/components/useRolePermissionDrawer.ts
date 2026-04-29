@@ -1,6 +1,12 @@
 import { computed, ref, watch, type Ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { getRole, assignMenus, assignApis } from '@/api/role'
+import {
+  getRole,
+  assignMenus,
+  assignApis,
+  assignDataScopes,
+  type RoleFeatureDataScopePayload
+} from '@/api/role'
 import { getMenuTree } from '@/api/menu'
 import { getAllApis } from '@/api/api'
 import { useUserStore } from '@/store/user'
@@ -15,9 +21,17 @@ import {
   type PermissionMenuItem,
   type PermissionPageSection
 } from './permissionDrawer'
+import {
+  buildRoleFeatureDataScopeForm,
+  formatDataScopeLabel,
+  ROLE_FEATURE_SCOPE_RESOURCES,
+  type RoleFeatureDataScopeFormItem,
+  type RolePermissionDeptOption
+} from './dataScopeResources'
 
 export interface RolePermissionDrawerProps {
   roleId: number
+  deptOptions: RolePermissionDeptOption[]
 }
 
 export interface FilteredPermissionSection {
@@ -38,6 +52,8 @@ export function useRolePermissionDrawer(
   const allApis = ref<Api[]>([])
   const selectedMenuKeys = ref<number[]>([])
   const checkedApiIds = ref<number[]>([])
+  const defaultDataScope = ref(1)
+  const featureDataScopes = ref<RoleFeatureDataScopeFormItem[]>(buildRoleFeatureDataScopeForm())
   const searchText = ref('')
   const selectedTopMenuId = ref<number | null>(null)
 
@@ -202,12 +218,33 @@ export function useRolePermissionDrawer(
       return
     }
     const res = await getRole(props.roleId)
+    defaultDataScope.value = res.data.data_scope || 1
+    featureDataScopes.value = buildRoleFeatureDataScopeForm(res.data.feature_data_scopes)
     selectedMenuKeys.value = filterAssignableMenuIds(
       res.data.menus?.map((menu: Menu) => menu.id) || [],
       menuTree.value
     )
     checkedApiIds.value = res.data.apis?.map((api: Api) => api.id) || []
   }
+
+  const validateFeatureDataScopes = () => {
+    const invalidScope = featureDataScopes.value.find(item => item.data_scope === 2 && item.dept_ids.length === 0)
+    if (invalidScope) {
+      const resourceLabel = ROLE_FEATURE_SCOPE_RESOURCES.find(item => item.code === invalidScope.resource_code)?.label || invalidScope.resource_code
+      message.warning(`请为「${resourceLabel}」选择自定义部门`)
+      return false
+    }
+    return true
+  }
+
+  const buildFeatureDataScopePayload = (): RoleFeatureDataScopePayload[] =>
+    featureDataScopes.value
+      .filter(item => item.data_scope > 0)
+      .map(item => ({
+        resource_code: item.resource_code,
+        data_scope: item.data_scope,
+        dept_ids: item.data_scope === 2 ? [...item.dept_ids] : []
+      }))
 
   const getErrorMessage = (reason: unknown, fallback: string) => {
     if (reason instanceof Error && reason.message) {
@@ -217,35 +254,48 @@ export function useRolePermissionDrawer(
   }
 
   const handleSavePermissions = async () => {
+    if (!validateFeatureDataScopes()) {
+      return
+    }
+
     saveLoading.value = true
     try {
-      const results = await Promise.allSettled([
-        assignMenus(props.roleId, assignableSelectedMenuKeys.value, { silent: true }),
-        assignApis(props.roleId, checkedApiIds.value, { silent: true })
-      ])
+      const tasks = [
+        {
+          label: '菜单权限',
+          promise: assignMenus(props.roleId, assignableSelectedMenuKeys.value, { silent: true })
+        },
+        {
+          label: 'API 权限',
+          promise: assignApis(props.roleId, checkedApiIds.value, { silent: true })
+        },
+        {
+          label: '数据权限',
+          promise: assignDataScopes(props.roleId, buildFeatureDataScopePayload(), { silent: true })
+        }
+      ]
 
-      const [menuResult, apiResult] = results
-      const menuFailed = menuResult.status === 'rejected'
-      const apiFailed = apiResult.status === 'rejected'
+      const results = await Promise.allSettled(tasks.map(task => task.promise))
+      const failedTasks = results
+        .map((result, index) => ({ result, label: tasks[index].label }))
+        .filter(item => item.result.status === 'rejected')
 
-      if (!menuFailed && !apiFailed) {
+      if (!failedTasks.length) {
         message.success('权限分配成功')
         visible.value = false
         await userStore.refreshAccessAction()
         return
       }
 
-      if (menuFailed && apiFailed) {
-        message.error('菜单权限和 API 权限保存失败，请重试')
+      if (failedTasks.length === 1) {
+        const failedTask = failedTasks[0]
+        if (failedTask.result.status === 'rejected') {
+          message.warning(`${failedTask.label}保存失败：${getErrorMessage(failedTask.result.reason, '请重试')}`)
+        }
         return
       }
 
-      if (menuFailed) {
-        message.warning(`菜单权限保存失败：${getErrorMessage(menuResult.reason, '请重试')}`)
-        return
-      }
-
-      message.warning(`API 权限保存失败：${getErrorMessage(apiResult.reason, '请重试')}`)
+      message.error(`${failedTasks.map(item => item.label).join('、')}保存失败，请重试`)
     } finally {
       saveLoading.value = false
     }
@@ -253,6 +303,7 @@ export function useRolePermissionDrawer(
 
   watch(visible, async val => {
     if (!val) {
+      featureDataScopes.value = buildRoleFeatureDataScopeForm()
       return
     }
     searchText.value = ''
@@ -265,6 +316,9 @@ export function useRolePermissionDrawer(
     checkedMenuKeys,
     assignableSelectedMenuKeys,
     currentSections,
+    defaultDataScope,
+    featureDataScopes,
+    formatDataScopeLabel,
     filteredSections,
     filteredUncategorizedApis,
     handleApiToggle,

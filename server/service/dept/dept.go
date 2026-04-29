@@ -28,13 +28,22 @@ func (s *DeptService) GetDeptTree() ([]model.SysDept, error) {
 }
 
 func (s *DeptService) GetManageableDeptTree(operatorID uint) ([]model.SysDept, int64, error) {
-	scope, err := core.ResolveUserDataScope(operatorID)
+	return s.GetManageableDeptTreeForResource(operatorID, core.DataScopeResourceDeptManagement)
+}
+
+func (s *DeptService) GetManageableDeptTreeForResource(operatorID uint, resourceCode string) ([]model.SysDept, int64, error) {
+	scope, err := core.ResolveUserDataScopeForResource(operatorID, resourceCode)
 	if err != nil {
 		return nil, 0, err
 	}
 
 	var allDepts []model.SysDept
 	if err := global.DB.Order("sort ASC, id ASC").Find(&allDepts).Error; err != nil {
+		return nil, 0, err
+	}
+
+	directUserCountMap, unassignedCount, err := s.getVisibleDeptUserCounts(scope)
+	if err != nil {
 		return nil, 0, err
 	}
 
@@ -47,15 +56,16 @@ func (s *DeptService) GetManageableDeptTree(operatorID uint) ([]model.SysDept, i
 		for _, deptID := range scope.DeptIDs {
 			allowedManageableSet[deptID] = struct{}{}
 		}
+		for deptID := range directUserCountMap {
+			if deptID == 0 {
+				continue
+			}
+			allowedManageableSet[deptID] = struct{}{}
+		}
 	}
 
 	includedSet := expandDeptIDsWithAncestors(allDepts, allowedManageableSet)
 	filteredDepts := filterDeptsBySet(allDepts, includedSet)
-
-	directUserCountMap, unassignedCount, err := s.getVisibleDeptUserCounts(scope)
-	if err != nil {
-		return nil, 0, err
-	}
 
 	tree := s.buildDeptTree(filteredDepts, 0)
 	s.decorateDeptTree(tree, directUserCountMap, allowedManageableSet)
@@ -68,6 +78,14 @@ func (s *DeptService) GetDept(id uint) (*model.SysDept, error) {
 		return nil, err
 	}
 	return &dept, nil
+}
+
+func (s *DeptService) GetManagedDept(operatorID, id uint) (*model.SysDept, error) {
+	dept, err := core.EnsureDeptAccessibleForResource(operatorID, id, core.DataScopeResourceDeptManagement)
+	if err != nil {
+		return nil, err
+	}
+	return dept, nil
 }
 
 func (s *DeptService) CreateDept(req *request.CreateDeptRequest) error {
@@ -90,6 +108,13 @@ func (s *DeptService) CreateDept(req *request.CreateDeptRequest) error {
 		core.Default.ClearAllUserInfoCache()
 	}
 	return err
+}
+
+func (s *DeptService) CreateManagedDept(operatorID uint, req *request.CreateDeptRequest) error {
+	if err := core.EnsureDeptParentManageableForResource(operatorID, req.ParentID, core.DataScopeResourceDeptManagement); err != nil {
+		return err
+	}
+	return s.CreateDept(req)
 }
 
 func (s *DeptService) UpdateDept(id uint, req *request.UpdateDeptRequest) error {
@@ -157,6 +182,16 @@ func (s *DeptService) UpdateDept(id uint, req *request.UpdateDeptRequest) error 
 	return err
 }
 
+func (s *DeptService) UpdateManagedDept(operatorID, id uint, req *request.UpdateDeptRequest) error {
+	if _, err := core.EnsureDeptAccessibleForResource(operatorID, id, core.DataScopeResourceDeptManagement); err != nil {
+		return err
+	}
+	if err := core.EnsureDeptParentManageableForResource(operatorID, req.ParentID, core.DataScopeResourceDeptManagement); err != nil {
+		return err
+	}
+	return s.UpdateDept(id, req)
+}
+
 func (s *DeptService) DeleteDept(id uint) error {
 	var dept model.SysDept
 	if err := global.DB.First(&dept, id).Error; err != nil {
@@ -183,7 +218,11 @@ func (s *DeptService) DeleteDept(id uint) error {
 	if err := global.DB.Table("sys_role_dept").Where("sys_dept_id = ?", id).Count(&roleDeptCount).Error; err != nil {
 		return err
 	}
-	if roleDeptCount > 0 {
+	var featureScopeDeptCount int64
+	if err := global.DB.Table("sys_role_data_scope_dept").Where("sys_dept_id = ?", id).Count(&featureScopeDeptCount).Error; err != nil {
+		return err
+	}
+	if roleDeptCount > 0 || featureScopeDeptCount > 0 {
 		return errors.New("该部门已被角色数据范围引用，无法删除")
 	}
 
@@ -192,6 +231,13 @@ func (s *DeptService) DeleteDept(id uint) error {
 		core.Default.ClearAllUserInfoCache()
 	}
 	return err
+}
+
+func (s *DeptService) DeleteManagedDept(operatorID, id uint) error {
+	if _, err := core.EnsureDeptAccessibleForResource(operatorID, id, core.DataScopeResourceDeptManagement); err != nil {
+		return err
+	}
+	return s.DeleteDept(id)
 }
 
 func (s *DeptService) buildDeptTree(depts []model.SysDept, parentID uint) []model.SysDept {
@@ -348,7 +394,7 @@ func ancestorsContainID(ancestors string, targetID uint) bool {
 }
 
 func GetManagedDeptIDs(operatorID uint) ([]uint, error) {
-	scope, err := core.ResolveUserDataScope(operatorID)
+	scope, err := core.ResolveUserDataScopeForResource(operatorID, core.DataScopeResourceDeptManagement)
 	if err != nil {
 		return nil, err
 	}

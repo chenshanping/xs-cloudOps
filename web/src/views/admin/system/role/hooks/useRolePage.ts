@@ -53,7 +53,7 @@ export function useRolePage() {
       { title: '关联用户', key: 'users', width: 160 },
       { title: '排序', dataIndex: 'sort', key: 'sort', width: 80 },
       { title: '状态', key: 'status', width: 80 },
-      { title: '数据范围', key: 'data_scope', width: 140 },
+      { title: '默认数据范围', key: 'data_scope', width: 140 },
       { title: '备注', dataIndex: 'remark', key: 'remark' }
     ],
     { title: '操作', key: 'action', width: 200 },
