@@ -19,6 +19,9 @@
       <a-form-item label="状态">
         <a-switch v-model:checked="formState.statusChecked" />
       </a-form-item>
+      <a-form-item label="超管角色">
+        <a-switch v-model:checked="formState.is_super_admin" />
+      </a-form-item>
       <a-form-item label="数据范围" name="data_scope">
         <a-select v-model:value="formState.data_scope" placeholder="请选择数据范围">
           <a-select-option :value="1">全部数据</a-select-option>
@@ -69,6 +72,7 @@ interface RoleFormValue {
   code: string
   sort: number
   statusChecked: boolean
+  is_super_admin: boolean
   data_scope: number
   dept_ids: number[]
   remark: string
@@ -89,6 +93,7 @@ const emit = defineEmits<{
     code: string
     sort: number
     status: number
+    is_super_admin: boolean
     data_scope: number
     dept_ids: number[]
     remark: string
@@ -102,6 +107,7 @@ const formState = reactive<RoleFormValue>({
   code: '',
   sort: 0,
   statusChecked: true,
+  is_super_admin: false,
   data_scope: 1,
   dept_ids: [],
   remark: ''
@@ -134,6 +140,7 @@ watch(
       code: props.initialValue?.code ?? '',
       sort: props.initialValue?.sort ?? 0,
       statusChecked: props.initialValue?.statusChecked ?? true,
+      is_super_admin: props.initialValue?.is_super_admin ?? false,
       data_scope: props.initialValue?.data_scope ?? 1,
       dept_ids: props.initialValue?.dept_ids ? [...props.initialValue.dept_ids] : [],
       remark: props.initialValue?.remark ?? ''
@@ -159,6 +166,7 @@ const handleSubmit = async () => {
     code: formState.code,
     sort: formState.sort || 0,
     status: formState.statusChecked ? 1 : 0,
+    is_super_admin: formState.is_super_admin,
     data_scope: formState.data_scope,
     dept_ids: formState.data_scope === 2 ? [...formState.dept_ids] : [],
     remark: formState.remark

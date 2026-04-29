@@ -1,9 +1,17 @@
 import { computed, onMounted, ref } from 'vue'
-import { message } from 'ant-design-vue'
-import { getRoleList, getRole, createRole, updateRole, deleteRole } from '@/api/role'
+import { message, Modal } from 'ant-design-vue'
+import {
+  getRoleList,
+  getRole,
+  createRole,
+  updateRole,
+  deleteRole,
+  type RoleUpsertPayload
+} from '@/api/role'
 import { getManageableDeptTree } from '@/api/dept'
+import { getUserList } from '@/api/user'
 import { useTableColumns } from '@/utils/permission'
-import type { Dept, Role } from '@/types'
+import type { Dept, Role, User } from '@/types'
 
 interface TreeSelectOption {
   key: string | number
@@ -23,13 +31,26 @@ export function useRolePage() {
   const currentId = ref(0)
   const currentRoleName = ref('')
   const permissionDrawerVisible = ref(false)
+  const roleUsersDrawerVisible = ref(false)
+  const roleUsersLoading = ref(false)
+  const roleUsers = ref<User[]>([])
+  const roleUsersRoleId = ref(0)
+  const roleUsersRoleName = ref('')
+  const statusLoadingMap = ref<Record<number, boolean>>({})
+  const superAdminLoadingMap = ref<Record<number, boolean>>({})
   const drawerInitialValue = ref<Record<string, any>>({})
+  const roleUsersPagination = ref({
+    current: 1,
+    pageSize: 10,
+    total: 0
+  })
 
   const columns = useTableColumns(
     [
-      { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
       { title: '角色名称', dataIndex: 'name', key: 'name' },
       { title: '角色编码', dataIndex: 'code', key: 'code' },
+      { title: '超管', key: 'is_super_admin', width: 90 },
+      { title: '关联用户', key: 'users', width: 160 },
       { title: '排序', dataIndex: 'sort', key: 'sort', width: 80 },
       { title: '状态', key: 'status', width: 80 },
       { title: '数据范围', key: 'data_scope', width: 140 },
@@ -51,9 +72,27 @@ export function useRolePage() {
     }
   }
 
+  const showDeptTreeErrorModal = (content: string) => {
+    Modal.error({
+      title: '部门树加载失败',
+      content,
+      okText: '知道了'
+    })
+  }
+
   const fetchDepts = async () => {
-    const res = await getManageableDeptTree()
-    deptTree.value = res.data.tree
+    try {
+      const res = await getManageableDeptTree({ silent: true })
+      const tree = Array.isArray(res.data?.tree) ? res.data.tree : []
+      if (!Array.isArray(res.data?.tree)) {
+        showDeptTreeErrorModal('可管理部门树数据异常，请刷新页面后重试。')
+      }
+      deptTree.value = tree
+    } catch (error) {
+      console.error('获取可管理部门树失败:', error)
+      deptTree.value = []
+      showDeptTreeErrorModal('获取可管理部门树失败，请稍后重试。')
+    }
   }
 
   const handleAdd = () => {
@@ -65,6 +104,7 @@ export function useRolePage() {
       code: '',
       sort: 0,
       statusChecked: true,
+      is_super_admin: false,
       data_scope: 1,
       dept_ids: [],
       remark: ''
@@ -83,6 +123,7 @@ export function useRolePage() {
       code: role.code,
       sort: role.sort,
       statusChecked: role.status === 1,
+      is_super_admin: role.is_super_admin,
       data_scope: role.data_scope || 1,
       dept_ids: role.depts?.map(item => item.id) || [],
       remark: role.remark
@@ -103,15 +144,151 @@ export function useRolePage() {
   }
 
   const handleDelete = async (record: Role) => {
+    if (getRoleUserCount(record) > 0) {
+      message.warning('当前角色下存在用户，无法删除')
+      return
+    }
     await deleteRole(record.id)
     message.success('删除成功')
     fetchData()
   }
 
+  const getRoleUsers = (record: Role) => record.users || []
+  const getRoleUserCount = (record: Role) => record.user_count ?? getRoleUsers(record).length
+
   const handleAssignPermissions = (record: Role) => {
     currentId.value = record.id
     currentRoleName.value = record.name
     permissionDrawerVisible.value = true
+  }
+
+  const buildRolePayload = (record: Role, overrides: Partial<RoleUpsertPayload> = {}): RoleUpsertPayload => ({
+    name: record.name,
+    code: record.code,
+    sort: record.sort,
+    status: record.status,
+    is_super_admin: record.is_super_admin,
+    data_scope: record.data_scope || 1,
+    dept_ids: record.depts?.map(item => item.id) || [],
+    remark: record.remark || '',
+    ...overrides
+  })
+
+  const fetchRoleUsers = async () => {
+    if (!roleUsersRoleId.value) {
+      roleUsers.value = []
+      roleUsersPagination.value.total = 0
+      return
+    }
+
+    roleUsersLoading.value = true
+    try {
+      const res = await getUserList({
+        role_id: roleUsersRoleId.value,
+        page: roleUsersPagination.value.current,
+        page_size: roleUsersPagination.value.pageSize
+      })
+      roleUsers.value = res.data.list
+      roleUsersPagination.value.total = res.data.total
+    } finally {
+      roleUsersLoading.value = false
+    }
+  }
+
+  const handleViewRoleUsers = async (record: Role) => {
+    roleUsersRoleId.value = record.id
+    roleUsersRoleName.value = record.name
+    roleUsersPagination.value.current = 1
+    roleUsersDrawerVisible.value = true
+    await fetchRoleUsers()
+  }
+
+  const handleRoleUsersPageChange = async (page: number) => {
+    roleUsersPagination.value.current = page
+    await fetchRoleUsers()
+  }
+
+  const handleRoleUsersDrawerOpenChange = (open: boolean) => {
+    roleUsersDrawerVisible.value = open
+    if (!open) {
+      roleUsers.value = []
+      roleUsersRoleId.value = 0
+      roleUsersRoleName.value = ''
+      roleUsersPagination.value.current = 1
+      roleUsersPagination.value.total = 0
+    }
+  }
+
+  const setRowLoading = (
+    mapRef: typeof statusLoadingMap,
+    roleId: number,
+    loading: boolean
+  ) => {
+    mapRef.value = {
+      ...mapRef.value,
+      [roleId]: loading
+    }
+  }
+
+  const isRoleStatusLoading = (roleId: number) => !!statusLoadingMap.value[roleId]
+
+  const isRoleSuperAdminLoading = (roleId: number) => !!superAdminLoadingMap.value[roleId]
+
+  const isRoleRowUpdating = (roleId: number) =>
+    isRoleStatusLoading(roleId) || isRoleSuperAdminLoading(roleId)
+
+  const handleStatusToggle = async (record: Role, checked: boolean) => {
+    if (isRoleRowUpdating(record.id)) {
+      return
+    }
+
+    const previous = record.status
+    record.status = checked ? 1 : 0
+    setRowLoading(statusLoadingMap, record.id, true)
+
+    try {
+      await updateRole(record.id, buildRolePayload(record, { status: checked ? 1 : 0 }))
+      message.success('修改成功')
+      await fetchData()
+    } catch {
+      record.status = previous
+    } finally {
+      setRowLoading(statusLoadingMap, record.id, false)
+    }
+  }
+
+  const updateSuperAdminStatus = async (record: Role, checked: boolean) => {
+    if (isRoleRowUpdating(record.id)) {
+      return
+    }
+
+    const previous = record.is_super_admin
+    record.is_super_admin = checked
+    setRowLoading(superAdminLoadingMap, record.id, true)
+
+    try {
+      await updateRole(record.id, buildRolePayload(record, { is_super_admin: checked }))
+      message.success('修改成功')
+      await fetchData()
+    } catch {
+      record.is_super_admin = previous
+    } finally {
+      setRowLoading(superAdminLoadingMap, record.id, false)
+    }
+  }
+
+  const handleSuperAdminToggle = (record: Role, checked: boolean) => {
+    Modal.confirm({
+      title: checked ? '确认设为超管角色' : '确认取消超管角色',
+      content: checked
+        ? `确定将角色「${record.name}」设为超管角色吗？`
+        : `确定取消角色「${record.name}」的超管角色吗？`,
+      okText: '确定',
+      cancelText: '取消',
+      async onOk() {
+        await updateSuperAdminStatus(record, checked)
+      }
+    })
   }
 
   const formatDataScope = (value: number) => {
@@ -149,9 +326,23 @@ export function useRolePage() {
     handleDelete,
     handleDrawerSubmit,
     handleEdit,
+    handleRoleUsersDrawerOpenChange,
+    handleRoleUsersPageChange,
+    handleStatusToggle,
+    handleSuperAdminToggle,
+    handleViewRoleUsers,
+    getRoleUserCount,
     isEdit,
+    isRoleRowUpdating,
+    isRoleStatusLoading,
+    isRoleSuperAdminLoading,
     loading,
     permissionDrawerVisible,
+    roleUsers,
+    roleUsersDrawerVisible,
+    roleUsersLoading,
+    roleUsersPagination,
+    roleUsersRoleName,
     tableData
   }
 }

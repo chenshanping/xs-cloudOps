@@ -16,7 +16,7 @@ func init() {
 type SysConfigModule struct{}
 
 func (m *SysConfigModule) Name() string {
-	return "配置管理"
+	return "系统配置管理"
 }
 
 func (m *SysConfigModule) RegisterPublicRoutes(rg *gin.RouterGroup) {

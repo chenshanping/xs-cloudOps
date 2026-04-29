@@ -5,6 +5,7 @@ import (
 
 	"server/global"
 	"server/model/response"
+	rolesvc "server/service/role"
 
 	"github.com/gin-gonic/gin"
 )
@@ -48,6 +49,19 @@ func CasbinAuth() gin.HandlerFunc {
 				c.Next()
 				return
 			}
+		}
+
+		roleIDs := GetUserRoleIDs(c)
+		hasSuperAdmin, err := rolesvc.Default.HasSuperAdminRoleIDs(roleIDs)
+		if err != nil {
+			global.Log.Errorf("查询显式超管角色失败: %v", err)
+			response.Fail(c, "权限校验失败")
+			c.Abort()
+			return
+		}
+		if hasSuperAdmin {
+			c.Next()
+			return
 		}
 
 		// 从JWT解析角色编码，避免每次请求查询数据库

@@ -1,5 +1,17 @@
+import type { AxiosRequestConfig } from 'axios'
 import request from '@/utils/request'
 import type { ApiResponse, Role } from '@/types'
+
+export interface RoleUpsertPayload {
+  name: string
+  code: string
+  sort: number
+  status: number
+  is_super_admin: boolean
+  data_scope: number
+  dept_ids: number[]
+  remark: string
+}
 
 // 获取角色列表
 export function getRoleList() {
@@ -12,13 +24,13 @@ export function getRole(id: number) {
 }
 
 // 创建角色
-export function createRole(data: any) {
+export function createRole(data: RoleUpsertPayload) {
   return request.post<any, ApiResponse>('/roles', data)
 }
 
 // 更新角色
-export function updateRole(id: number, data: any) {
-  return request.put<any, ApiResponse>(`/roles/${id}`, data)
+export function updateRole(id: number, data: RoleUpsertPayload) {
+	return request.put<any, ApiResponse>(`/roles/${id}`, data)
 }
 
 // 删除角色
@@ -27,11 +39,11 @@ export function deleteRole(id: number) {
 }
 
 // 分配菜单
-export function assignMenus(id: number, menuIds: number[]) {
-  return request.put<any, ApiResponse>(`/roles/${id}/menus`, { menu_ids: menuIds })
+export function assignMenus(id: number, menuIds: number[], config?: AxiosRequestConfig) {
+  return request.put<any, ApiResponse>(`/roles/${id}/menus`, { menu_ids: menuIds }, config)
 }
 
 // 分配API
-export function assignApis(id: number, apiIds: number[]) {
-  return request.put<any, ApiResponse>(`/roles/${id}/apis`, { api_ids: apiIds })
+export function assignApis(id: number, apiIds: number[], config?: AxiosRequestConfig) {
+  return request.put<any, ApiResponse>(`/roles/${id}/apis`, { api_ids: apiIds }, config)
 }

@@ -147,6 +147,7 @@ What would you like to do?
 - Update task checkbox immediately after completing each task
 - Pause on errors, blockers, or unclear requirements - don't guess
 - Use contextFiles from CLI output, don't assume specific file names
+- When a spec or design asks for "clarity" or "better understanding", prefer structural UI improvements first; do not add explanatory page copy, helper prose, or tip blocks unless the user explicitly asks for them or the existing page already uses that interaction pattern
 
 **Fluid Workflow Integration**
 

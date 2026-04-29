@@ -29,10 +29,9 @@ func InitGorm() {
 	}
 
 	baseLogger := logger.Default.LogMode(logMode)
-	slowLogger := NewSlowLogger(baseLogger, 1000*time.Millisecond) // 超过200ms记录慢查询
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-		Logger: slowLogger,
+		Logger: baseLogger,
 	})
 	if err != nil {
 		panic(fmt.Errorf("连接数据库失败: %w", err))

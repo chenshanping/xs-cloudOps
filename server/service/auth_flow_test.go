@@ -120,6 +120,44 @@ func TestAuthFlowServiceGetCurrentUserInfoReturnsCacheFirst(t *testing.T) {
 	}
 }
 
+func TestAuthFlowServiceGetCurrentUserInfoNormalizesEmptySlices(t *testing.T) {
+	svc := NewAuthFlowService()
+	svc.GetUserInfoFromCache = func(userID uint) (*UserInfoCache, error) {
+		return nil, errors.New("cache miss")
+	}
+	svc.GetUserInfo = func(userID uint) (*model.SysUser, error) {
+		return &model.SysUser{BaseModel: model.BaseModel{ID: userID}, Username: "charlie"}, nil
+	}
+	svc.GetUserMenus = func(uint) ([]model.SysMenu, error) {
+		return nil, nil
+	}
+	svc.GetUserPermissions = func(uint) ([]string, error) {
+		return nil, nil
+	}
+	saved := &UserInfoCache{}
+	svc.SetUserInfoToCache = func(userID uint, cache *UserInfoCache) error {
+		saved = cache
+		return nil
+	}
+
+	result, err := svc.GetCurrentUserInfo(9)
+	if err != nil {
+		t.Fatalf("unexpected error: %+v", err)
+	}
+	if result.Menus == nil {
+		t.Fatalf("expected menus to be normalized to empty slice")
+	}
+	if result.Permissions == nil {
+		t.Fatalf("expected permissions to be normalized to empty slice")
+	}
+	if saved.Menus == nil {
+		t.Fatalf("expected cached menus to be normalized to empty slice")
+	}
+	if saved.Permissions == nil {
+		t.Fatalf("expected cached permissions to be normalized to empty slice")
+	}
+}
+
 func TestAuthFlowServiceResetPasswordByTokenParsesUserID(t *testing.T) {
 	svc := NewAuthFlowService()
 	svc.RedisGet = func(ctx context.Context, key string) (string, error) {

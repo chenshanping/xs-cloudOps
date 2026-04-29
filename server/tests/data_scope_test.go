@@ -510,3 +510,66 @@ func TestUserServiceBatchResetManagedUserPasswords(t *testing.T) {
 		}
 	}
 }
+
+func TestRoleServicePersistsCustomDeptDataScope(t *testing.T) {
+	db := setupDataScopeTestDB(t)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+	deptA := model.SysDept{Name: "研发部", ParentID: root.ID, Ancestors: fmt.Sprintf("0,%d", root.ID), Sort: 1, Status: 1}
+	if err := db.Create(&deptA).Error; err != nil {
+		t.Fatalf("create deptA: %v", err)
+	}
+	deptB := model.SysDept{Name: "市场部", ParentID: root.ID, Ancestors: fmt.Sprintf("0,%d", root.ID), Sort: 2, Status: 1}
+	if err := db.Create(&deptB).Error; err != nil {
+		t.Fatalf("create deptB: %v", err)
+	}
+
+	if err := Role.CreateRole(&request.CreateRoleRequest{
+		Name:      "自定义范围角色",
+		Code:      "custom-scope-role",
+		Sort:      1,
+		Status:    1,
+		DataScope: model.DataScopeCustom,
+		DeptIds:   []uint{deptA.ID, deptB.ID},
+		Remark:    "测试自定义部门范围",
+	}); err != nil {
+		t.Fatalf("CreateRole error: %v", err)
+	}
+
+	var created model.SysRole
+	if err := db.Preload("Depts").Where("code = ?", "custom-scope-role").First(&created).Error; err != nil {
+		t.Fatalf("load created role: %v", err)
+	}
+	if created.DataScope != model.DataScopeCustom {
+		t.Fatalf("created role data_scope = %d, want %d", created.DataScope, model.DataScopeCustom)
+	}
+	if len(created.Depts) != 2 {
+		t.Fatalf("created role custom dept len = %d, want 2", len(created.Depts))
+	}
+
+	if err := Role.UpdateRole(created.ID, &request.UpdateRoleRequest{
+		Name:      created.Name,
+		Code:      created.Code,
+		Sort:      created.Sort,
+		Status:    created.Status,
+		DataScope: model.DataScopeDeptAndChildren,
+		DeptIds:   nil,
+		Remark:    created.Remark,
+	}); err != nil {
+		t.Fatalf("UpdateRole error: %v", err)
+	}
+
+	var updated model.SysRole
+	if err := db.Preload("Depts").First(&updated, created.ID).Error; err != nil {
+		t.Fatalf("reload role: %v", err)
+	}
+	if updated.DataScope != model.DataScopeDeptAndChildren {
+		t.Fatalf("updated role data_scope = %d, want %d", updated.DataScope, model.DataScopeDeptAndChildren)
+	}
+	if len(updated.Depts) != 0 {
+		t.Fatalf("updated role custom dept len = %d, want 0", len(updated.Depts))
+	}
+}

@@ -15,10 +15,3 @@ type LogListRequest struct {
 	SortField    string `json:"sort_field" form:"sort_field" comment:"排序字段"`
 	SortOrder    string `json:"sort_order" form:"sort_order" comment:"排序方式(ascend/descend)"`
 }
-
-// 慢查询日志列表请求
-type SlowLogListRequest struct {
-	PageRequest
-	SQL        string  `json:"sql" form:"sql" comment:"SQL语句"`
-	MinLatency float64 `json:"min_latency" form:"min_latency" comment:"最小耗时(毫秒)"`
-}

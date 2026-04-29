@@ -6,6 +6,7 @@ import (
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 
+	"server/config"
 	"server/global"
 	"server/model"
 )
@@ -26,9 +27,14 @@ func SetupFileServiceTestDB(t *testing.T) *gorm.DB {
 	}
 
 	previousDB := global.DB
+	previousConfig := global.Config
 	global.DB = db
+	if global.Config == nil {
+		global.Config = &config.Config{}
+	}
 	t.Cleanup(func() {
 		global.DB = previousDB
+		global.Config = previousConfig
 	})
 
 	return db
@@ -50,9 +56,14 @@ func SetupStorageServiceTestDB(t *testing.T) *gorm.DB {
 	}
 
 	previousDB := global.DB
+	previousConfig := global.Config
 	global.DB = db
+	if global.Config == nil {
+		global.Config = &config.Config{}
+	}
 	t.Cleanup(func() {
 		global.DB = previousDB
+		global.Config = previousConfig
 	})
 
 	return db

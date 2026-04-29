@@ -36,6 +36,46 @@ export interface BatchDeleteConversationResult {
   failed_msgs: string[]
 }
 
+export interface AIModelConfig {
+  id: string
+  name: string
+  description: string
+}
+
+export interface AIProviderConfig {
+  name: string
+  api_key: string
+  base_url: string
+  models: AIModelConfig[]
+}
+
+export interface AIAdminConfig {
+  default_provider: string
+  providers: AIProviderConfig[]
+}
+
+export interface AITestRequest {
+  api_key: string
+  base_url: string
+  model: string
+}
+
+export interface AIProviderRemoteModel {
+  id: string
+  object?: string
+  created?: number
+  owned_by?: string
+}
+
+export interface AIProviderModelsFetchRequest {
+  api_key: string
+  base_url: string
+}
+
+export interface AIProviderModelsFetchResponse {
+  models: AIProviderRemoteModel[]
+}
+
 // 对话请求
 export interface ChatRequest {
   conversation_id?: number
@@ -81,6 +121,14 @@ export function deleteConversations(ids: number[]) {
   return request.delete<any, ApiResponse<BatchDeleteConversationResult>>('/ai/conversations/batch', { data: { ids } })
 }
 
+export function getAIConfig() {
+  return request.get<any, ApiResponse<AIAdminConfig>>('/ai/config')
+}
+
+export function updateAIConfig(data: AIAdminConfig) {
+  return request.put<any, ApiResponse>('/ai/config', data)
+}
+
 // 获取对话消息
 export function getMessages(conversationId: number) {
   return request.get<any, ApiResponse<AIMessage[]>>(`/ai/conversations/${conversationId}/messages`)
@@ -99,6 +147,14 @@ export function clearContext(conversationId: number) {
 // 删除单条消息
 export function deleteMessage(messageId: number) {
   return request.delete<any, ApiResponse>(`/ai/messages/${messageId}`)
+}
+
+export function aiTest(config: AITestRequest) {
+  return request.post<any, ApiResponse>('/ai/test', config, { silent: true })
+}
+
+export function fetchAIProviderModels(data: AIProviderModelsFetchRequest) {
+  return request.post<any, ApiResponse<AIProviderModelsFetchResponse>>('/ai/providers/models/fetch', data, { silent: true })
 }
 
 // 普通对话（非流式）

@@ -2,194 +2,128 @@
   <a-drawer
     v-model:open="visible"
     :title="`分配权限 - ${roleName}`"
-    width="900"
+    width="1200"
     placement="right"
     class="permission-drawer"
   >
-    <a-tabs v-model:activeKey="activeTabKey">
-      <a-tab-pane key="menu" tab="角色菜单">
-        <div class="permission-header">
-          <a-checkbox
-            :checked="isAllMenuChecked"
-            :indeterminate="isMenuIndeterminateAll"
-            @change="handleCheckAllMenus"
-          >
-            全选
-          </a-checkbox>
-          <span class="selected-count">已选 {{ checkedMenuKeys.length }} 个菜单</span>
-          <a-input-search
-            v-model:value="menuSearchText"
-            placeholder="搜索菜单名称"
-            style="width: 200px; margin-left: auto"
-            allow-clear
-          />
-        </div>
-        <div class="menu-layout">
-          <div class="menu-group-list">
-            <div class="group-list-header">一级菜单</div>
-            <div class="group-list-content">
-              <div
-                v-for="menu in menuTree"
-                :key="menu.id"
-                :class="['group-item', { active: selectedMenuId === menu.id }]"
-                @click="selectedMenuId = menu.id"
-              >
-                <a-checkbox
-                  :checked="isMenuChecked(menu.id)"
-                  :indeterminate="isMenuIndeterminate(menu)"
-                  @change="handleMenuChange(menu, $event)"
-                  @click.stop
-                />
-                <span class="group-item-name">{{ menu.name }}</span>
-                <a-badge
-                  :count="getMenuSelectedCount(menu)"
-                  :number-style="{ backgroundColor: '#52c41a' }"
-                  :show-zero="false"
-                />
-                <span class="group-item-total">({{ getMenuTotalCount(menu) }})</span>
-              </div>
-            </div>
-          </div>
-          <div class="menu-detail-list">
-            <div class="menu-detail-header">
-              <span>{{ selectedMenu?.name || '请选择菜单' }} 子菜单</span>
-              <a-checkbox
-                v-if="selectedMenu?.children?.length"
-                :checked="isMenuChecked(selectedMenu.id)"
-                :indeterminate="isMenuIndeterminate(selectedMenu)"
-                @change="handleMenuChange(selectedMenu, $event)"
-              >
-                全选当前菜单
-              </a-checkbox>
-            </div>
-            <div class="menu-detail-content">
-              <template v-if="filteredChildMenus.length">
-                <div
-                  v-for="child in filteredChildMenus"
-                  :key="child.id"
-                  class="menu-child-block"
-                >
-                  <div class="menu-child-header">
-                    <a-checkbox
-                      :checked="isMenuChecked(child.id)"
-                      :indeterminate="isMenuIndeterminate(child)"
-                      @change="handleMenuChange(child, $event)"
-                    >
-                      <span class="menu-child-name">
-                        <a-tag v-if="child.type === 2" color="blue" size="small">菜单</a-tag>
-                        <a-tag v-else-if="child.type === 3" color="orange" size="small">按钮</a-tag>
-                        {{ child.name }}
-                      </span>
-                    </a-checkbox>
-                    <span v-if="child.permission" class="permission-code">{{ child.permission }}</span>
-                  </div>
-                  <div v-if="child.children?.length" class="menu-child-items">
-                    <div
-                      v-for="subChild in child.children"
-                      :key="subChild.id"
-                      class="btn-permission-item"
-                    >
-                      <a-checkbox
-                        :checked="isMenuChecked(subChild.id)"
-                        @change="handleMenuChange(subChild, $event)"
-                      >
-                        <span class="btn-permission-content">
-                          <a-tag color="orange" size="small">按钮</a-tag>
-                          <span class="btn-name">{{ subChild.name }}</span>
-                        </span>
-                      </a-checkbox>
-                      <span v-if="subChild.permission" class="permission-code">{{ subChild.permission }}</span>
-                    </div>
-                  </div>
-                </div>
-              </template>
-              <a-empty v-else-if="selectedMenu" description="暂无子菜单" />
-              <a-empty v-else description="请在左侧选择一级菜单" />
-            </div>
-          </div>
-        </div>
-      </a-tab-pane>
+    <div class="permission-header">
+      <span class="selected-count">已选菜单 {{ assignableSelectedMenuKeys.length }} 个</span>
+      <span class="selected-count">已选 API {{ checkedApiIds.length }} 个</span>
+      <a-input-search
+        v-model:value="searchText"
+        :placeholder="searchPlaceholder"
+        style="width: 280px; margin-left: auto"
+        allow-clear
+      />
+    </div>
 
-      <a-tab-pane key="api" tab="角色API">
-        <div class="permission-header">
-          <a-checkbox
-            :checked="isAllApiChecked"
-            :indeterminate="isApiIndeterminateAll"
-            @change="handleCheckAllApis"
-          >
-            全选
-          </a-checkbox>
-          <span class="selected-count">已选 {{ checkedApiIds.length }} 个 API</span>
-          <a-input-search
-            v-model:value="apiSearchText"
-            placeholder="搜索接口路径或描述"
-            style="width: 200px; margin-left: auto"
-            allow-clear
-          />
-        </div>
-        <div class="api-layout">
-          <div class="api-group-list">
-            <div class="group-list-header">API 分组</div>
-            <div class="group-list-content">
-              <div
-                v-for="group in apiGroups"
-                :key="group.name"
-                :class="['group-item', { active: selectedGroup === group.name }]"
-                @click="selectedGroup = group.name"
+    <div class="permission-layout">
+      <div class="permission-sidebar">
+        <RolePermissionDrawerSidebar
+          :top-menus="topMenus"
+          :selected-top-menu-id="selectedTopMenuId"
+          :checked-menu-keys="assignableSelectedMenuKeys"
+          @select="selectedTopMenuId = $event"
+        />
+      </div>
+
+      <div class="permission-content">
+        <template v-if="topMenus.length">
+          <a-tabs v-model:activeKey="activeTab" class="permission-tabs">
+            <a-tab-pane key="menus" tab="菜单权限">
+              <a-tabs
+                v-if="menuTabSections.length"
+                v-model:activeKey="activeMenuSectionId"
+                size="small"
+                class="section-tabs"
               >
-                <a-checkbox
-                  :checked="isGroupChecked(group.name)"
-                  :indeterminate="isGroupIndeterminate(group.name)"
-                  @change="handleGroupChange(group.name, $event)"
-                  @click.stop
-                />
-                <span class="group-item-name">{{ group.name || '未分组' }}</span>
-                <a-badge
-                  :count="getGroupSelectedCount(group.name)"
-                  :number-style="{ backgroundColor: '#52c41a' }"
-                  :show-zero="false"
-                />
-                <span class="group-item-total">({{ group.apis.length }})</span>
-              </div>
-            </div>
-          </div>
-          <div class="api-detail-list">
-            <div class="api-detail-header">
-              <span>{{ selectedGroup || '未分组' }} 接口列表</span>
-              <a-checkbox
-                v-if="selectedGroupApis.length"
-                :checked="isGroupChecked(selectedGroup)"
-                :indeterminate="isGroupIndeterminate(selectedGroup)"
-                @change="handleGroupChange(selectedGroup, $event)"
-              >
-                全选当前分组
-              </a-checkbox>
-            </div>
-            <div class="api-detail-content">
-              <template v-if="filteredGroupApis.length">
-                <div
-                  v-for="api in filteredGroupApis"
-                  :key="api.id"
-                  class="api-item"
+                <a-tab-pane
+                  v-for="section in menuTabSections"
+                  :key="section.id"
+                  :tab="section.raw.pageMenu.name"
                 >
-                  <a-checkbox
-                    :checked="checkedApiIds.includes(api.id)"
-                    @change="handleApiChange(api.id, $event)"
-                  >
-                    <div class="api-item-content">
-                      <a-tag :color="getMethodColor(api.method)" size="small">{{ api.method }}</a-tag>
-                      <span class="api-path">{{ api.path }}</span>
-                      <span class="api-desc">{{ api.description }}</span>
-                    </div>
-                  </a-checkbox>
-                </div>
-              </template>
-              <a-empty v-else description="暂无接口" />
-            </div>
-          </div>
-        </div>
-      </a-tab-pane>
-    </a-tabs>
+                  <RolePermissionPageSection
+                    mode="menu"
+                    :section="section.raw"
+                    :visible-menu-items="section.visibleMenuItems"
+                    :visible-apis="section.visibleApis"
+                    :exact-checked-menu-keys="assignableSelectedMenuKeys"
+                    :checked-menu-keys="checkedMenuKeys"
+                    :checked-api-ids="checkedApiIds"
+                    @toggle-menu="handleMenuToggle"
+                    @toggle-section-menus="handleSectionMenusToggle"
+                    @keep-page-only="handleSectionKeepPageOnly"
+                    @select-child-permissions="handleSectionSelectChildPermissions"
+                    @clear-child-permissions="handleSectionClearChildPermissions"
+                    @toggle-api="handleApiToggle"
+                    @toggle-section-apis="handleSectionApisToggle"
+                  />
+                </a-tab-pane>
+              </a-tabs>
+              <a-empty
+                v-else
+                class="content-empty"
+                description="当前一级菜单下暂无匹配的菜单权限项"
+              />
+            </a-tab-pane>
+
+            <a-tab-pane key="apis" tab="API权限">
+              <a-tabs
+                v-if="apiTabItems.length"
+                v-model:activeKey="activeApiSectionId"
+                size="small"
+                class="section-tabs"
+              >
+                <a-tab-pane
+                  v-for="item in apiTabItems"
+                  :key="item.id"
+                  :tab="item.label"
+                >
+                  <RolePermissionPageSection
+                    v-if="item.kind === 'section' && item.section"
+                    mode="api"
+                    :section="item.section.raw"
+                    :visible-menu-items="item.section.visibleMenuItems"
+                    :visible-apis="item.section.visibleApis"
+                    :exact-checked-menu-keys="assignableSelectedMenuKeys"
+                    :checked-menu-keys="checkedMenuKeys"
+                    :checked-api-ids="checkedApiIds"
+                    @toggle-menu="handleMenuToggle"
+                    @toggle-section-menus="handleSectionMenusToggle"
+                    @keep-page-only="handleSectionKeepPageOnly"
+                    @select-child-permissions="handleSectionSelectChildPermissions"
+                    @clear-child-permissions="handleSectionClearChildPermissions"
+                    @toggle-api="handleApiToggle"
+                    @toggle-section-apis="handleSectionApisToggle"
+                  />
+
+                  <div v-else class="system-api-groups">
+                    <RolePermissionUncategorizedApis
+                      v-for="group in item.groups"
+                      :key="group.id"
+                      :title="group.label"
+                      :checked="getApiGroupChecked(group.apis)"
+                      :indeterminate="getApiGroupIndeterminate(group.apis)"
+                      :checked-api-ids="checkedApiIds"
+                      :visible-apis="group.apis"
+                      @toggle-all="handleApiGroupToggle(group.apis, $event)"
+                      @toggle-api="handleApiToggle"
+                    />
+                  </div>
+                </a-tab-pane>
+              </a-tabs>
+              <a-empty
+                v-else
+                class="content-empty"
+                description="当前一级菜单下暂无匹配的 API 权限项"
+              />
+            </a-tab-pane>
+          </a-tabs>
+        </template>
+        <a-empty v-else class="content-empty" description="暂无可分配权限数据" />
+      </div>
+    </div>
+
     <template #footer>
       <div style="display: flex; justify-content: flex-end; gap: 8px">
         <a-button @click="visible = false">取消</a-button>
@@ -200,285 +134,126 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { message } from 'ant-design-vue'
-import { getRole, assignMenus, assignApis } from '@/api/role'
-import { getMenuTree } from '@/api/menu'
-import { getAllApis } from '@/api/api'
-import { useUserStore } from '@/store/user'
-import type { Menu, Api } from '@/types'
-
-const userStore = useUserStore()
+import { computed, ref, watch } from 'vue'
+import RolePermissionDrawerSidebar from './RolePermissionDrawerSidebar.vue'
+import RolePermissionPageSection from './RolePermissionPageSection.vue'
+import RolePermissionUncategorizedApis from './RolePermissionUncategorizedApis.vue'
+import {
+  groupUncategorizedApis,
+  type UncategorizedApiGroup,
+  type FilteredPermissionSection
+} from './permissionDrawer'
+import { useRolePermissionDrawer } from './useRolePermissionDrawer'
+import type { Api } from '@/types'
 
 interface Props {
   roleId: number
   roleName: string
 }
 
-interface ApiGroup {
-  name: string
-  apis: Api[]
-}
-
 const props = defineProps<Props>()
 const visible = defineModel<boolean>('open', { default: false })
+const activeTab = ref<'menus' | 'apis'>('menus')
+const activeMenuSectionId = ref('')
+const activeApiSectionId = ref('')
 
-const saveLoading = ref(false)
-const activeTabKey = ref('menu')
-const menuTree = ref<Menu[]>([])
-const allApis = ref<Api[]>([])
-const checkedMenuKeys = ref<number[]>([])
-const checkedApiIds = ref<number[]>([])
-const selectedGroup = ref('')
-const apiSearchText = ref('')
-const selectedMenuId = ref<number | null>(null)
-const menuSearchText = ref('')
+const {
+  assignableSelectedMenuKeys,
+  checkedApiIds,
+  checkedMenuKeys,
+  filteredSections,
+  filteredUncategorizedApis,
+  handleApiToggle,
+  handleMenuToggle,
+  handleSavePermissions,
+  handleSectionClearChildPermissions,
+  handleSectionKeepPageOnly,
+  handleSectionApisToggle,
+  handleSectionMenusToggle,
+  handleSectionSelectChildPermissions,
+  saveLoading,
+  searchText,
+  selectedTopMenuId,
+  topMenus
+} = useRolePermissionDrawer(props, visible)
 
-const apiGroups = computed<ApiGroup[]>(() => {
-  const groups: Record<string, Api[]> = {}
-  allApis.value.forEach(api => {
-    const groupName = api.group || ''
-    if (!groups[groupName]) {
-      groups[groupName] = []
-    }
-    groups[groupName].push(api)
-  })
-  return Object.entries(groups).map(([name, apis]) => ({ name, apis }))
-})
+const searchPlaceholder = computed(() => (
+  activeTab.value === 'menus'
+    ? '搜索菜单名称、权限码或路由'
+    : '搜索接口路径、分组、方法或描述'
+))
 
-const selectedGroupApis = computed(() => {
-  const group = apiGroups.value.find(g => g.name === selectedGroup.value)
-  return group?.apis || []
-})
+const menuTabSections = computed(() => filteredSections.value)
+const systemApiTopMenuId = computed(() =>
+  topMenus.value.find(menu => menu.name === '系统管理' || menu.path === '/system')?.id ?? null
+)
 
-const selectedMenu = computed(() => menuTree.value.find(m => m.id === selectedMenuId.value))
+type ApiTabItem =
+  | { id: string; label: string; kind: 'section'; section: FilteredPermissionSection }
+  | { id: string; label: string; kind: 'system'; groups: UncategorizedApiGroup[]; section?: undefined }
 
-const filteredChildMenus = computed(() => {
-  const children = selectedMenu.value?.children || []
-  if (!menuSearchText.value) {
-    return children
-  }
-  const keyword = menuSearchText.value.toLowerCase()
-  return children.filter(child => {
-    if (child.name.toLowerCase().includes(keyword)) {
-      return true
-    }
-    return !!child.children?.some(sub => sub.name.toLowerCase().includes(keyword))
-  })
-})
+const apiTabItems = computed<ApiTabItem[]>(() => {
+  const items: ApiTabItem[] = filteredSections.value.map(section => ({
+    id: section.id,
+    label: section.raw.pageMenu.name,
+    kind: 'section',
+    section
+  }))
 
-const filteredGroupApis = computed(() => {
-  if (!apiSearchText.value) {
-    return selectedGroupApis.value
-  }
-  const keyword = apiSearchText.value.toLowerCase()
-  return selectedGroupApis.value.filter(api =>
-    api.path.toLowerCase().includes(keyword) ||
-    (api.description && api.description.toLowerCase().includes(keyword))
-  )
-})
-
-const getAllMenuIds = (menus: Menu[]): number[] => {
-  const ids: number[] = []
-  const traverse = (items: Menu[]) => {
-    items.forEach(item => {
-      ids.push(item.id)
-      if (item.children?.length) {
-        traverse(item.children)
-      }
+  const uncategorizedGroups = groupUncategorizedApis(filteredUncategorizedApis.value)
+  if (
+    uncategorizedGroups.length &&
+    selectedTopMenuId.value != null &&
+    selectedTopMenuId.value === systemApiTopMenuId.value
+  ) {
+    items.push({
+      id: 'system-apis',
+      label: '系统接口',
+      kind: 'system',
+      groups: uncategorizedGroups
     })
   }
-  traverse(menus)
-  return ids
-}
-
-const getMenuSelectedCount = (menu: Menu) => {
-  let count = 0
-  if (checkedMenuKeys.value.includes(menu.id)) {
-    count++
-  }
-  menu.children?.forEach(child => {
-    if (checkedMenuKeys.value.includes(child.id)) {
-      count++
-    }
-    child.children?.forEach(sub => {
-      if (checkedMenuKeys.value.includes(sub.id)) {
-        count++
-      }
-    })
-  })
-  return count
-}
-
-const getMenuTotalCount = (menu: Menu) => {
-  let count = 1
-  menu.children?.forEach(child => {
-    count++
-    if (child.children?.length) {
-      count += child.children.length
-    }
-  })
-  return count
-}
-
-const getGroupSelectedCount = (groupName: string) => {
-  const group = apiGroups.value.find(g => g.name === groupName)
-  if (!group) {
-    return 0
-  }
-  return group.apis.filter(api => checkedApiIds.value.includes(api.id)).length
-}
-
-const isAllMenuChecked = computed(() => {
-  const allMenuIds = getAllMenuIds(menuTree.value)
-  return allMenuIds.length > 0 && allMenuIds.every(id => checkedMenuKeys.value.includes(id))
+  return items
 })
 
-const isMenuIndeterminateAll = computed(() => {
-  const allMenuIds = getAllMenuIds(menuTree.value)
-  const checked = checkedMenuKeys.value.filter(id => allMenuIds.includes(id)).length
-  return checked > 0 && checked < allMenuIds.length
-})
+const getApiGroupChecked = (apis: Api[]) =>
+  apis.length > 0 && apis.every(api => checkedApiIds.value.includes(api.id))
 
-const isAllApiChecked = computed(() => {
-  return allApis.value.length > 0 && allApis.value.every(api => checkedApiIds.value.includes(api.id))
-})
-
-const isApiIndeterminateAll = computed(() => {
-  const checked = checkedApiIds.value.length
-  return checked > 0 && checked < allApis.value.length
-})
-
-const isMenuChecked = (menuId: number) => checkedMenuKeys.value.includes(menuId)
-
-const isMenuIndeterminate = (menu: Menu) => {
-  if (!menu.children?.length) {
-    return false
-  }
-  const childIds = getAllMenuIds(menu.children)
-  const checked = childIds.filter(id => checkedMenuKeys.value.includes(id)).length
-  return checked > 0 && checked < childIds.length
+const getApiGroupIndeterminate = (apis: Api[]) => {
+  const checkedCount = apis.filter(api => checkedApiIds.value.includes(api.id)).length
+  return checkedCount > 0 && checkedCount < apis.length
 }
 
-const isGroupChecked = (groupName: string) => {
-  const group = apiGroups.value.find(g => g.name === groupName)
-  if (!group || !group.apis.length) {
-    return false
-  }
-  return group.apis.every(api => checkedApiIds.value.includes(api.id))
+const handleApiGroupToggle = (apis: Api[], checked: boolean) => {
+  const ids = apis.map(api => api.id)
+  checkedApiIds.value = checked
+    ? Array.from(new Set([...checkedApiIds.value, ...ids]))
+    : checkedApiIds.value.filter(id => !ids.includes(id))
 }
 
-const isGroupIndeterminate = (groupName: string) => {
-  const group = apiGroups.value.find(g => g.name === groupName)
-  if (!group) {
-    return false
-  }
-  const checked = group.apis.filter(api => checkedApiIds.value.includes(api.id)).length
-  return checked > 0 && checked < group.apis.length
-}
-
-const getMethodColor = (method: string) => {
-  const colors: Record<string, string> = {
-    GET: 'green',
-    POST: 'blue',
-    PUT: 'orange',
-    DELETE: 'red',
-    PATCH: 'purple'
-  }
-  return colors[method.toUpperCase()] || 'default'
-}
-
-const handleCheckAllMenus = (e: any) => {
-  checkedMenuKeys.value = e.target.checked ? getAllMenuIds(menuTree.value) : []
-}
-
-const handleCheckAllApis = (e: any) => {
-  checkedApiIds.value = e.target.checked ? allApis.value.map(api => api.id) : []
-}
-
-const handleMenuChange = (menu: Menu, e: any) => {
-  const menuIds = [menu.id]
-  if (menu.children?.length) {
-    menuIds.push(...getAllMenuIds(menu.children))
-  }
-  if (e.target.checked) {
-    checkedMenuKeys.value = [...new Set([...checkedMenuKeys.value, ...menuIds])]
-  } else {
-    checkedMenuKeys.value = checkedMenuKeys.value.filter(id => !menuIds.includes(id))
-  }
-}
-
-const handleGroupChange = (groupName: string, e: any) => {
-  const group = apiGroups.value.find(item => item.name === groupName)
-  if (!group) {
+watch(menuTabSections, sections => {
+  if (!sections.length) {
+    activeMenuSectionId.value = ''
     return
   }
-  const groupApiIds = group.apis.map(api => api.id)
-  if (e.target.checked) {
-    checkedApiIds.value = [...new Set([...checkedApiIds.value, ...groupApiIds])]
-  } else {
-    checkedApiIds.value = checkedApiIds.value.filter(id => !groupApiIds.includes(id))
+  if (!sections.some(section => section.id === activeMenuSectionId.value)) {
+    activeMenuSectionId.value = sections[0].id
   }
-}
+}, { immediate: true })
 
-const handleApiChange = (apiId: number, e: any) => {
-  if (e.target.checked) {
-    checkedApiIds.value = [...checkedApiIds.value, apiId]
-  } else {
-    checkedApiIds.value = checkedApiIds.value.filter(id => id !== apiId)
-  }
-}
-
-const fetchMenuTree = async () => {
-  const res = await getMenuTree()
-  menuTree.value = res.data
-  if (menuTree.value.length > 0) {
-    selectedMenuId.value = menuTree.value[0].id
-  }
-}
-
-const fetchAllApis = async () => {
-  const res = await getAllApis()
-  allApis.value = res.data
-  if (apiGroups.value.length > 0) {
-    selectedGroup.value = apiGroups.value[0].name
-  }
-}
-
-const loadRolePermissions = async () => {
-  if (!props.roleId) {
+watch(apiTabItems, items => {
+  if (!items.length) {
+    activeApiSectionId.value = ''
     return
   }
-  const res = await getRole(props.roleId)
-  checkedMenuKeys.value = res.data.menus?.map((menu: Menu) => menu.id) || []
-  checkedApiIds.value = res.data.apis?.map((api: Api) => api.id) || []
-}
-
-const handleSavePermissions = async () => {
-  saveLoading.value = true
-  try {
-    await Promise.all([
-      assignMenus(props.roleId, checkedMenuKeys.value),
-      assignApis(props.roleId, checkedApiIds.value)
-    ])
-    message.success('权限分配成功')
-    visible.value = false
-    await userStore.refreshAccessAction()
-  } finally {
-    saveLoading.value = false
+  if (!items.some(item => item.id === activeApiSectionId.value)) {
+    activeApiSectionId.value = items[0].id
   }
-}
+}, { immediate: true })
 
-watch(visible, async (val) => {
-  if (!val) {
-    return
-  }
-  activeTabKey.value = 'menu'
-  apiSearchText.value = ''
-  menuSearchText.value = ''
-  selectedMenuId.value = null
-  await Promise.all([fetchMenuTree(), fetchAllApis()])
-  await loadRolePermissions()
+watch(selectedTopMenuId, () => {
+  activeMenuSectionId.value = ''
+  activeApiSectionId.value = ''
 })
 </script>
 
@@ -497,200 +272,70 @@ watch(visible, async (val) => {
   font-size: 13px;
 }
 
-.menu-layout,
-.api-layout {
+.permission-layout {
   display: flex;
-  height: calc(100vh - 280px);
+  height: calc(100vh - 250px);
   border: 1px solid #f0f0f0;
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
+  background: #fff;
 }
 
-.menu-group-list,
-.api-group-list {
+.permission-sidebar {
   width: 240px;
   border-right: 1px solid #f0f0f0;
   display: flex;
   flex-direction: column;
 }
 
-.group-list-header {
-  padding: 12px 16px;
-  font-weight: 500;
-  background: #fafafa;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.group-list-content {
+.permission-content {
   flex: 1;
   overflow-y: auto;
-}
-
-.group-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  cursor: pointer;
-  border-bottom: 1px solid #f5f5f5;
-  transition: background 0.2s;
-}
-
-.group-item:hover {
-  background: #f5f5f5;
-}
-
-.group-item.active {
-  background: var(--app-primary-color-soft, rgba(0, 107, 230, 0.12));
-  border-left: 3px solid var(--app-primary-color, #006be6);
-}
-
-.group-item-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.group-item-total {
-  color: #999;
-  font-size: 12px;
-}
-
-.menu-detail-list,
-.api-detail-list {
-  flex: 1;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-}
-
-.menu-detail-header,
-.api-detail-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  font-weight: 500;
+  gap: 16px;
   background: #fafafa;
-  border-bottom: 1px solid #f0f0f0;
 }
 
-.menu-detail-content,
-.api-detail-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
+.permission-tabs :deep(.ant-tabs-content-holder) {
+  min-height: 100%;
 }
 
-.menu-child-block {
+.section-tabs :deep(.ant-tabs-nav) {
   margin-bottom: 12px;
-  border: 1px solid #f0f0f0;
-  border-radius: 6px;
-  overflow: hidden;
 }
 
-.menu-child-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 12px;
-  background: #fafafa;
-  font-weight: 500;
+.section-tabs :deep(.ant-tabs-tab) {
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
-.menu-child-name {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.section-tabs :deep(.ant-tabs-content-holder) {
+  min-height: 100%;
 }
 
-.menu-child-name :deep(.ant-tag) {
-  margin: 0;
-  font-size: 10px;
-  padding: 0 4px;
-  line-height: 16px;
+.content-empty {
+  margin: auto 0;
 }
 
-.permission-code {
-  font-size: 12px;
-  color: #999;
-  font-family: monospace;
-  background: #f5f5f5;
-  padding: 2px 6px;
-  border-radius: 3px;
-}
-
-.menu-child-items {
-  padding: 8px 12px;
-  background: #fff;
+.system-api-groups {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 12px;
 }
 
-.btn-permission-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 8px;
-  border-radius: 4px;
-  transition: background 0.2s;
-}
+@media (max-width: 1280px) {
+  .permission-layout {
+    height: auto;
+    min-height: 640px;
+    flex-direction: column;
+  }
 
-.btn-permission-item:hover {
-  background: #f5f5f5;
-}
-
-.btn-permission-content {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.btn-permission-content :deep(.ant-tag) {
-  margin: 0;
-  font-size: 10px;
-  padding: 0 4px;
-  line-height: 16px;
-}
-
-.btn-name {
-  font-size: 13px;
-}
-
-.api-item {
-  padding: 8px 12px;
-  border-radius: 4px;
-  transition: background 0.2s;
-}
-
-.api-item:hover {
-  background: #f5f5f5;
-}
-
-.api-item-content {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.api-item :deep(.ant-tag) {
-  margin-right: 0;
-  font-size: 10px;
-  padding: 0 4px;
-  line-height: 16px;
-  min-width: 50px;
-  text-align: center;
-}
-
-.api-path {
-  font-size: 13px;
-  color: #666;
-  font-family: monospace;
-}
-
-.api-desc {
-  font-size: 13px;
-  color: #333;
+  .permission-sidebar {
+    width: 100%;
+    border-right: 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
 }
 </style>

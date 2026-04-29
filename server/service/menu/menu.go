@@ -114,6 +114,18 @@ func (s *MenuService) buildMenuTree(menus []model.SysMenu, parentID uint) []mode
 	return tree
 }
 
+func (s *MenuService) pruneEmptyDirectories(menus []model.SysMenu) []model.SysMenu {
+	pruned := make([]model.SysMenu, 0, len(menus))
+	for _, menu := range menus {
+		menu.Children = s.pruneEmptyDirectories(menu.Children)
+		if menu.Type == 1 && len(menu.Children) == 0 {
+			continue
+		}
+		pruned = append(pruned, menu)
+	}
+	return pruned
+}
+
 // 获取用户权限列表（包含按钮权限）
 func (s *MenuService) GetUserPermissions(userID uint) ([]string, error) {
 	var user model.SysUser
@@ -123,8 +135,7 @@ func (s *MenuService) GetUserPermissions(userID uint) ([]string, error) {
 
 	permissionSet := make(map[string]bool)
 	for _, role := range user.Roles {
-		// 超级管理员拥有所有权限（ID=1 或 Code=admin）
-		if role.ID == 1 || role.Code == "super_admin" {
+		if role.IsSuperAdmin {
 			return []string{"*"}, nil
 		}
 		for _, menu := range role.Menus {
@@ -148,61 +159,85 @@ func (s *MenuService) GetUserMenus(userID uint) ([]model.SysMenu, error) {
 		return nil, err
 	}
 
-	// 收集所有有权限的菜单ID（排除按钮）
-	allowedMenuIDs := make(map[uint]bool)
-	for _, role := range user.Roles {
-		for _, menu := range role.Menus {
-			if menu.Status == 1 && menu.Type != 3 { // 排除按钮
-				allowedMenuIDs[menu.ID] = true
-			}
-		}
-	}
-
 	// 获取所有菜单
 	var allMenus []model.SysMenu
 	if err := global.DB.Order("sort ASC").Find(&allMenus).Error; err != nil {
 		return nil, err
 	}
 	deptModuleEnabled := s.isDeptModuleEnabled()
-
-	// 筛选有权限的菜单（包含父菜单）
-	menuMap := make(map[uint]model.SysMenu)
-	var toProcess []model.SysMenu
-
+	allMenuMap := make(map[uint]model.SysMenu, len(allMenus))
 	for _, menu := range allMenus {
-		if !deptModuleEnabled && (menu.Path == "/system/dept" || menu.Permission == "system:dept:list") {
-			continue
-		}
-		if allowedMenuIDs[menu.ID] {
-			toProcess = append(toProcess, menu)
-		}
+		allMenuMap[menu.ID] = menu
 	}
 
-	// 收集所有需要的菜单（包含父菜单）
-	for _, menu := range toProcess {
-		menuMap[menu.ID] = menu
-		// 收集父菜单
-		parentID := menu.ParentID
-		for parentID != 0 {
-			var parent model.SysMenu
-			if err := global.DB.First(&parent, parentID).Error; err != nil {
-				break
+	if hasSuperAdminRole(user.Roles) {
+		visibleMenus := make([]model.SysMenu, 0, len(allMenus))
+		for _, menu := range allMenus {
+			if !deptModuleEnabled && (menu.Path == "/system/dept" || menu.Permission == "system:dept:list") {
+				continue
 			}
-			if _, exists := menuMap[parent.ID]; !exists {
-				menuMap[parent.ID] = parent
+			if menu.Status == 1 && menu.Type != 3 {
+				visibleMenus = append(visibleMenus, menu)
 			}
-			parentID = parent.ParentID
+		}
+		tree := s.buildMenuTree(visibleMenus, 0)
+		tree = s.pruneEmptyDirectories(tree)
+		if tree == nil {
+			return []model.SysMenu{}, nil
+		}
+		return tree, nil
+	}
+
+	menuMap := make(map[uint]model.SysMenu)
+	for _, role := range user.Roles {
+		for _, roleMenu := range role.Menus {
+			if roleMenu.Status != 1 {
+				continue
+			}
+
+			currentID := roleMenu.ID
+			for currentID != 0 {
+				menu, exists := allMenuMap[currentID]
+				if !exists {
+					break
+				}
+
+				if !deptModuleEnabled && (menu.Path == "/system/dept" || menu.Permission == "system:dept:list") {
+					break
+				}
+				if menu.Status == 1 && menu.Type != 3 {
+					menuMap[menu.ID] = menu
+				}
+				currentID = menu.ParentID
+			}
 		}
 	}
 
 	var menus []model.SysMenu
 	for _, menu := range menuMap {
+		if !deptModuleEnabled && (menu.Path == "/system/dept" || menu.Permission == "system:dept:list") {
+			continue
+		}
 		if menu.Status == 1 {
 			menus = append(menus, menu)
 		}
 	}
 
-	return s.buildMenuTree(menus, 0), nil
+	tree := s.buildMenuTree(menus, 0)
+	tree = s.pruneEmptyDirectories(tree)
+	if tree == nil {
+		return []model.SysMenu{}, nil
+	}
+	return tree, nil
+}
+
+func hasSuperAdminRole(roles []model.SysRole) bool {
+	for _, role := range roles {
+		if role.IsSuperAdmin {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *MenuService) isDeptModuleEnabled() bool {

@@ -1,0 +1,1557 @@
+2026-04-29T06:04:02.417+0800	info	server/main.go:20	数据库连接成功
+2026-04-29T06:04:02.466+0800	info	server/main.go:23	Redis连接成功
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.536ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[3.790ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[3.933ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = 'go-base' AND table_name = 'casbin_rule' AND table_type = 'BASE TABLE'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.722ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.453ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.080ms] [34;1m[rows:-][0m SELECT * FROM `casbin_rule` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.748ms] [34;1m[rows:-][0m SELECT column_name, column_default, is_nullable = 'YES', data_type, character_maximum_length, column_type, column_key, extra, column_comment, numeric_precision, numeric_scale , datetime_precision FROM information_schema.columns WHERE table_schema = 'go-base' AND table_name = 'casbin_rule' ORDER BY ORDINAL_POSITION
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.522ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[4.368ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'casbin_rule' AND index_name = 'idx_casbin_rule'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.748ms] [34;1m[rows:278][0m SELECT * FROM `casbin_rule` ORDER BY ID
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.575ms] [34;1m[rows:278][0m SELECT * FROM `casbin_rule` ORDER BY ID
+2026-04-29T06:04:02.504+0800	info	server/main.go:26	Casbin初始化成功
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.561ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.245ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[3.517ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = 'go-base' AND table_name = 'sys_file' AND table_type = 'BASE TABLE'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.660ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.276ms] [34;1m[rows:-][0m SELECT * FROM `sys_file` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.870ms] [34;1m[rows:-][0m SELECT column_name, column_default, is_nullable = 'YES', data_type, character_maximum_length, column_type, column_key, extra, column_comment, numeric_precision, numeric_scale , datetime_precision FROM information_schema.columns WHERE table_schema = 'go-base' AND table_name = 'sys_file' ORDER BY ORDINAL_POSITION
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.520ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.449ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[3.612ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_file' AND index_name = 'idx_sys_file_deleted_at'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.541ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.459ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.615ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_file' AND index_name = 'idx_sys_file_md5'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.568ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.494ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.092ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_file' AND index_name = 'idx_sys_file_storage_type'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.533ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.387ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.170ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = 'go-base' AND table_name = 'sys_dept' AND table_type = 'BASE TABLE'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.306ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.624ms] [34;1m[rows:-][0m SELECT * FROM `sys_dept` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.620ms] [34;1m[rows:-][0m SELECT column_name, column_default, is_nullable = 'YES', data_type, character_maximum_length, column_type, column_key, extra, column_comment, numeric_precision, numeric_scale , datetime_precision FROM information_schema.columns WHERE table_schema = 'go-base' AND table_name = 'sys_dept' ORDER BY ORDINAL_POSITION
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.598ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.488ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.736ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_dept' AND index_name = 'idx_sys_dept_deleted_at'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.529ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.486ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.117ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_dept' AND index_name = 'idx_sys_dept_parent_id'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.573ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.328ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.586ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = 'go-base' AND table_name = 'sys_user' AND table_type = 'BASE TABLE'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.800ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.407ms] [34;1m[rows:-][0m SELECT * FROM `sys_user` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.815ms] [34;1m[rows:-][0m SELECT column_name, column_default, is_nullable = 'YES', data_type, character_maximum_length, column_type, column_key, extra, column_comment, numeric_precision, numeric_scale , datetime_precision FROM information_schema.columns WHERE table_schema = 'go-base' AND table_name = 'sys_user' ORDER BY ORDINAL_POSITION
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.273ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.347ms] [34;1m[rows:5][0m 
+SELECT
+	TABLE_NAME,
+	COLUMN_NAME,
+	INDEX_NAME,
+	NON_UNIQUE 
+FROM
+	information_schema.STATISTICS 
+WHERE
+	TABLE_SCHEMA = 'go-base' 
+	AND TABLE_NAME = 'sys_user' 
+ORDER BY
+	INDEX_NAME,
+	SEQ_IN_INDEX
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.008ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.515ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[3.300ms] [34;1m[rows:-][0m SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE constraint_schema = 'go-base' AND table_name = 'sys_user' AND constraint_name = 'uni_sys_user_username'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.522ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.058ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_user' AND index_name = 'idx_sys_user_username'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.534ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.533ms] [34;1m[rows:-][0m SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE constraint_schema = 'go-base' AND table_name = 'sys_user' AND constraint_name = 'fk_sys_user_avatar_file'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.565ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.490ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.855ms] [34;1m[rows:-][0m SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE constraint_schema = 'go-base' AND table_name = 'sys_user' AND constraint_name = 'fk_sys_user_dept'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.513ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.052ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.884ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_user' AND index_name = 'idx_sys_user_deleted_at'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.548ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.531ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_user' AND index_name = 'idx_sys_user_username'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.588ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.719ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.546ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_user' AND index_name = 'idx_sys_user_dept_id'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.046ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.235ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = 'go-base' AND table_name = 'sys_role' AND table_type = 'BASE TABLE'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.075ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.536ms] [34;1m[rows:-][0m SELECT * FROM `sys_role` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.162ms] [34;1m[rows:-][0m SELECT column_name, column_default, is_nullable = 'YES', data_type, character_maximum_length, column_type, column_key, extra, column_comment, numeric_precision, numeric_scale , datetime_precision FROM information_schema.columns WHERE table_schema = 'go-base' AND table_name = 'sys_role' ORDER BY ORDINAL_POSITION
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.057ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.335ms] [34;1m[rows:3][0m 
+SELECT
+	TABLE_NAME,
+	COLUMN_NAME,
+	INDEX_NAME,
+	NON_UNIQUE 
+FROM
+	information_schema.STATISTICS 
+WHERE
+	TABLE_SCHEMA = 'go-base' 
+	AND TABLE_NAME = 'sys_role' 
+ORDER BY
+	INDEX_NAME,
+	SEQ_IN_INDEX
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.557ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.060ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.289ms] [34;1m[rows:-][0m SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE constraint_schema = 'go-base' AND table_name = 'sys_role' AND constraint_name = 'uni_sys_role_code'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.536ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.772ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_role' AND index_name = 'idx_sys_role_code'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.565ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.653ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.843ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_role' AND index_name = 'idx_sys_role_deleted_at'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.051ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.638ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_role' AND index_name = 'idx_sys_role_code'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.565ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.072ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.220ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = 'go-base' AND table_name = 'sys_user_role' AND table_type = 'BASE TABLE'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.523ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.621ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.009ms] [34;1m[rows:-][0m SELECT * FROM `sys_user_role` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.427ms] [34;1m[rows:-][0m SELECT column_name, column_default, is_nullable = 'YES', data_type, character_maximum_length, column_type, column_key, extra, column_comment, numeric_precision, numeric_scale , datetime_precision FROM information_schema.columns WHERE table_schema = 'go-base' AND table_name = 'sys_user_role' ORDER BY ORDINAL_POSITION
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.755ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.060ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.795ms] [34;1m[rows:-][0m SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE constraint_schema = 'go-base' AND table_name = 'sys_user_role' AND constraint_name = 'fk_sys_user_role_sys_user'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.528ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.590ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.522ms] [34;1m[rows:-][0m SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE constraint_schema = 'go-base' AND table_name = 'sys_user_role' AND constraint_name = 'fk_sys_user_role_sys_role'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.388ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.594ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = 'go-base' AND table_name = 'sys_role_dept' AND table_type = 'BASE TABLE'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.513ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.527ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.528ms] [34;1m[rows:-][0m SELECT * FROM `sys_role_dept` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[3.164ms] [34;1m[rows:-][0m SELECT column_name, column_default, is_nullable = 'YES', data_type, character_maximum_length, column_type, column_key, extra, column_comment, numeric_precision, numeric_scale , datetime_precision FROM information_schema.columns WHERE table_schema = 'go-base' AND table_name = 'sys_role_dept' ORDER BY ORDINAL_POSITION
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.583ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.166ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.959ms] [34;1m[rows:-][0m SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE constraint_schema = 'go-base' AND table_name = 'sys_role_dept' AND constraint_name = 'fk_sys_role_dept_sys_role'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.513ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.346ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.707ms] [34;1m[rows:-][0m SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE constraint_schema = 'go-base' AND table_name = 'sys_role_dept' AND constraint_name = 'fk_sys_role_dept_sys_dept'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.036ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.661ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = 'go-base' AND table_name = 'sys_api' AND table_type = 'BASE TABLE'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.072ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.589ms] [34;1m[rows:-][0m SELECT * FROM `sys_api` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.760ms] [34;1m[rows:-][0m SELECT column_name, column_default, is_nullable = 'YES', data_type, character_maximum_length, column_type, column_key, extra, column_comment, numeric_precision, numeric_scale , datetime_precision FROM information_schema.columns WHERE table_schema = 'go-base' AND table_name = 'sys_api' ORDER BY ORDINAL_POSITION
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.575ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.563ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_api' AND index_name = 'idx_sys_api_deleted_at'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.633ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.006ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.686ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = 'go-base' AND table_name = 'sys_role_api' AND table_type = 'BASE TABLE'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.513ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.518ms] [34;1m[rows:-][0m SELECT * FROM `sys_role_api` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.649ms] [34;1m[rows:-][0m SELECT column_name, column_default, is_nullable = 'YES', data_type, character_maximum_length, column_type, column_key, extra, column_comment, numeric_precision, numeric_scale , datetime_precision FROM information_schema.columns WHERE table_schema = 'go-base' AND table_name = 'sys_role_api' ORDER BY ORDINAL_POSITION
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.510ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.525ms] [34;1m[rows:-][0m SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE constraint_schema = 'go-base' AND table_name = 'sys_role_api' AND constraint_name = 'fk_sys_role_api_sys_role'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.537ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.779ms] [34;1m[rows:-][0m SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE constraint_schema = 'go-base' AND table_name = 'sys_role_api' AND constraint_name = 'fk_sys_role_api_sys_api'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.272ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.960ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = 'go-base' AND table_name = 'sys_menu' AND table_type = 'BASE TABLE'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.307ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.026ms] [34;1m[rows:-][0m SELECT * FROM `sys_menu` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.557ms] [34;1m[rows:-][0m SELECT column_name, column_default, is_nullable = 'YES', data_type, character_maximum_length, column_type, column_key, extra, column_comment, numeric_precision, numeric_scale , datetime_precision FROM information_schema.columns WHERE table_schema = 'go-base' AND table_name = 'sys_menu' ORDER BY ORDINAL_POSITION
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.651ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.540ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_menu' AND index_name = 'idx_sys_menu_deleted_at'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.544ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.596ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.714ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = 'go-base' AND table_name = 'sys_role_menu' AND table_type = 'BASE TABLE'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.558ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.363ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.134ms] [34;1m[rows:-][0m SELECT * FROM `sys_role_menu` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.014ms] [34;1m[rows:-][0m SELECT column_name, column_default, is_nullable = 'YES', data_type, character_maximum_length, column_type, column_key, extra, column_comment, numeric_precision, numeric_scale , datetime_precision FROM information_schema.columns WHERE table_schema = 'go-base' AND table_name = 'sys_role_menu' ORDER BY ORDINAL_POSITION
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.547ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.121ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.558ms] [34;1m[rows:-][0m SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE constraint_schema = 'go-base' AND table_name = 'sys_role_menu' AND constraint_name = 'fk_sys_role_menu_sys_role'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.056ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.223ms] [34;1m[rows:-][0m SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE constraint_schema = 'go-base' AND table_name = 'sys_role_menu' AND constraint_name = 'fk_sys_role_menu_sys_menu'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.523ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.640ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.691ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = 'go-base' AND table_name = 'sys_operation_log' AND table_type = 'BASE TABLE'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.762ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.063ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.570ms] [34;1m[rows:-][0m SELECT * FROM `sys_operation_log` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.732ms] [34;1m[rows:-][0m SELECT column_name, column_default, is_nullable = 'YES', data_type, character_maximum_length, column_type, column_key, extra, column_comment, numeric_precision, numeric_scale , datetime_precision FROM information_schema.columns WHERE table_schema = 'go-base' AND table_name = 'sys_operation_log' ORDER BY ORDINAL_POSITION
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.836ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.878ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.061ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = 'go-base' AND table_name = 'sys_login_log' AND table_type = 'BASE TABLE'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.006ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.530ms] [34;1m[rows:-][0m SELECT * FROM `sys_login_log` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.148ms] [34;1m[rows:-][0m SELECT column_name, column_default, is_nullable = 'YES', data_type, character_maximum_length, column_type, column_key, extra, column_comment, numeric_precision, numeric_scale , datetime_precision FROM information_schema.columns WHERE table_schema = 'go-base' AND table_name = 'sys_login_log' ORDER BY ORDINAL_POSITION
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.535ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.265ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = 'go-base' AND table_name = 'sys_slow_log' AND table_type = 'BASE TABLE'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.577ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.588ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.540ms] [34;1m[rows:-][0m SELECT * FROM `sys_slow_log` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.439ms] [34;1m[rows:-][0m SELECT column_name, column_default, is_nullable = 'YES', data_type, character_maximum_length, column_type, column_key, extra, column_comment, numeric_precision, numeric_scale , datetime_precision FROM information_schema.columns WHERE table_schema = 'go-base' AND table_name = 'sys_slow_log' ORDER BY ORDINAL_POSITION
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.519ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.411ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = 'go-base' AND table_name = 'sys_config' AND table_type = 'BASE TABLE'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.673ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.579ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.536ms] [34;1m[rows:-][0m SELECT * FROM `sys_config` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.557ms] [34;1m[rows:-][0m SELECT column_name, column_default, is_nullable = 'YES', data_type, character_maximum_length, column_type, column_key, extra, column_comment, numeric_precision, numeric_scale , datetime_precision FROM information_schema.columns WHERE table_schema = 'go-base' AND table_name = 'sys_config' ORDER BY ORDINAL_POSITION
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.519ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.790ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.278ms] [34;1m[rows:3][0m 
+SELECT
+	TABLE_NAME,
+	COLUMN_NAME,
+	INDEX_NAME,
+	NON_UNIQUE 
+FROM
+	information_schema.STATISTICS 
+WHERE
+	TABLE_SCHEMA = 'go-base' 
+	AND TABLE_NAME = 'sys_config' 
+ORDER BY
+	INDEX_NAME,
+	SEQ_IN_INDEX
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.538ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.474ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.915ms] [34;1m[rows:-][0m SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE constraint_schema = 'go-base' AND table_name = 'sys_config' AND constraint_name = 'uni_sys_config_key'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.537ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.237ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_config' AND index_name = 'idx_sys_config_key'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.662ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.878ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.240ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_config' AND index_name = 'idx_sys_config_deleted_at'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.527ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.525ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.043ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_config' AND index_name = 'idx_sys_config_key'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.555ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.520ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.924ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = 'go-base' AND table_name = 'sys_file_chunk' AND table_type = 'BASE TABLE'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.712ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.075ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.846ms] [34;1m[rows:-][0m SELECT * FROM `sys_file_chunk` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.783ms] [34;1m[rows:-][0m SELECT column_name, column_default, is_nullable = 'YES', data_type, character_maximum_length, column_type, column_key, extra, column_comment, numeric_precision, numeric_scale , datetime_precision FROM information_schema.columns WHERE table_schema = 'go-base' AND table_name = 'sys_file_chunk' ORDER BY ORDINAL_POSITION
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.546ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.081ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.914ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_file_chunk' AND index_name = 'idx_sys_file_chunk_deleted_at'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.564ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.629ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.937ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_file_chunk' AND index_name = 'idx_sys_file_chunk_upload_id'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.441ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.212ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_file_chunk' AND index_name = 'idx_sys_file_chunk_file_hash'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.535ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.222ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.160ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_file_chunk' AND index_name = 'idx_sys_file_chunk_storage_type'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.506ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.256ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.707ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = 'go-base' AND table_name = 'sys_dict_type' AND table_type = 'BASE TABLE'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.541ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.522ms] [34;1m[rows:-][0m SELECT * FROM `sys_dict_type` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.040ms] [34;1m[rows:-][0m SELECT column_name, column_default, is_nullable = 'YES', data_type, character_maximum_length, column_type, column_key, extra, column_comment, numeric_precision, numeric_scale , datetime_precision FROM information_schema.columns WHERE table_schema = 'go-base' AND table_name = 'sys_dict_type' ORDER BY ORDINAL_POSITION
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.503ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.229ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.624ms] [34;1m[rows:3][0m 
+SELECT
+	TABLE_NAME,
+	COLUMN_NAME,
+	INDEX_NAME,
+	NON_UNIQUE 
+FROM
+	information_schema.STATISTICS 
+WHERE
+	TABLE_SCHEMA = 'go-base' 
+	AND TABLE_NAME = 'sys_dict_type' 
+ORDER BY
+	INDEX_NAME,
+	SEQ_IN_INDEX
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.761ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.592ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.698ms] [34;1m[rows:-][0m SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE constraint_schema = 'go-base' AND table_name = 'sys_dict_type' AND constraint_name = 'uni_sys_dict_type_type'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.521ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.075ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.536ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_dict_type' AND index_name = 'idx_sys_dict_type_type'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.006ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.353ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_dict_type' AND index_name = 'idx_sys_dict_type_deleted_at'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.575ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.520ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_dict_type' AND index_name = 'idx_sys_dict_type_type'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.758ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.589ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.644ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = 'go-base' AND table_name = 'sys_dict_data' AND table_type = 'BASE TABLE'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.050ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.583ms] [34;1m[rows:-][0m SELECT * FROM `sys_dict_data` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.403ms] [34;1m[rows:-][0m SELECT column_name, column_default, is_nullable = 'YES', data_type, character_maximum_length, column_type, column_key, extra, column_comment, numeric_precision, numeric_scale , datetime_precision FROM information_schema.columns WHERE table_schema = 'go-base' AND table_name = 'sys_dict_data' ORDER BY ORDINAL_POSITION
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.519ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.529ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_dict_data' AND index_name = 'idx_sys_dict_data_deleted_at'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.008ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.588ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.987ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'sys_dict_data' AND index_name = 'idx_sys_dict_data_dict_type'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.632ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.171ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.662ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = 'go-base' AND table_name = 'ai_conversations' AND table_type = 'BASE TABLE'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.608ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.541ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.538ms] [34;1m[rows:-][0m SELECT * FROM `ai_conversations` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.564ms] [34;1m[rows:-][0m SELECT column_name, column_default, is_nullable = 'YES', data_type, character_maximum_length, column_type, column_key, extra, column_comment, numeric_precision, numeric_scale , datetime_precision FROM information_schema.columns WHERE table_schema = 'go-base' AND table_name = 'ai_conversations' ORDER BY ORDINAL_POSITION
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.507ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.685ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.440ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'ai_conversations' AND index_name = 'idx_ai_conversations_deleted_at'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.080ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.135ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'ai_conversations' AND index_name = 'idx_ai_conversations_user_id'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.114ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.532ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = 'go-base' AND table_name = 'ai_messages' AND table_type = 'BASE TABLE'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.503ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.553ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.006ms] [34;1m[rows:-][0m SELECT * FROM `ai_messages` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.050ms] [34;1m[rows:-][0m SELECT column_name, column_default, is_nullable = 'YES', data_type, character_maximum_length, column_type, column_key, extra, column_comment, numeric_precision, numeric_scale , datetime_precision FROM information_schema.columns WHERE table_schema = 'go-base' AND table_name = 'ai_messages' ORDER BY ORDINAL_POSITION
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.533ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.249ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'ai_messages' AND index_name = 'idx_ai_messages_deleted_at'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.548ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.931ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'go-base' AND table_name = 'ai_messages' AND index_name = 'idx_ai_messages_conversation_id'
+2026-04-29T06:04:02.949+0800	info	server/main.go:29	数据库表迁移成功
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.545ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_user` WHERE `sys_user`.`deleted_at` IS NULL
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.768ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_config` WHERE `sys_config`.`deleted_at` IS NULL
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.319ms] [34;1m[rows:6][0m SELECT * FROM `sys_config` WHERE `key` IN ('storage_type','storage_config','storage_local_config','storage_aliyun_config','storage_tencent_config','storage_minio_config') AND `sys_config`.`deleted_at` IS NULL
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.582ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.597ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.324ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = 'go-base' AND table_name = 'sys_storage' AND table_type = 'BASE TABLE'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.523ms] [34;1m[rows:1][0m SELECT * FROM `sys_config` WHERE `key` = 'storage_type' AND `sys_config`.`deleted_at` IS NULL ORDER BY `sys_config`.`id` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.322ms] [34;1m[rows:1][0m SELECT * FROM `sys_config` WHERE `key` = 'storage_local_config' AND `sys_config`.`deleted_at` IS NULL ORDER BY `sys_config`.`id` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.941ms] [34;1m[rows:1][0m SELECT * FROM `sys_config` WHERE `key` = 'storage_aliyun_config' AND `sys_config`.`deleted_at` IS NULL ORDER BY `sys_config`.`id` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.551ms] [34;1m[rows:1][0m SELECT * FROM `sys_config` WHERE `key` = 'storage_tencent_config' AND `sys_config`.`deleted_at` IS NULL ORDER BY `sys_config`.`id` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.528ms] [34;1m[rows:1][0m SELECT * FROM `sys_config` WHERE `key` = 'storage_minio_config' AND `sys_config`.`deleted_at` IS NULL ORDER BY `sys_config`.`id` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.524ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.520ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.823ms] [34;1m[rows:-][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = 'go-base' AND table_name = 'sys_storage' AND table_type = 'BASE TABLE'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.546ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.676ms] [34;1m[rows:-][0m SELECT count(*) FROM INFORMATION_SCHEMA.columns WHERE table_schema = 'go-base' AND table_name = 'sys_file' AND column_name = 'storage_id'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:-][0m SELECT DATABASE()
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.568ms] [34;1m[rows:1][0m SELECT SCHEMA_NAME from Information_schema.SCHEMATA where SCHEMA_NAME LIKE 'go-base%' ORDER BY SCHEMA_NAME='go-base' DESC,SCHEMA_NAME limit 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.579ms] [34;1m[rows:-][0m SELECT count(*) FROM INFORMATION_SCHEMA.columns WHERE table_schema = 'go-base' AND table_name = 'sys_file_chunk' AND column_name = 'storage_id'
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.550ms] [34;1m[rows:1][0m SELECT * FROM `sys_config` WHERE `key` IN ('storage_type') AND `sys_config`.`deleted_at` IS NULL
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.524ms] [34;1m[rows:2][0m SELECT * FROM `sys_config` WHERE `key` IN ('storage_minio_config','storage_config') AND `sys_config`.`deleted_at` IS NULL
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.466ms] [34;1m[rows:0][0m UPDATE `sys_file` SET `storage_type`='minio',`updated_at`='2026-04-29 06:04:02.975' WHERE ((storage_type IS NULL OR storage_type = '')) AND `sys_file`.`deleted_at` IS NULL
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.702ms] [34;1m[rows:0][0m UPDATE `sys_file_chunk` SET `storage_type`='minio',`updated_at`='2026-04-29 06:04:02.978' WHERE ((storage_type IS NULL OR storage_type = '')) AND `sys_file_chunk`.`deleted_at` IS NULL
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.075ms] [34;1m[rows:1][0m SELECT * FROM `sys_dict_type` WHERE type = 'sys_gender' AND `sys_dict_type`.`deleted_at` IS NULL ORDER BY `sys_dict_type`.`id` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.939ms] [34;1m[rows:1][0m SELECT * FROM `sys_dict_data` WHERE (dict_type = 'sys_gender' AND value = '0') AND `sys_dict_data`.`deleted_at` IS NULL ORDER BY `sys_dict_data`.`id` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.087ms] [34;1m[rows:1][0m SELECT * FROM `sys_dict_data` WHERE (dict_type = 'sys_gender' AND value = '1') AND `sys_dict_data`.`deleted_at` IS NULL ORDER BY `sys_dict_data`.`id` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.962ms] [34;1m[rows:1][0m SELECT * FROM `sys_config` WHERE `key` = 'user_profile_button_visible' AND `sys_config`.`deleted_at` IS NULL ORDER BY `sys_config`.`id` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.074ms] [34;1m[rows:1][0m SELECT * FROM `sys_config` WHERE `key` = 'user_default_password' AND `sys_config`.`deleted_at` IS NULL ORDER BY `sys_config`.`id` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.103ms] [34;1m[rows:1][0m SELECT * FROM `sys_config` WHERE `key` = 'file_delete_mode' AND `sys_config`.`deleted_at` IS NULL ORDER BY `sys_config`.`id` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.553ms] [34;1m[rows:1][0m SELECT * FROM `sys_dept` WHERE (parent_id = 0 AND name = '平台') AND `sys_dept`.`deleted_at` IS NULL ORDER BY `sys_dept`.`id` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.055ms] [34;1m[rows:0][0m UPDATE `sys_user` SET `dept_id`=7,`updated_at`='2026-04-29 06:04:02.99' WHERE (dept_id = 0 OR dept_id IS NULL) AND `sys_user`.`deleted_at` IS NULL
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.589ms] [34;1m[rows:0][0m UPDATE `sys_role` SET `data_scope`=1,`updated_at`='2026-04-29 06:04:02.992' WHERE (data_scope = 0 OR data_scope IS NULL) AND `sys_role`.`deleted_at` IS NULL
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.012ms] [34;1m[rows:1][0m SELECT * FROM `sys_api` WHERE (path = '/api/v1/depts/tree' AND method = 'GET') AND `sys_api`.`deleted_at` IS NULL ORDER BY `sys_api`.`id` LIMIT 1
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.551ms] [34;1m[rows:1][0m SELECT sr.* FROM sys_role AS sr JOIN sys_role_api AS sra ON sra.sys_role_id = sr.id JOIN sys_api AS sa ON sa.id = sra.sys_api_id WHERE (sa.path = '/api/v1/menus' AND sa.method = 'GET') AND `sr`.`deleted_at` IS NULL GROUP BY `sr`.`id`
+
+2026/04/29 06:04:02 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.542ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 1 AND sys_api_id = 221
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.778ms] [34;1m[rows:1][0m SELECT * FROM `sys_api` WHERE (path = '/api/v1/depts/manageable-tree' AND method = 'GET') AND `sys_api`.`deleted_at` IS NULL ORDER BY `sys_api`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.683ms] [34;1m[rows:3][0m SELECT sr.* FROM sys_role AS sr JOIN sys_role_api AS sra ON sra.sys_role_id = sr.id JOIN sys_api AS sa ON sa.id = sra.sys_api_id WHERE (sa.path = '/api/v1/depts/tree' AND sa.method = 'GET') AND `sr`.`deleted_at` IS NULL GROUP BY `sr`.`id`
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.528ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 6 AND sys_api_id = 226
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.522ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 3 AND sys_api_id = 226
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.648ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 1 AND sys_api_id = 226
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.575ms] [34;1m[rows:1][0m SELECT * FROM `sys_api` WHERE (path = '/api/v1/depts/:id' AND method = 'GET') AND `sys_api`.`deleted_at` IS NULL ORDER BY `sys_api`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.883ms] [34;1m[rows:1][0m SELECT sr.* FROM sys_role AS sr JOIN sys_role_api AS sra ON sra.sys_role_id = sr.id JOIN sys_api AS sa ON sa.id = sra.sys_api_id WHERE (sa.path = '/api/v1/menus/:id' AND sa.method = 'GET') AND `sr`.`deleted_at` IS NULL GROUP BY `sr`.`id`
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.506ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 1 AND sys_api_id = 222
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.523ms] [34;1m[rows:1][0m SELECT * FROM `sys_api` WHERE (path = '/api/v1/depts' AND method = 'POST') AND `sys_api`.`deleted_at` IS NULL ORDER BY `sys_api`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.505ms] [34;1m[rows:1][0m SELECT sr.* FROM sys_role AS sr JOIN sys_role_api AS sra ON sra.sys_role_id = sr.id JOIN sys_api AS sa ON sa.id = sra.sys_api_id WHERE (sa.path = '/api/v1/menus' AND sa.method = 'POST') AND `sr`.`deleted_at` IS NULL GROUP BY `sr`.`id`
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.159ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 1 AND sys_api_id = 223
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.599ms] [34;1m[rows:1][0m SELECT * FROM `sys_api` WHERE (path = '/api/v1/depts/:id' AND method = 'PUT') AND `sys_api`.`deleted_at` IS NULL ORDER BY `sys_api`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.553ms] [34;1m[rows:1][0m SELECT sr.* FROM sys_role AS sr JOIN sys_role_api AS sra ON sra.sys_role_id = sr.id JOIN sys_api AS sa ON sa.id = sra.sys_api_id WHERE (sa.path = '/api/v1/menus/:id' AND sa.method = 'PUT') AND `sr`.`deleted_at` IS NULL GROUP BY `sr`.`id`
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.570ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 1 AND sys_api_id = 224
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.840ms] [34;1m[rows:1][0m SELECT * FROM `sys_api` WHERE (path = '/api/v1/depts/:id' AND method = 'DELETE') AND `sys_api`.`deleted_at` IS NULL ORDER BY `sys_api`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.049ms] [34;1m[rows:1][0m SELECT sr.* FROM sys_role AS sr JOIN sys_role_api AS sra ON sra.sys_role_id = sr.id JOIN sys_api AS sa ON sa.id = sra.sys_api_id WHERE (sa.path = '/api/v1/menus/:id' AND sa.method = 'DELETE') AND `sr`.`deleted_at` IS NULL GROUP BY `sr`.`id`
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.504ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 1 AND sys_api_id = 225
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.596ms] [34;1m[rows:1][0m SELECT * FROM `sys_api` WHERE (path = '/api/v1/ai/conversations' AND method = 'GET') AND `sys_api`.`deleted_at` IS NULL ORDER BY `sys_api`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.711ms] [34;1m[rows:2][0m SELECT * FROM `sys_role` WHERE code IN ('admin','system_admin') AND `sys_role`.`deleted_at` IS NULL
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 1 AND sys_api_id = 98
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.104ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 3 AND sys_api_id = 98
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.566ms] [34;1m[rows:1][0m SELECT * FROM `sys_api` WHERE (path = '/api/v1/ai/conversations' AND method = 'POST') AND `sys_api`.`deleted_at` IS NULL ORDER BY `sys_api`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.760ms] [34;1m[rows:2][0m SELECT * FROM `sys_role` WHERE code IN ('admin','system_admin') AND `sys_role`.`deleted_at` IS NULL
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.521ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 1 AND sys_api_id = 99
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.608ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 3 AND sys_api_id = 99
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.522ms] [34;1m[rows:1][0m SELECT * FROM `sys_api` WHERE (path = '/api/v1/ai/conversations/:id' AND method = 'GET') AND `sys_api`.`deleted_at` IS NULL ORDER BY `sys_api`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.597ms] [34;1m[rows:2][0m SELECT * FROM `sys_role` WHERE code IN ('admin','system_admin') AND `sys_role`.`deleted_at` IS NULL
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.266ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 1 AND sys_api_id = 100
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.375ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 3 AND sys_api_id = 100
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.050ms] [34;1m[rows:1][0m SELECT * FROM `sys_api` WHERE (path = '/api/v1/ai/conversations/:id' AND method = 'PUT') AND `sys_api`.`deleted_at` IS NULL ORDER BY `sys_api`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.535ms] [34;1m[rows:2][0m SELECT * FROM `sys_role` WHERE code IN ('admin','system_admin') AND `sys_role`.`deleted_at` IS NULL
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.536ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 1 AND sys_api_id = 101
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.591ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 3 AND sys_api_id = 101
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.157ms] [34;1m[rows:1][0m SELECT * FROM `sys_api` WHERE (path = '/api/v1/ai/conversations/:id' AND method = 'DELETE') AND `sys_api`.`deleted_at` IS NULL ORDER BY `sys_api`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.549ms] [34;1m[rows:2][0m SELECT * FROM `sys_role` WHERE code IN ('admin','system_admin') AND `sys_role`.`deleted_at` IS NULL
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.981ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 1 AND sys_api_id = 102
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.551ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 3 AND sys_api_id = 102
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.239ms] [34;1m[rows:1][0m SELECT * FROM `sys_api` WHERE (path = '/api/v1/ai/conversations/:id/messages' AND method = 'GET') AND `sys_api`.`deleted_at` IS NULL ORDER BY `sys_api`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.549ms] [34;1m[rows:2][0m SELECT * FROM `sys_role` WHERE code IN ('admin','system_admin') AND `sys_role`.`deleted_at` IS NULL
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 1 AND sys_api_id = 103
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.550ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 3 AND sys_api_id = 103
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.105ms] [34;1m[rows:1][0m SELECT * FROM `sys_api` WHERE (path = '/api/v1/ai/conversations/:id/messages' AND method = 'DELETE') AND `sys_api`.`deleted_at` IS NULL ORDER BY `sys_api`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.232ms] [34;1m[rows:2][0m SELECT * FROM `sys_role` WHERE code IN ('admin','system_admin') AND `sys_role`.`deleted_at` IS NULL
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.516ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 1 AND sys_api_id = 104
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.742ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 3 AND sys_api_id = 104
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.095ms] [34;1m[rows:1][0m SELECT * FROM `sys_api` WHERE (path = '/api/v1/ai/conversations/:id/clear-context' AND method = 'POST') AND `sys_api`.`deleted_at` IS NULL ORDER BY `sys_api`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.183ms] [34;1m[rows:2][0m SELECT * FROM `sys_role` WHERE code IN ('admin','system_admin') AND `sys_role`.`deleted_at` IS NULL
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.707ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 1 AND sys_api_id = 113
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.509ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 3 AND sys_api_id = 113
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.095ms] [34;1m[rows:1][0m SELECT * FROM `sys_api` WHERE (path = '/api/v1/ai/messages/:id' AND method = 'DELETE') AND `sys_api`.`deleted_at` IS NULL ORDER BY `sys_api`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.103ms] [34;1m[rows:2][0m SELECT * FROM `sys_role` WHERE code IN ('admin','system_admin') AND `sys_role`.`deleted_at` IS NULL
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.113ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 1 AND sys_api_id = 112
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.540ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 3 AND sys_api_id = 112
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.185ms] [34;1m[rows:1][0m SELECT * FROM `sys_api` WHERE (path = '/api/v1/ai/chat' AND method = 'POST') AND `sys_api`.`deleted_at` IS NULL ORDER BY `sys_api`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.118ms] [34;1m[rows:2][0m SELECT * FROM `sys_role` WHERE code IN ('admin','system_admin') AND `sys_role`.`deleted_at` IS NULL
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.508ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 1 AND sys_api_id = 105
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.580ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 3 AND sys_api_id = 105
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.983ms] [34;1m[rows:1][0m SELECT * FROM `sys_api` WHERE (path = '/api/v1/ai/chat/stream' AND method = 'POST') AND `sys_api`.`deleted_at` IS NULL ORDER BY `sys_api`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.500ms] [34;1m[rows:2][0m SELECT * FROM `sys_role` WHERE code IN ('admin','system_admin') AND `sys_role`.`deleted_at` IS NULL
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.545ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 1 AND sys_api_id = 106
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.985ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 3 AND sys_api_id = 106
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.867ms] [34;1m[rows:1][0m SELECT * FROM `sys_api` WHERE (path = '/api/v1/ai/test' AND method = 'POST') AND `sys_api`.`deleted_at` IS NULL ORDER BY `sys_api`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.503ms] [34;1m[rows:2][0m SELECT * FROM `sys_role` WHERE code IN ('admin','system_admin') AND `sys_role`.`deleted_at` IS NULL
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.253ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 1 AND sys_api_id = 160
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.602ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 3 AND sys_api_id = 160
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.748ms] [34;1m[rows:1][0m SELECT * FROM `sys_api` WHERE (path = '/api/v1/ai/providers/models/fetch' AND method = 'POST') AND `sys_api`.`deleted_at` IS NULL ORDER BY `sys_api`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.526ms] [34;1m[rows:2][0m SELECT * FROM `sys_role` WHERE code IN ('admin','system_admin') AND `sys_role`.`deleted_at` IS NULL
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.519ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 1 AND sys_api_id = 227
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.533ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 3 AND sys_api_id = 227
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.095ms] [34;1m[rows:1][0m SELECT * FROM `sys_menu` WHERE permission = 'ai:tools' AND `sys_menu`.`deleted_at` IS NULL ORDER BY `sys_menu`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.325ms] [34;1m[rows:1][0m SELECT * FROM `sys_menu` WHERE permission = 'ai:chat:list' AND `sys_menu`.`deleted_at` IS NULL ORDER BY `sys_menu`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.093ms] [34;1m[rows:1][0m SELECT * FROM `sys_menu` WHERE permission = 'ai:config:list' AND `sys_menu`.`deleted_at` IS NULL ORDER BY `sys_menu`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.064ms] [34;1m[rows:2][0m SELECT * FROM `sys_role` WHERE code IN ('admin','system_admin') AND `sys_role`.`deleted_at` IS NULL
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.671ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_menu` WHERE sys_role_id = 1 AND sys_menu_id = 375
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.530ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_menu` WHERE sys_role_id = 1 AND sys_menu_id = 376
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.553ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_menu` WHERE sys_role_id = 1 AND sys_menu_id = 377
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.891ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_menu` WHERE sys_role_id = 3 AND sys_menu_id = 375
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.527ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_menu` WHERE sys_role_id = 3 AND sys_menu_id = 376
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.546ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_menu` WHERE sys_role_id = 3 AND sys_menu_id = 377
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.523ms] [34;1m[rows:1][0m SELECT * FROM `sys_menu` WHERE (path = '/system' AND type = 1) AND `sys_menu`.`deleted_at` IS NULL ORDER BY `sys_menu`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.528ms] [34;1m[rows:1][0m SELECT * FROM `sys_menu` WHERE permission = 'system:dept:list' AND `sys_menu`.`deleted_at` IS NULL ORDER BY `sys_menu`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.928ms] [34;1m[rows:1][0m SELECT * FROM `sys_menu` WHERE permission = 'system:dept:add' AND `sys_menu`.`deleted_at` IS NULL ORDER BY `sys_menu`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.541ms] [34;1m[rows:1][0m SELECT * FROM `sys_menu` WHERE permission = 'system:dept:edit' AND `sys_menu`.`deleted_at` IS NULL ORDER BY `sys_menu`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.764ms] [34;1m[rows:1][0m SELECT * FROM `sys_menu` WHERE permission = 'system:dept:delete' AND `sys_menu`.`deleted_at` IS NULL ORDER BY `sys_menu`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.376ms] [34;1m[rows:2][0m SELECT * FROM `sys_role` WHERE code IN ('admin','system_admin') AND `sys_role`.`deleted_at` IS NULL
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.023ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_menu` WHERE sys_role_id = 1 AND sys_menu_id = 371
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.196ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_menu` WHERE sys_role_id = 1 AND sys_menu_id = 372
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.676ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_menu` WHERE sys_role_id = 1 AND sys_menu_id = 373
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.542ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_menu` WHERE sys_role_id = 1 AND sys_menu_id = 374
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.526ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_menu` WHERE sys_role_id = 3 AND sys_menu_id = 371
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.512ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_menu` WHERE sys_role_id = 3 AND sys_menu_id = 372
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_menu` WHERE sys_role_id = 3 AND sys_menu_id = 373
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.568ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_menu` WHERE sys_role_id = 3 AND sys_menu_id = 374
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.533ms] [34;1m[rows:0][0m SELECT `id` FROM `sys_menu` WHERE (path = '/system/storage' OR permission = 'system:storage:list') AND `sys_menu`.`deleted_at` IS NULL
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.102ms] [34;1m[rows:0][0m SELECT `id` FROM `sys_api` WHERE path IN ('/api/v1/storages','/api/v1/storages/:id','/api/v1/storages','/api/v1/storages/:id','/api/v1/storages/:id','/api/v1/storages/:id/default','/api/v1/storages/test') AND `sys_api`.`deleted_at` IS NULL
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.111ms] [34;1m[rows:0][0m DELETE FROM `casbin_rule` WHERE ptype = 'p' and v1 = '/api/v1/storages' and v2 = 'GET'
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.281ms] [34;1m[rows:0][0m DELETE FROM `casbin_rule` WHERE ptype = 'p' and v1 = '/api/v1/storages/:id' and v2 = 'GET'
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.628ms] [34;1m[rows:0][0m DELETE FROM `casbin_rule` WHERE ptype = 'p' and v1 = '/api/v1/storages' and v2 = 'POST'
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.216ms] [34;1m[rows:0][0m DELETE FROM `casbin_rule` WHERE ptype = 'p' and v1 = '/api/v1/storages/:id' and v2 = 'PUT'
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.075ms] [34;1m[rows:0][0m DELETE FROM `casbin_rule` WHERE ptype = 'p' and v1 = '/api/v1/storages/:id' and v2 = 'DELETE'
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.533ms] [34;1m[rows:0][0m DELETE FROM `casbin_rule` WHERE ptype = 'p' and v1 = '/api/v1/storages/:id/default' and v2 = 'PUT'
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.987ms] [34;1m[rows:0][0m DELETE FROM `casbin_rule` WHERE ptype = 'p' and v1 = '/api/v1/storages/test' and v2 = 'POST'
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.088ms] [34;1m[rows:1][0m SELECT * FROM `sys_api` WHERE (path = '/api/v1/users/batch-status' AND method = 'PUT') AND `sys_api`.`deleted_at` IS NULL ORDER BY `sys_api`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.509ms] [34;1m[rows:2][0m SELECT sr.* FROM sys_role AS sr JOIN sys_role_api AS sra ON sra.sys_role_id = sr.id JOIN sys_api AS sa ON sa.id = sra.sys_api_id WHERE (sa.path = '/api/v1/users/:id/status' AND sa.method = 'PUT') AND `sr`.`deleted_at` IS NULL GROUP BY `sr`.`id`
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.535ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 3 AND sys_api_id = 220
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.571ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 1 AND sys_api_id = 220
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.728ms] [34;1m[rows:1][0m SELECT * FROM `sys_api` WHERE (path = '/api/v1/users/batch-password' AND method = 'PUT') AND `sys_api`.`deleted_at` IS NULL ORDER BY `sys_api`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[2.196ms] [34;1m[rows:2][0m SELECT sr.* FROM sys_role AS sr JOIN sys_role_api AS sra ON sra.sys_role_id = sr.id JOIN sys_api AS sa ON sa.id = sra.sys_api_id WHERE (sa.path = '/api/v1/users/:id/password' AND sa.method = 'PUT') AND `sr`.`deleted_at` IS NULL GROUP BY `sr`.`id`
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.594ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 3 AND sys_api_id = 228
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.529ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_api` WHERE sys_role_id = 1 AND sys_api_id = 228
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.518ms] [34;1m[rows:1][0m SELECT * FROM `sys_menu` WHERE (permission = 'system:user:list' AND type = 2) AND `sys_menu`.`deleted_at` IS NULL ORDER BY `sys_menu`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.939ms] [34;1m[rows:1][0m SELECT * FROM `sys_menu` WHERE permission = 'system:user:resetPwd' AND `sys_menu`.`deleted_at` IS NULL ORDER BY `sys_menu`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.507ms] [34;1m[rows:1][0m SELECT * FROM `sys_menu` WHERE permission = 'system:user:edit' AND `sys_menu`.`deleted_at` IS NULL
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.526ms] [34;1m[rows:2][0m SELECT DISTINCT sys_role_id FROM `sys_role_menu` WHERE sys_menu_id IN (16)
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.536ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_menu` WHERE sys_role_id = 1 AND sys_menu_id = 21
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.522ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_menu` WHERE sys_role_id = 3 AND sys_menu_id = 21
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.549ms] [34;1m[rows:1][0m SELECT * FROM `sys_menu` WHERE permission = 'system:user:batchEnable' AND `sys_menu`.`deleted_at` IS NULL ORDER BY `sys_menu`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.753ms] [34;1m[rows:1][0m SELECT * FROM `sys_menu` WHERE permission = 'system:user:edit' AND `sys_menu`.`deleted_at` IS NULL
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.800ms] [34;1m[rows:2][0m SELECT DISTINCT sys_role_id FROM `sys_role_menu` WHERE sys_menu_id IN (16)
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.794ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_menu` WHERE sys_role_id = 1 AND sys_menu_id = 369
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.726ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_menu` WHERE sys_role_id = 3 AND sys_menu_id = 369
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:1][0m SELECT * FROM `sys_menu` WHERE permission = 'system:user:batchDisable' AND `sys_menu`.`deleted_at` IS NULL ORDER BY `sys_menu`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.513ms] [34;1m[rows:1][0m SELECT * FROM `sys_menu` WHERE permission = 'system:user:edit' AND `sys_menu`.`deleted_at` IS NULL
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.598ms] [34;1m[rows:2][0m SELECT DISTINCT sys_role_id FROM `sys_role_menu` WHERE sys_menu_id IN (16)
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.564ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_menu` WHERE sys_role_id = 1 AND sys_menu_id = 370
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_menu` WHERE sys_role_id = 3 AND sys_menu_id = 370
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.059ms] [34;1m[rows:1][0m SELECT * FROM `sys_menu` WHERE permission = 'system:user:batchResetPwd' AND `sys_menu`.`deleted_at` IS NULL ORDER BY `sys_menu`.`id` LIMIT 1
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[1.470ms] [34;1m[rows:1][0m SELECT * FROM `sys_menu` WHERE permission = 'system:user:resetPwd' AND `sys_menu`.`deleted_at` IS NULL
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.527ms] [34;1m[rows:2][0m SELECT DISTINCT sys_role_id FROM `sys_role_menu` WHERE sys_menu_id IN (21)
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.000ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_menu` WHERE sys_role_id = 1 AND sys_menu_id = 380
+
+2026/04/29 06:04:03 [32mE:/go_project/go-base/server/initialize/gorm_logger.go:29
+[0m[33m[0.530ms] [34;1m[rows:1][0m SELECT count(*) FROM `sys_role_menu` WHERE sys_role_id = 3 AND sys_menu_id = 380
+[GIN-debug] [WARNING] Creating an Engine instance with the Logger and Recovery middleware already attached.
+
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] GET    /api/v1/upload/*filepath  --> github.com/gin-gonic/gin.(*RouterGroup).createStaticHandler.func1 (5 handlers)
+[GIN-debug] HEAD   /api/v1/upload/*filepath  --> github.com/gin-gonic/gin.(*RouterGroup).createStaticHandler.func1 (5 handlers)
+[GIN-debug] GET    /api/v1/ai/models         --> server/api/v1.(*AIApi).GetModels-fm (5 handlers)
+[GIN-debug] GET    /api/v1/ai/conversations  --> server/api/v1.(*AIApi).GetConversations-fm (8 handlers)
+[GIN-debug] POST   /api/v1/ai/conversations  --> server/api/v1.(*AIApi).CreateConversation-fm (8 handlers)
+[GIN-debug] DELETE /api/v1/ai/conversations/batch --> server/api/v1.(*AIApi).BatchDeleteConversations-fm (8 handlers)
+[GIN-debug] GET    /api/v1/ai/conversations/:id --> server/api/v1.(*AIApi).GetConversation-fm (8 handlers)
+[GIN-debug] PUT    /api/v1/ai/conversations/:id --> server/api/v1.(*AIApi).UpdateConversationTitle-fm (8 handlers)
+[GIN-debug] DELETE /api/v1/ai/conversations/:id --> server/api/v1.(*AIApi).DeleteConversation-fm (8 handlers)
+[GIN-debug] GET    /api/v1/ai/conversations/:id/messages --> server/api/v1.(*AIApi).GetMessages-fm (8 handlers)
+[GIN-debug] DELETE /api/v1/ai/conversations/:id/messages --> server/api/v1.(*AIApi).ClearMessages-fm (8 handlers)
+[GIN-debug] POST   /api/v1/ai/conversations/:id/clear-context --> server/api/v1.(*AIApi).ClearContext-fm (8 handlers)
+[GIN-debug] DELETE /api/v1/ai/messages/:id   --> server/api/v1.(*AIApi).DeleteMessage-fm (8 handlers)
+[GIN-debug] POST   /api/v1/ai/chat           --> server/api/v1.(*AIApi).Chat-fm (8 handlers)
+[GIN-debug] POST   /api/v1/ai/chat/stream    --> server/api/v1.(*AIApi).ChatStream-fm (8 handlers)
+[GIN-debug] POST   /api/v1/ai/test           --> server/api/v1.(*AIApi).TestConfig-fm (8 handlers)
+[GIN-debug] POST   /api/v1/ai/providers/models/fetch --> server/api/v1.(*AIApi).FetchProviderModels-fm (8 handlers)
+[GIN-debug] GET    /api/v1/apis              --> server/api/v1.(*ApiApi).GetApiList-fm (8 handlers)
+[GIN-debug] GET    /api/v1/apis/all          --> server/api/v1.(*ApiApi).GetAllApis-fm (8 handlers)
+[GIN-debug] GET    /api/v1/apis/groups       --> server/api/v1.(*ApiApi).GetApiGroups-fm (8 handlers)
+[GIN-debug] GET    /api/v1/apis/:id          --> server/api/v1.(*ApiApi).GetApi-fm (8 handlers)
+[GIN-debug] POST   /api/v1/apis              --> server/api/v1.(*ApiApi).CreateApi-fm (8 handlers)
+[GIN-debug] PUT    /api/v1/apis/:id          --> server/api/v1.(*ApiApi).UpdateApi-fm (8 handlers)
+[GIN-debug] DELETE /api/v1/apis/:id          --> server/api/v1.(*ApiApi).DeleteApi-fm (8 handlers)
+[GIN-debug] POST   /api/v1/apis/sync         --> server/api/v1.(*ApiApi).SyncApis-fm (8 handlers)
+[GIN-debug] POST   /api/v1/auth/login        --> server/api/v1.(*AuthApi).Login-fm (5 handlers)
+[GIN-debug] POST   /api/v1/auth/register     --> server/api/v1.(*AuthApi).Register-fm (5 handlers)
+[GIN-debug] POST   /api/v1/auth/send-email-code --> server/api/v1.(*AuthApi).SendEmailCode-fm (5 handlers)
+[GIN-debug] POST   /api/v1/auth/reset-password --> server/api/v1.(*AuthApi).ResetPasswordByToken-fm (5 handlers)
+[GIN-debug] POST   /api/v1/auth/reset-password-by-username --> server/api/v1.(*AuthApi).ResetPasswordByUserName-fm (5 handlers)
+[GIN-debug] POST   /api/v1/auth/reset-password-by-email --> server/api/v1.(*AuthApi).ResetPasswordByEmail-fm (5 handlers)
+[GIN-debug] POST   /api/v1/auth/refresh      --> server/api/v1.(*AuthApi).RefreshToken-fm (5 handlers)
+[GIN-debug] POST   /api/v1/auth/logout       --> server/api/v1.(*AuthApi).Logout-fm (8 handlers)
+[GIN-debug] GET    /api/v1/auth/userinfo     --> server/api/v1.(*AuthApi).GetUserInfo-fm (8 handlers)
+[GIN-debug] GET    /api/v1/captcha           --> server/api/v1.(*CaptchaApi).GetCaptcha-fm (5 handlers)
+[GIN-debug] GET    /api/v1/captcha/config    --> server/api/v1.(*CaptchaApi).GetCaptchaConfig-fm (5 handlers)
+[GIN-debug] GET    /api/v1/captcha/slider    --> server/api/v1.(*CaptchaApi).GetSliderCaptcha-fm (5 handlers)
+[GIN-debug] POST   /api/v1/captcha/slider/verify --> server/api/v1.(*CaptchaApi).VerifySliderCaptcha-fm (5 handlers)
+[GIN-debug] POST   /api/v1/configs/keys      --> server/api/v1.(*ConfigApi).GetConfigsByKeys-fm (5 handlers)
+[GIN-debug] GET    /api/v1/configs           --> server/api/v1.(*ConfigApi).GetConfigList-fm (8 handlers)
+[GIN-debug] GET    /api/v1/configs/key/:key  --> server/api/v1.(*ConfigApi).GetConfigByKey-fm (8 handlers)
+[GIN-debug] POST   /api/v1/configs           --> server/api/v1.(*ConfigApi).CreateConfig-fm (8 handlers)
+[GIN-debug] PUT    /api/v1/configs/:id       --> server/api/v1.(*ConfigApi).UpdateConfig-fm (8 handlers)
+[GIN-debug] PUT    /api/v1/configs/batch     --> server/api/v1.(*ConfigApi).BatchUpdateConfigs-fm (8 handlers)
+[GIN-debug] DELETE /api/v1/configs/:id       --> server/api/v1.(*ConfigApi).DeleteConfig-fm (8 handlers)
+[GIN-debug] POST   /api/v1/configs/test-email --> server/api/v1.(*ConfigApi).SendTestEmail-fm (8 handlers)
+[GIN-debug] POST   /api/v1/configs/storage/test --> server/api/v1.(*ConfigApi).TestStorageConfig-fm (8 handlers)
+[GIN-debug] GET    /api/v1/depts/tree        --> server/api/v1.(*DeptApi).GetDeptTree-fm (8 handlers)
+[GIN-debug] GET    /api/v1/depts/manageable-tree --> server/api/v1.(*DeptApi).GetManageableDeptTree-fm (8 handlers)
+[GIN-debug] GET    /api/v1/depts/:id         --> server/api/v1.(*DeptApi).GetDept-fm (8 handlers)
+[GIN-debug] POST   /api/v1/depts             --> server/api/v1.(*DeptApi).CreateDept-fm (8 handlers)
+[GIN-debug] PUT    /api/v1/depts/:id         --> server/api/v1.(*DeptApi).UpdateDept-fm (8 handlers)
+[GIN-debug] DELETE /api/v1/depts/:id         --> server/api/v1.(*DeptApi).DeleteDept-fm (8 handlers)
+[GIN-debug] GET    /api/v1/dict/type/:type   --> server/api/v1.(*DictApi).GetDictDataByType-fm (5 handlers)
+[GIN-debug] GET    /api/v1/dict/types        --> server/api/v1.(*DictApi).GetDictTypeList-fm (8 handlers)
+[GIN-debug] GET    /api/v1/dict/types/all    --> server/api/v1.(*DictApi).GetAllDictTypes-fm (8 handlers)
+[GIN-debug] GET    /api/v1/dict/types/:id    --> server/api/v1.(*DictApi).GetDictType-fm (8 handlers)
+[GIN-debug] POST   /api/v1/dict/types        --> server/api/v1.(*DictApi).CreateDictType-fm (8 handlers)
+[GIN-debug] PUT    /api/v1/dict/types/:id    --> server/api/v1.(*DictApi).UpdateDictType-fm (8 handlers)
+[GIN-debug] DELETE /api/v1/dict/types/:id    --> server/api/v1.(*DictApi).DeleteDictType-fm (8 handlers)
+[GIN-debug] GET    /api/v1/dict/data         --> server/api/v1.(*DictApi).GetDictDataList-fm (8 handlers)
+[GIN-debug] GET    /api/v1/dict/data/:id     --> server/api/v1.(*DictApi).GetDictData-fm (8 handlers)
+[GIN-debug] POST   /api/v1/dict/data         --> server/api/v1.(*DictApi).CreateDictData-fm (8 handlers)
+[GIN-debug] PUT    /api/v1/dict/data/:id     --> server/api/v1.(*DictApi).UpdateDictData-fm (8 handlers)
+[GIN-debug] DELETE /api/v1/dict/data/:id     --> server/api/v1.(*DictApi).DeleteDictData-fm (8 handlers)
+[GIN-debug] GET    /api/v1/echart/user-role-stats --> server/api/v1.(*EchartApi).GetUserRoleStats-fm (8 handlers)
+[GIN-debug] GET    /api/v1/echart/user-status-stats --> server/api/v1.(*EchartApi).GetUserStatusStats-fm (8 handlers)
+[GIN-debug] GET    /api/v1/echart/role-status-stats --> server/api/v1.(*EchartApi).GetRoleStatusStats-fm (8 handlers)
+[GIN-debug] GET    /api/v1/echart/user-register-trend --> server/api/v1.(*EchartApi).GetUserRegisterTrend-fm (8 handlers)
+[GIN-debug] GET    /api/v1/files             --> server/api/v1.(*FileApi).GetFileList-fm (8 handlers)
+[GIN-debug] GET    /api/v1/files/:id         --> server/api/v1.(*FileApi).GetFile-fm (8 handlers)
+[GIN-debug] DELETE /api/v1/files/:id         --> server/api/v1.(*FileApi).DeleteFile-fm (8 handlers)
+[GIN-debug] DELETE /api/v1/files/batch       --> server/api/v1.(*FileApi).BatchDeleteFiles-fm (8 handlers)
+[GIN-debug] POST   /api/v1/files/migrate/preview --> server/api/v1.(*FileApi).PreviewFileMigration-fm (8 handlers)
+[GIN-debug] POST   /api/v1/files/migrate/execute --> server/api/v1.(*FileApi).ExecuteFileMigration-fm (8 handlers)
+[GIN-debug] GET    /api/v1/files/migrate/task/current --> server/api/v1.(*FileApi).GetCurrentFileMigrationTask-fm (8 handlers)
+[GIN-debug] POST   /api/v1/files/credential  --> server/api/v1.(*FileApi).GetUploadCredential-fm (8 handlers)
+[GIN-debug] POST   /api/v1/files/check-md5   --> server/api/v1.(*FileApi).CheckFileMD5-fm (8 handlers)
+[GIN-debug] POST   /api/v1/files/save        --> server/api/v1.(*FileApi).SaveUploadedFile-fm (8 handlers)
+[GIN-debug] POST   /api/v1/files/multipart/init --> server/api/v1.(*FileApi).InitMultipartUpload-fm (8 handlers)
+[GIN-debug] GET    /api/v1/files/multipart/parts --> server/api/v1.(*FileApi).GetUploadedParts-fm (8 handlers)
+[GIN-debug] POST   /api/v1/files/multipart/complete --> server/api/v1.(*FileApi).CompleteMultipartUpload-fm (8 handlers)
+[GIN-debug] POST   /api/v1/files/multipart/abort --> server/api/v1.(*FileApi).AbortMultipartUpload-fm (8 handlers)
+[GIN-debug] POST   /api/v1/files/upload/local --> server/api/v1.(*FileApi).UploadLocalFile-fm (8 handlers)
+[GIN-debug] POST   /api/v1/files/upload/chunk --> server/api/v1.(*FileApi).UploadChunk-fm (8 handlers)
+[GIN-debug] GET    /api/v1/logs/operation    --> server/api/v1.(*LogApi).GetOperationLogList-fm (8 handlers)
+[GIN-debug] GET    /api/v1/logs/login        --> server/api/v1.(*LogApi).GetLoginLogList-fm (8 handlers)
+[GIN-debug] GET    /api/v1/logs/slow         --> server/api/v1.(*LogApi).GetSlowLogList-fm (8 handlers)
+[GIN-debug] GET    /api/v1/logs/route-groups --> server/api/v1.(*LogApi).GetRouteGroups-fm (8 handlers)
+[GIN-debug] GET    /api/v1/menus             --> server/api/v1.(*MenuApi).GetMenuTree-fm (8 handlers)
+[GIN-debug] GET    /api/v1/menus/:id         --> server/api/v1.(*MenuApi).GetMenu-fm (8 handlers)
+[GIN-debug] GET    /api/v1/user/menus        --> server/api/v1.(*MenuApi).GetUserMenus-fm (8 handlers)
+[GIN-debug] POST   /api/v1/menus             --> server/api/v1.(*MenuApi).CreateMenu-fm (8 handlers)
+[GIN-debug] PUT    /api/v1/menus/:id         --> server/api/v1.(*MenuApi).UpdateMenu-fm (8 handlers)
+[GIN-debug] DELETE /api/v1/menus/:id         --> server/api/v1.(*MenuApi).DeleteMenu-fm (8 handlers)
+[GIN-debug] GET    /api/v1/roles             --> server/api/v1.(*RoleApi).GetRoleList-fm (8 handlers)
+[GIN-debug] GET    /api/v1/roles/:id         --> server/api/v1.(*RoleApi).GetRole-fm (8 handlers)
+[GIN-debug] POST   /api/v1/roles             --> server/api/v1.(*RoleApi).CreateRole-fm (8 handlers)
+[GIN-debug] PUT    /api/v1/roles/:id         --> server/api/v1.(*RoleApi).UpdateRole-fm (8 handlers)
+[GIN-debug] DELETE /api/v1/roles/:id         --> server/api/v1.(*RoleApi).DeleteRole-fm (8 handlers)
+[GIN-debug] PUT    /api/v1/roles/:id/menus   --> server/api/v1.(*RoleApi).AssignMenus-fm (8 handlers)
+[GIN-debug] PUT    /api/v1/roles/:id/apis    --> server/api/v1.(*RoleApi).AssignApis-fm (8 handlers)
+[GIN-debug] GET    /api/v1/user/profile      --> server/api/v1.(*UserApi).GetProfile-fm (8 handlers)
+[GIN-debug] PUT    /api/v1/user/profile      --> server/api/v1.(*UserApi).UpdateProfile-fm (8 handlers)
+[GIN-debug] PUT    /api/v1/user/avatar       --> server/api/v1.(*UserApi).UpdateAvatar-fm (8 handlers)
+[GIN-debug] PUT    /api/v1/user/password     --> server/api/v1.(*UserApi).ChangePassword-fm (8 handlers)
+[GIN-debug] GET    /api/v1/user/profiles     --> server/api/v1.(*UserApi).GetUserProfiles-fm (8 handlers)
+[GIN-debug] GET    /api/v1/user/profiles/types --> server/api/v1.(*UserApi).GetRegisteredProfiles-fm (8 handlers)
+[GIN-debug] GET    /api/v1/users             --> server/api/v1.(*UserApi).GetUserList-fm (8 handlers)
+[GIN-debug] GET    /api/v1/users/options     --> server/api/v1.(*UserApi).GetUserOptions-fm (8 handlers)
+[GIN-debug] GET    /api/v1/users/:id         --> server/api/v1.(*UserApi).GetUser-fm (8 handlers)
+[GIN-debug] POST   /api/v1/users             --> server/api/v1.(*UserApi).CreateUser-fm (8 handlers)
+[GIN-debug] PUT    /api/v1/users/:id         --> server/api/v1.(*UserApi).UpdateUser-fm (8 handlers)
+[GIN-debug] DELETE /api/v1/users/:id         --> server/api/v1.(*UserApi).DeleteUser-fm (8 handlers)
+[GIN-debug] DELETE /api/v1/users/batch       --> server/api/v1.(*UserApi).BatchDeleteUsers-fm (8 handlers)
+[GIN-debug] PUT    /api/v1/users/:id/status  --> server/api/v1.(*UserApi).UpdateUserStatus-fm (8 handlers)
+[GIN-debug] PUT    /api/v1/users/batch-status --> server/api/v1.(*UserApi).BatchUpdateUserStatus-fm (8 handlers)
+[GIN-debug] PUT    /api/v1/users/:id/password --> server/api/v1.(*UserApi).ResetPassword-fm (8 handlers)
+[GIN-debug] PUT    /api/v1/users/batch-password --> server/api/v1.(*UserApi).BatchResetPassword-fm (8 handlers)
+[GIN-debug] POST   /api/v1/users/:id/offline --> server/api/v1.(*UserApi).ForceOffline-fm (8 handlers)
+[GIN-debug] GET    /api/v1/users/:id/profiles --> server/api/v1.(*UserApi).GetUserProfilesById-fm (8 handlers)
+[GIN-debug] GET    /swagger/*any             --> server/swagger.RegisterRoutes.func1 (5 handlers)
+2026-04-29T06:04:03.184+0800	info	runtime/proc.go:283	服务启动成功，监听端口: :9000
+[GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
+Please check https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies for details.
+[GIN-debug] Listening and serving HTTP on :9000
+2026-04-29T06:04:03.188+0800	fatal	runtime/proc.go:283	服务启动失败: listen tcp :9000: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.

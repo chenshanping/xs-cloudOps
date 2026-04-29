@@ -195,7 +195,7 @@ func (s *DeptService) DeleteDept(id uint) error {
 }
 
 func (s *DeptService) buildDeptTree(depts []model.SysDept, parentID uint) []model.SysDept {
-	var tree []model.SysDept
+	tree := make([]model.SysDept, 0)
 	for _, dept := range depts {
 		if dept.ParentID == parentID {
 			dept.Children = s.buildDeptTree(depts, dept.ID)

@@ -57,17 +57,27 @@ export interface ManageableDeptTreeData {
 }
 
 // 角色
+export interface RoleUserSummary {
+  id?: number
+  username: string
+  nickname: string
+  status?: number
+}
+
 export interface Role {
   id: number
   name: string
   code: string
   sort: number
   status: number
+  is_super_admin: boolean
   data_scope: number
   remark: string
+  user_count?: number
   menus?: Menu[]
   apis?: Api[]
   depts?: Dept[]
+  users?: RoleUserSummary[]
   created_at: string
   updated_at: string
 }
@@ -147,14 +157,4 @@ export interface LoginLog {
 export interface LoginForm {
   username: string
   password: string
-}
-
-// 慢查询日志
-export interface SlowLog {
-  id: number
-  sql: string
-  rows: number
-  latency: number
-  source: string
-  created_at: string
 }

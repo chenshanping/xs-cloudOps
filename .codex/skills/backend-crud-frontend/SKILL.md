@@ -148,6 +148,7 @@ Current frontend patterns:
 - Keep CRUD pages compact; do not add decorative hero headers by default
 - For create, edit, and similar action surfaces, default to a drawer-based flow unless the user explicitly asks for a modal or another pattern
 - Reuse `AvatarUpload`, `ImageUpload`, `FileUpload`, and `FilePreview` when the module needs them
+- Do not add self-explanatory helper copy such as extra "说明", "提示", "温馨提示", or responsibility prose in forms, drawers, tabs, and toolbars unless the user explicitly asks for it or the existing page already follows that pattern
 
 ## Backend Conventions
 
@@ -248,6 +249,7 @@ When adding or exposing an interaction:
 - Do not show files or images without preview or open behavior
 - Do not stop at data display if the expected local CRUD loop is still obviously incomplete
 - Do not keep create or edit form markup inline in `index.vue` when it should be a reusable drawer or popup component
+- Prefer structural clarity through labels, grouping, columns, and metadata visibility; do not add explanatory copy just to teach system behavior unless the user explicitly wants that text
 
 ## Workflow
 

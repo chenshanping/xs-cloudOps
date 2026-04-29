@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	appconfig "server/config"
 	"server/model/request"
 	"server/model/response"
 	"server/service"
@@ -392,4 +393,29 @@ func (a *AIApi) FetchProviderModels(c *gin.Context) {
 	}
 
 	response.OkWithData(c, response.AIProviderModelsFetchResponse{Models: models})
+}
+
+func (a *AIApi) GetAdminConfig(c *gin.Context) {
+	cfg, err := service.AI.GetAdminConfig()
+	if err != nil {
+		response.Fail(c, "获取 AI 配置失败")
+		return
+	}
+
+	response.OkWithData(c, cfg)
+}
+
+func (a *AIApi) UpdateAdminConfig(c *gin.Context) {
+	var req appconfig.AI
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	if err := service.AI.SaveAdminConfig(&req); err != nil {
+		response.Fail(c, "保存 AI 配置失败")
+		return
+	}
+
+	response.OkWithMessage(c, "更新成功")
 }

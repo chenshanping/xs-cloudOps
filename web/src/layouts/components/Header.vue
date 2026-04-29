@@ -37,14 +37,25 @@
     </div>
 
     <div class="header-right">
-      <a-button
-        class="header-icon-button"
-        type="text"
-        @click="uiStore.updateTheme({ mode: uiStore.isDark ? 'light' : 'dark' })"
-      >
-        <BulbOutlined v-if="!uiStore.isDark" />
-        <BgColorsOutlined v-else />
-      </a-button>
+      <a-tooltip title="刷新当前页">
+        <a-button
+          class="header-icon-button"
+          type="text"
+          @click="handleRefresh"
+        >
+          <ReloadOutlined />
+        </a-button>
+      </a-tooltip>
+      <a-tooltip :title="uiStore.isDark ? '切换浅色模式' : '切换深色模式'">
+        <a-button
+          class="header-icon-button"
+          type="text"
+          @click="uiStore.updateTheme({ mode: uiStore.isDark ? 'light' : 'dark' })"
+        >
+          <BulbOutlined v-if="!uiStore.isDark" />
+          <BgColorsOutlined v-else />
+        </a-button>
+      </a-tooltip>
       <a-button class="header-icon-button" type="text" @click="uiStore.toggleSettings(true)">
         <SettingOutlined />
       </a-button>
@@ -88,6 +99,7 @@ import {
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  ReloadOutlined,
   SettingOutlined,
   UserOutlined,
 } from '@ant-design/icons-vue'
@@ -225,6 +237,10 @@ const handleTopMenuClick = ({ key }: MenuInfo) => {
 const handleLogout = () => {
   userStore.logoutAction()
   router.push('/login')
+}
+
+const handleRefresh = () => {
+  window.location.reload()
 }
 </script>
 

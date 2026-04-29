@@ -193,7 +193,7 @@ import {
   ThunderboltOutlined,
   UpOutlined,
 } from '@ant-design/icons-vue'
-import { aiTest, createConfig, getConfigByKey, updateConfig } from '@/api/config'
+import { aiTest, getAIConfig, updateAIConfig } from '@/api/ai'
 import { cloneFromSnapshot, createSnapshot, isSnapshotDirty } from '../config-tab-guard'
 import ProviderEditorDrawer from './ai-config/ProviderEditorDrawer.vue'
 import ProviderModelManagerDrawer from './ai-config/ProviderModelManagerDrawer.vue'
@@ -222,7 +222,6 @@ const modelColumns = [
 
 const loading = ref(true)
 const saving = ref(false)
-const configId = ref<number | null>(null)
 const selectedProviderIndex = ref(0)
 const providerDrawerOpen = ref(false)
 const providerDrawerMode = ref<'create' | 'edit'>('create')
@@ -301,19 +300,10 @@ watch(
 const loadConfig = async () => {
   loading.value = true
   try {
-    const res = await getConfigByKey('ai_config')
-    if (res.data) {
-      configId.value = res.data.id
-      if (res.data.value) {
-        applyConfigState(JSON.parse(res.data.value) as AIConfigState)
-      } else {
-        applyConfigState()
-      }
-    }
+    const res = await getAIConfig()
+    applyConfigState(res.data)
   } catch (error: any) {
-    if (error.message !== '请求失败 (404)') {
-      message.error('加载 AI 配置失败')
-    }
+    message.error(error.message || '加载 AI 配置失败')
     applyConfigState()
   } finally {
     baselineSnapshot.value = createSnapshot(getConfigState())
@@ -539,19 +529,7 @@ const save = async () => {
 
   saving.value = true
   try {
-    const value = JSON.stringify(getConfigState())
-    if (configId.value) {
-      await updateConfig(configId.value, { value })
-    } else {
-      const res = await createConfig({
-        name: 'AI配置',
-        key: 'ai_config',
-        value,
-        value_type: 'json',
-        remark: 'AI平台配置，包含平台名称、API Key、基础URL和模型列表',
-      })
-      configId.value = res.data.id
-    }
+    await updateAIConfig(getConfigState())
     baselineSnapshot.value = createSnapshot(getConfigState())
     message.success('保存成功')
     return true

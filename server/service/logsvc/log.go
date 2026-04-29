@@ -105,26 +105,6 @@ func (s *LogService) GetRouteGroups() ([]RouteGroupCount, error) {
 	return groups, err
 }
 
-func (s *LogService) GetSlowLogList(req *request.SlowLogListRequest) ([]model.SysSlowLog, int64, error) {
-	var logs []model.SysSlowLog
-	var total int64
-	db := global.DB.Model(&model.SysSlowLog{})
-	if req.SQL != "" {
-		db = db.Where("sql LIKE ?", "%"+req.SQL+"%")
-	}
-	if req.MinLatency > 0 {
-		db = db.Where("latency >= ?", req.MinLatency)
-	}
-	if err := db.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-	offset := req.GetOffset()
-	if err := db.Order("id DESC").Offset(offset).Limit(req.PageSize).Find(&logs).Error; err != nil {
-		return nil, 0, err
-	}
-	return logs, total, nil
-}
-
 // CreateLoginLog 创建登录日志
 func (s *LogService) CreateLoginLog(log *model.SysLoginLog) error {
 	return global.DB.Create(log).Error

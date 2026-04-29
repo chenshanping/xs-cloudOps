@@ -55,20 +55,3 @@ func (a *LogApi) GetRouteGroups(c *gin.Context) {
 	}
 	response.OkWithData(c, groups)
 }
-
-// 获取慢查询日志列表
-func (a *LogApi) GetSlowLogList(c *gin.Context) {
-	var req request.SlowLogListRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		response.BadRequest(c, "参数错误")
-		return
-	}
-
-	logs, total, err := service.Log.GetSlowLogList(&req)
-	if err != nil {
-		response.Fail(c, "获取慢查询日志失败")
-		return
-	}
-
-	response.OkWithPage(c, logs, total, req.Page, req.PageSize)
-}

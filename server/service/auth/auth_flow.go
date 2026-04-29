@@ -192,6 +192,12 @@ func (s *AuthFlowService) Login(input AuthLoginInput, ip, userAgent string) (*Au
 
 func (s *AuthFlowService) GetCurrentUserInfo(userID uint) (*core.UserInfoCache, *AuthFlowError) {
 	if cache, err := s.GetUserInfoFromCache(userID); err == nil {
+		if cache.Menus == nil {
+			cache.Menus = []model.SysMenu{}
+		}
+		if cache.Permissions == nil {
+			cache.Permissions = []string{}
+		}
 		return cache, nil
 	}
 
@@ -220,6 +226,12 @@ func (s *AuthFlowService) GetCurrentUserInfo(userID uint) (*core.UserInfoCache, 
 			Message: "获取用户权限失败",
 			Err:     err,
 		}
+	}
+	if menus == nil {
+		menus = []model.SysMenu{}
+	}
+	if permissions == nil {
+		permissions = []string{}
 	}
 
 	cache := &core.UserInfoCache{

@@ -14,6 +14,8 @@ func init() {
 
 type AIModule struct{}
 
+const aiConfigGroup = "AI配置"
+
 func (m *AIModule) Name() string {
 	return "AI对话"
 }
@@ -45,8 +47,11 @@ func (m *AIModule) RegisterPrivateRoutes(rg *gin.RouterGroup) {
 	R(rg, "POST", "/ai/chat/stream", m.Name(), "AI流式对话", v1.AI.ChatStream,
 		registry.WithAuth(), registry.WithRequest(request.AIChatRequest{}))
 
-	// 配置测试
-	R(rg, "POST", "/ai/test", m.Name(), "测试AI配置", v1.AI.TestConfig, registry.WithAuth(), registry.WithRequest(request.AITestRequest{}))
-	R(rg, "POST", "/ai/providers/models/fetch", m.Name(), "拉取平台模型列表", v1.AI.FetchProviderModels,
+	// AI配置
+	R(rg, "GET", "/ai/config", aiConfigGroup, "获取AI配置", v1.AI.GetAdminConfig, registry.WithAuth())
+	R(rg, "PUT", "/ai/config", aiConfigGroup, "保存AI配置", v1.AI.UpdateAdminConfig, registry.WithAuth())
+	R(rg, "POST", "/ai/test", aiConfigGroup, "测试AI配置", v1.AI.TestConfig,
+		registry.WithAuth(), registry.WithRequest(request.AITestRequest{}))
+	R(rg, "POST", "/ai/providers/models/fetch", aiConfigGroup, "拉取平台模型列表", v1.AI.FetchProviderModels,
 		registry.WithAuth(), registry.WithRequest(request.AIProviderModelsFetchRequest{}))
 }

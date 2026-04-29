@@ -204,3 +204,69 @@ func TestDeptServiceGetManageableDeptTreeBuildsCountsAndBindability(t *testing.T
 		t.Fatalf("childA counts = (%d, %d), want (2, 2)", parentNode.Children[0].DirectUserCount, parentNode.Children[0].TotalUserCount)
 	}
 }
+
+func TestDeptServiceGetManageableDeptTreeReturnsEmptySliceWhenNoDeptVisible(t *testing.T) {
+	db := setupDeptTestDB(t)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+
+	role := model.SysRole{Name: "空自定义范围角色", Code: "dept-empty-custom", DataScope: model.DataScopeCustom, Status: 1}
+	if err := db.Create(&role).Error; err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+
+	operator := model.SysUser{
+		Username: "dept-empty-user",
+		Password: "pwd",
+		Nickname: "空范围用户",
+		Status:   1,
+		DeptID:   root.ID,
+		Roles:    []model.SysRole{role},
+	}
+	if err := db.Create(&operator).Error; err != nil {
+		t.Fatalf("create operator: %v", err)
+	}
+
+	tree, unassignedCount, err := Dept.GetManageableDeptTree(operator.ID)
+	if err != nil {
+		t.Fatalf("GetManageableDeptTree error: %v", err)
+	}
+	if tree == nil {
+		t.Fatalf("expected empty dept tree slice, got nil")
+	}
+	if len(tree) != 0 {
+		t.Fatalf("tree len = %d, want 0", len(tree))
+	}
+	if unassignedCount != 0 {
+		t.Fatalf("unassigned count = %d, want 0", unassignedCount)
+	}
+}
+
+func TestDeptServiceDeleteDeptRejectsWhenReferencedByRoleDataScope(t *testing.T) {
+	db := setupDeptTestDB(t)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+
+	target := model.SysDept{Name: "研发部", ParentID: root.ID, Ancestors: fmt.Sprintf("0,%d", root.ID), Sort: 1, Status: 1}
+	if err := db.Create(&target).Error; err != nil {
+		t.Fatalf("create target dept: %v", err)
+	}
+
+	role := model.SysRole{Name: "自定义部门角色", Code: "dept-custom-role", DataScope: model.DataScopeCustom, Status: 1}
+	if err := db.Create(&role).Error; err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+	if err := db.Model(&role).Association("Depts").Append(&target); err != nil {
+		t.Fatalf("bind role dept: %v", err)
+	}
+
+	if err := Dept.DeleteDept(target.ID); err == nil {
+		t.Fatalf("expected delete to fail when dept is referenced by role data scope")
+	}
+}

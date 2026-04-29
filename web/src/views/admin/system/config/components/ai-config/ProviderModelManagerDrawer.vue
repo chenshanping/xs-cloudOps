@@ -68,7 +68,7 @@
 import { computed, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { message } from 'ant-design-vue'
-import { fetchAIProviderModels } from '@/api/config'
+import { fetchAIProviderModels } from '@/api/ai'
 import type { AIModel, RemoteProviderModel } from './state'
 
 const props = defineProps<{

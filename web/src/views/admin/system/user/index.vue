@@ -334,17 +334,36 @@ const fetchGenderOptions = async () => {
   genderOptions.value = normalizeGenderDictOptions(res.data || [])
 }
 
+const showDeptTreeErrorModal = (content: string) => {
+  Modal.error({
+    title: '部门树加载失败',
+    content,
+    okText: '知道了'
+  })
+}
+
 const fetchDeptTree = async () => {
   deptLoading.value = true
   try {
-    const res = await getManageableDeptTree()
-    deptTree.value = res.data.tree
-    unassignedUserCount.value = res.data.unassigned_user_count
-    const allKeys = collectTreeKeys(res.data.tree)
+    const res = await getManageableDeptTree({ silent: true })
+    const tree = Array.isArray(res.data?.tree) ? res.data.tree : []
+    const unassignedCount = typeof res.data?.unassigned_user_count === 'number' ? res.data.unassigned_user_count : 0
+    if (!Array.isArray(res.data?.tree)) {
+      showDeptTreeErrorModal('可管理部门树数据异常，请刷新页面后重试。')
+    }
+
+    deptTree.value = tree
+    unassignedUserCount.value = unassignedCount
+    const allKeys = collectTreeKeys(tree)
     expandedTreeKeys.value = treeInitialized.value
       ? expandedTreeKeys.value.filter(key => allKeys.includes(key))
       : allKeys
     treeInitialized.value = true
+  } catch (error) {
+    console.error('获取可管理部门树失败:', error)
+    deptTree.value = []
+    unassignedUserCount.value = 0
+    showDeptTreeErrorModal('获取可管理部门树失败，请稍后重试。')
   } finally {
     deptLoading.value = false
   }

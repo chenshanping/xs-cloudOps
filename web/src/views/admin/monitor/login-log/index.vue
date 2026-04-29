@@ -40,7 +40,6 @@ const tableData = ref<LoginLog[]>([])
 const searchForm = reactive({ username: '', status: undefined as number | undefined })
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
 const columns = [
-  { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
   { title: '用户名', dataIndex: 'username', key: 'username', width: 120 },
   { title: 'IP地址', dataIndex: 'ip', key: 'ip', width: 140 },
   { title: '登录地点', dataIndex: 'location', key: 'location', width: 150 },

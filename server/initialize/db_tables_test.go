@@ -45,6 +45,17 @@ func setupInitializeTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
+func ensureInitializeRoleSuperAdminColumn(t *testing.T, db *gorm.DB) {
+	t.Helper()
+
+	if db.Migrator().HasColumn(&model.SysRole{}, "is_super_admin") {
+		return
+	}
+	if err := db.Exec("ALTER TABLE sys_role ADD COLUMN is_super_admin numeric NOT NULL DEFAULT 0").Error; err != nil {
+		t.Fatalf("add is_super_admin column: %v", err)
+	}
+}
+
 func TestEnsureDeptMenusDoesNotOverwriteCustomizedIcon(t *testing.T) {
 	db := setupInitializeTestDB(t)
 
@@ -86,6 +97,41 @@ func TestEnsureDeptMenusDoesNotOverwriteCustomizedIcon(t *testing.T) {
 	}
 	if updated.Icon != "custom-icon" {
 		t.Fatalf("dept menu icon = %s, want %s", updated.Icon, "custom-icon")
+	}
+}
+
+func TestEnsureBuiltInDataDoesNotOverwriteCustomizedRootDept(t *testing.T) {
+	db := setupInitializeTestDB(t)
+
+	rootDept := model.SysDept{
+		ParentID:  0,
+		Ancestors: "custom-ancestors",
+		Name:      "平台",
+		Sort:      88,
+		Status:    0,
+		Remark:    "保留已有根部门配置",
+	}
+	if err := db.Create(&rootDept).Error; err != nil {
+		t.Fatalf("create root dept: %v", err)
+	}
+
+	ensureBuiltInData()
+
+	var updated model.SysDept
+	if err := db.First(&updated, rootDept.ID).Error; err != nil {
+		t.Fatalf("reload root dept: %v", err)
+	}
+	if updated.Ancestors != rootDept.Ancestors {
+		t.Fatalf("root dept ancestors overwritten = %s, want %s", updated.Ancestors, rootDept.Ancestors)
+	}
+	if updated.Sort != rootDept.Sort {
+		t.Fatalf("root dept sort overwritten = %d, want %d", updated.Sort, rootDept.Sort)
+	}
+	if updated.Status != rootDept.Status {
+		t.Fatalf("root dept status overwritten = %d, want %d", updated.Status, rootDept.Status)
+	}
+	if updated.Remark != rootDept.Remark {
+		t.Fatalf("root dept remark overwritten = %s, want %s", updated.Remark, rootDept.Remark)
 	}
 }
 
@@ -144,6 +190,116 @@ func TestEnsureBuiltInDataCreatesAIMenus(t *testing.T) {
 	}
 }
 
+func TestBackfillDepartmentFoundationAppliesCompatibleDefaultsOnlyToLegacyRows(t *testing.T) {
+	db := setupInitializeTestDB(t)
+	ensureInitializeRoleSuperAdminColumn(t, db)
+
+	rootDept := model.SysDept{
+		ParentID:  0,
+		Ancestors: "0",
+		Name:      "平台",
+		Sort:      1,
+		Status:    1,
+		Remark:    "系统根部门",
+	}
+	if err := db.Create(&rootDept).Error; err != nil {
+		t.Fatalf("create root dept: %v", err)
+	}
+
+	legacyUser := model.SysUser{Username: "legacy-user", Password: "pwd", Nickname: "旧用户", Status: 1, DeptID: 0}
+	existingUser := model.SysUser{Username: "existing-user", Password: "pwd", Nickname: "已有部门用户", Status: 1, DeptID: rootDept.ID}
+	if err := db.Create(&legacyUser).Error; err != nil {
+		t.Fatalf("create legacy user: %v", err)
+	}
+	if err := db.Create(&existingUser).Error; err != nil {
+		t.Fatalf("create existing user: %v", err)
+	}
+
+	legacyRole := model.SysRole{Name: "旧角色", Code: "legacy-role", DataScope: 0, Status: 1}
+	existingRole := model.SysRole{Name: "已有角色", Code: "existing-role", DataScope: model.DataScopeSelf, Status: 1}
+	if err := db.Create(&legacyRole).Error; err != nil {
+		t.Fatalf("create legacy role: %v", err)
+	}
+	if err := db.Create(&existingRole).Error; err != nil {
+		t.Fatalf("create existing role: %v", err)
+	}
+
+	backfillDepartmentFoundation(rootDept.ID)
+
+	var updatedLegacyUser model.SysUser
+	if err := db.First(&updatedLegacyUser, legacyUser.ID).Error; err != nil {
+		t.Fatalf("reload legacy user: %v", err)
+	}
+	if updatedLegacyUser.DeptID != rootDept.ID {
+		t.Fatalf("legacy user dept_id = %d, want %d", updatedLegacyUser.DeptID, rootDept.ID)
+	}
+
+	var updatedExistingUser model.SysUser
+	if err := db.First(&updatedExistingUser, existingUser.ID).Error; err != nil {
+		t.Fatalf("reload existing user: %v", err)
+	}
+	if updatedExistingUser.DeptID != existingUser.DeptID {
+		t.Fatalf("existing user dept_id overwritten = %d, want %d", updatedExistingUser.DeptID, existingUser.DeptID)
+	}
+
+	var updatedLegacyRole model.SysRole
+	if err := db.First(&updatedLegacyRole, legacyRole.ID).Error; err != nil {
+		t.Fatalf("reload legacy role: %v", err)
+	}
+	if updatedLegacyRole.DataScope != model.DataScopeAll {
+		t.Fatalf("legacy role data_scope = %d, want %d", updatedLegacyRole.DataScope, model.DataScopeAll)
+	}
+
+	var updatedExistingRole model.SysRole
+	if err := db.First(&updatedExistingRole, existingRole.ID).Error; err != nil {
+		t.Fatalf("reload existing role: %v", err)
+	}
+	if updatedExistingRole.DataScope != existingRole.DataScope {
+		t.Fatalf("existing role data_scope overwritten = %d, want %d", updatedExistingRole.DataScope, existingRole.DataScope)
+	}
+}
+
+func TestEnsureBuiltInDataMarksHistoricalAdminRolesAsExplicitSuperAdmin(t *testing.T) {
+	db := setupInitializeTestDB(t)
+	ensureInitializeRoleSuperAdminColumn(t, db)
+
+	roles := []model.SysRole{
+		{Name: "超级管理员", Code: "admin", Status: 1},
+		{Name: "系统管理员", Code: "system_admin", Status: 1},
+		{Name: "普通角色", Code: "auditor", Status: 1},
+	}
+	if err := db.Create(&roles).Error; err != nil {
+		t.Fatalf("create roles: %v", err)
+	}
+
+	ensureBuiltInData()
+
+	type roleFlag struct {
+		ID           uint
+		Code         string
+		IsSuperAdmin int
+	}
+
+	var results []roleFlag
+	if err := db.Raw("SELECT id, code, is_super_admin FROM sys_role ORDER BY id ASC").Scan(&results).Error; err != nil {
+		t.Fatalf("load role flags: %v", err)
+	}
+
+	flags := make(map[string]int, len(results))
+	for _, item := range results {
+		flags[item.Code] = item.IsSuperAdmin
+	}
+	if flags["admin"] != 1 {
+		t.Fatalf("admin is_super_admin = %d, want 1", flags["admin"])
+	}
+	if flags["system_admin"] != 1 {
+		t.Fatalf("system_admin is_super_admin = %d, want 1", flags["system_admin"])
+	}
+	if flags["auditor"] != 0 {
+		t.Fatalf("auditor is_super_admin = %d, want 0", flags["auditor"])
+	}
+}
+
 func TestEnsureBuiltInDataGrantsAdminAIApiAccess(t *testing.T) {
 	db := setupInitializeTestDB(t)
 
@@ -185,6 +341,48 @@ func TestEnsureBuiltInDataGrantsAdminAIApiAccess(t *testing.T) {
 	}
 	if relationCount != 1 {
 		t.Fatalf("admin ai test api relation count = %d, want 1", relationCount)
+	}
+}
+
+func TestEnsureDeptApiAccessDoesNotOverwriteCustomizedApiMetadata(t *testing.T) {
+	db := setupInitializeTestDB(t)
+
+	sourceAPIs := []model.SysApi{
+		{Path: "/api/v1/menus", Method: "GET", Group: "菜单管理", Description: "菜单列表", NeedAuth: true},
+		{Path: "/api/v1/menus/:id", Method: "GET", Group: "菜单管理", Description: "菜单详情", NeedAuth: true},
+		{Path: "/api/v1/menus", Method: "POST", Group: "菜单管理", Description: "创建菜单", NeedAuth: true},
+		{Path: "/api/v1/menus/:id", Method: "PUT", Group: "菜单管理", Description: "更新菜单", NeedAuth: true},
+		{Path: "/api/v1/menus/:id", Method: "DELETE", Group: "菜单管理", Description: "删除菜单", NeedAuth: true},
+	}
+	if err := db.Create(&sourceAPIs).Error; err != nil {
+		t.Fatalf("create source apis: %v", err)
+	}
+
+	customTreeAPI := model.SysApi{
+		Path:        "/api/v1/depts/tree",
+		Method:      "GET",
+		Group:       "自定义部门分组",
+		Description: "保留已有部门树描述",
+		NeedAuth:    false,
+	}
+	if err := db.Create(&customTreeAPI).Error; err != nil {
+		t.Fatalf("create custom dept api: %v", err)
+	}
+
+	ensureDeptApiAccess()
+
+	var updated model.SysApi
+	if err := db.First(&updated, customTreeAPI.ID).Error; err != nil {
+		t.Fatalf("reload custom dept api: %v", err)
+	}
+	if updated.Group != customTreeAPI.Group {
+		t.Fatalf("dept api group overwritten = %s, want %s", updated.Group, customTreeAPI.Group)
+	}
+	if updated.Description != customTreeAPI.Description {
+		t.Fatalf("dept api description overwritten = %s, want %s", updated.Description, customTreeAPI.Description)
+	}
+	if updated.NeedAuth != customTreeAPI.NeedAuth {
+		t.Fatalf("dept api need_auth overwritten = %t, want %t", updated.NeedAuth, customTreeAPI.NeedAuth)
 	}
 }
 
@@ -230,6 +428,92 @@ func TestEnsureBuiltInDataGrantsProviderModelFetchApiToAdminRoles(t *testing.T) 
 		if relationCount != 1 {
 			t.Fatalf("%s fetch api relation count = %d, want 1", role.Code, relationCount)
 		}
+	}
+}
+
+func TestEnsureBuiltInDataGrantsAIConfigReadWriteApisToAdminRoles(t *testing.T) {
+	db := setupInitializeTestDB(t)
+
+	roles := []model.SysRole{
+		{Name: "超级管理员", Code: "admin", Status: 1},
+		{Name: "系统管理员", Code: "system_admin", Status: 1},
+	}
+	if err := db.Create(&roles).Error; err != nil {
+		t.Fatalf("create roles: %v", err)
+	}
+
+	systemMenu := model.SysMenu{
+		ParentID:  0,
+		Name:      "系统管理",
+		Path:      "/system",
+		Component: "Layout",
+		Icon:      "setting",
+		Sort:      1,
+		Type:      1,
+		Status:    1,
+	}
+	if err := db.Create(&systemMenu).Error; err != nil {
+		t.Fatalf("create system menu: %v", err)
+	}
+
+	ensureBuiltInData()
+
+	expected := []struct {
+		path   string
+		method string
+	}{
+		{path: "/api/v1/ai/config", method: "GET"},
+		{path: "/api/v1/ai/config", method: "PUT"},
+	}
+
+	for _, item := range expected {
+		var api model.SysApi
+		if err := db.Where("path = ? AND method = ?", item.path, item.method).First(&api).Error; err != nil {
+			t.Fatalf("load ai config api (%s %s): %v", item.method, item.path, err)
+		}
+
+		for _, role := range roles {
+			var relationCount int64
+			if err := db.Table("sys_role_api").
+				Where("sys_role_id = ? AND sys_api_id = ?", role.ID, api.ID).
+				Count(&relationCount).Error; err != nil {
+				t.Fatalf("count role api relation (%s %s %s): %v", role.Code, item.method, item.path, err)
+			}
+			if relationCount != 1 {
+				t.Fatalf("%s ai config api relation count (%s %s) = %d, want 1", role.Code, item.method, item.path, relationCount)
+			}
+		}
+	}
+}
+
+func TestEnsureAIApiAccessDoesNotOverwriteCustomizedAIConfigApiMetadata(t *testing.T) {
+	db := setupInitializeTestDB(t)
+
+	customAPI := model.SysApi{
+		Path:        "/api/v1/ai/config",
+		Method:      "GET",
+		Group:       "自定义AI分组",
+		Description: "保留已有 AI 配置读取描述",
+		NeedAuth:    false,
+	}
+	if err := db.Create(&customAPI).Error; err != nil {
+		t.Fatalf("create custom ai config api: %v", err)
+	}
+
+	ensureAIApiAccess()
+
+	var updated model.SysApi
+	if err := db.First(&updated, customAPI.ID).Error; err != nil {
+		t.Fatalf("reload ai config api: %v", err)
+	}
+	if updated.Group != customAPI.Group {
+		t.Fatalf("ai config api group overwritten = %s, want %s", updated.Group, customAPI.Group)
+	}
+	if updated.Description != customAPI.Description {
+		t.Fatalf("ai config api description overwritten = %s, want %s", updated.Description, customAPI.Description)
+	}
+	if updated.NeedAuth != customAPI.NeedAuth {
+		t.Fatalf("ai config api need_auth overwritten = %t, want %t", updated.NeedAuth, customAPI.NeedAuth)
 	}
 }
 
@@ -378,6 +662,78 @@ func TestCleanupStorageBuiltInDataRemovesLegacyMenuAndApis(t *testing.T) {
 	}
 	if apiCount != 0 {
 		t.Fatalf("legacy storage api count = %d, want 0", apiCount)
+	}
+}
+
+func TestCleanupSlowLogBuiltInDataRemovesLegacyMenuAndApis(t *testing.T) {
+	db := setupInitializeTestDB(t)
+
+	role := model.SysRole{Name: "管理员", Code: "admin", Status: 1}
+	if err := db.Create(&role).Error; err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+
+	menu := model.SysMenu{
+		ParentID:   2,
+		Name:       "慢查询日志",
+		Path:       "/monitor/show-log",
+		Component:  "monitor/show-log/index",
+		Type:       2,
+		Permission: "monitor:show-log:list",
+		Status:     1,
+	}
+	if err := db.Create(&menu).Error; err != nil {
+		t.Fatalf("create slow log menu: %v", err)
+	}
+	if err := db.Exec("INSERT INTO sys_role_menu (sys_role_id, sys_menu_id) VALUES (?, ?)", role.ID, menu.ID).Error; err != nil {
+		t.Fatalf("create slow log role menu relation: %v", err)
+	}
+
+	apis := []model.SysApi{
+		{Path: "/api/v1/logs/slow", Method: "GET", Group: "日志管理", Description: "慢查询日志列表"},
+		{Path: "/api/v1/logs/slow/:id", Method: "DELETE", Group: "日志管理", Description: "删除慢查询日志"},
+	}
+	if err := db.Create(&apis).Error; err != nil {
+		t.Fatalf("create slow log apis: %v", err)
+	}
+	for _, api := range apis {
+		if err := db.Exec("INSERT INTO sys_role_api (sys_role_id, sys_api_id) VALUES (?, ?)", role.ID, api.ID).Error; err != nil {
+			t.Fatalf("create slow log role api relation: %v", err)
+		}
+	}
+
+	cleanupSlowLogBuiltInData()
+
+	var menuCount int64
+	if err := db.Model(&model.SysMenu{}).Where("path = ? OR permission = ?", "/monitor/show-log", "monitor:show-log:list").Count(&menuCount).Error; err != nil {
+		t.Fatalf("count slow log menus: %v", err)
+	}
+	if menuCount != 0 {
+		t.Fatalf("slow log menu count = %d, want 0", menuCount)
+	}
+
+	var apiCount int64
+	if err := db.Model(&model.SysApi{}).Where("path IN ?", []string{"/api/v1/logs/slow", "/api/v1/logs/slow/:id"}).Count(&apiCount).Error; err != nil {
+		t.Fatalf("count slow log apis: %v", err)
+	}
+	if apiCount != 0 {
+		t.Fatalf("slow log api count = %d, want 0", apiCount)
+	}
+
+	var roleMenuCount int64
+	if err := db.Table("sys_role_menu").Where("sys_role_id = ?", role.ID).Count(&roleMenuCount).Error; err != nil {
+		t.Fatalf("count slow log role menu relations: %v", err)
+	}
+	if roleMenuCount != 0 {
+		t.Fatalf("slow log role menu relation count = %d, want 0", roleMenuCount)
+	}
+
+	var roleAPICount int64
+	if err := db.Table("sys_role_api").Where("sys_role_id = ?", role.ID).Count(&roleAPICount).Error; err != nil {
+		t.Fatalf("count slow log role api relations: %v", err)
+	}
+	if roleAPICount != 0 {
+		t.Fatalf("slow log role api relation count = %d, want 0", roleAPICount)
 	}
 }
 

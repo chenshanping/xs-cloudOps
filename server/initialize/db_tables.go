@@ -21,7 +21,6 @@ func InitDBTables() {
 		&model.SysApi{},
 		&model.SysOperationLog{},
 		&model.SysLoginLog{},
-		&model.SysSlowLog{},
 		&model.SysConfig{},
 		&model.SysFile{},
 		&model.SysFileChunk{},
@@ -58,12 +57,13 @@ func initDefaultData() {
 
 	// 创建默认角色
 	adminRole := model.SysRole{
-		Name:      "超级管理员",
-		Code:      "admin",
-		Sort:      1,
-		Status:    1,
-		DataScope: model.DataScopeAll,
-		Remark:    "拥有所有权限",
+		Name:         "超级管理员",
+		Code:         "admin",
+		Sort:         1,
+		Status:       1,
+		IsSuperAdmin: true,
+		DataScope:    model.DataScopeAll,
+		Remark:       "拥有所有权限",
 	}
 	global.DB.Create(&adminRole)
 
@@ -106,7 +106,6 @@ func initDefaultData() {
 		{ParentID: sysMgmt.ID, Name: "文件管理", Path: "/system/file", Component: "system/file/index", Icon: "folder", Sort: 7, Type: 2, Permission: "system:file:list", Status: 1},
 		{ParentID: monitor.ID, Name: "操作日志", Path: "/monitor/operation-log", Component: "monitor/operation-log/index", Icon: "file-text", Sort: 1, Type: 2, Permission: "monitor:operation-log:list", Status: 1},
 		{ParentID: monitor.ID, Name: "登录日志", Path: "/monitor/login-log", Component: "monitor/login-log/index", Icon: "login", Sort: 2, Type: 2, Permission: "monitor:login-log:list", Status: 1},
-		{ParentID: monitor.ID, Name: "慢查询日志", Path: "/monitor/show-log", Component: "monitor/show-log/index", Icon: "login", Sort: 2, Type: 2, Permission: "monitor:show-log:list", Status: 1},
 	}
 	global.DB.Create(&menus)
 
@@ -155,7 +154,6 @@ func initDefaultData() {
 		// 日志管理
 		{Path: "/api/v1/logs/operation", Method: "GET", Group: "日志管理", Description: "操作日志列表"},
 		{Path: "/api/v1/logs/login", Method: "GET", Group: "日志管理", Description: "登录日志列表"},
-		{Path: "/api/v1/logs/slow", Method: "GET", Group: "日志管理", Description: "慢查询日志列表"},
 		// 配置管理
 		{Path: "/api/v1/configs", Method: "GET", Group: "配置管理", Description: "配置列表"},
 		{Path: "/api/v1/configs/key/:key", Method: "GET", Group: "配置管理", Description: "根据key获取配置"},
@@ -260,11 +258,14 @@ func ensureBuiltInData() {
 
 	rootDept := ensureRootDeptExists()
 	backfillDepartmentFoundation(rootDept.ID)
+	backfillExplicitSuperAdminRoles()
 
 	ensureDeptApiAccess()
 	ensureAIApiAccess()
 	ensureAIToolMenus()
 	ensureDeptMenus()
+	ensureLogAuditMenus()
+	cleanupSlowLogBuiltInData()
 	cleanupStorageBuiltInData()
 
 	ensureApiAccessInheritedFrom(model.SysApi{
@@ -281,7 +282,6 @@ func ensureBuiltInData() {
 		Description: "批量重置密码",
 		NeedAuth:    true,
 	}, "/api/v1/users/:id/password", "PUT")
-
 	ensureUserOperationMenus()
 }
 
@@ -306,9 +306,8 @@ func ensureGenderDictData() {
 	}
 
 	items := []model.SysDictData{
-		{DictType: "sys_gender", Label: "未知", Value: "0", Sort: 0, Status: 1, TagType: "default", IsDefault: 1, Remark: "默认值"},
-		{DictType: "sys_gender", Label: "男", Value: "1", Sort: 1, Status: 1, TagType: "processing", IsDefault: 0, Remark: ""},
-		{DictType: "sys_gender", Label: "女", Value: "2", Sort: 2, Status: 1, TagType: "pink", IsDefault: 0, Remark: ""},
+		{DictType: "sys_gender", Label: "男", Value: "0", Sort: 1, Status: 1, TagType: "processing", IsDefault: 0, Remark: ""},
+		{DictType: "sys_gender", Label: "女", Value: "1", Sort: 2, Status: 1, TagType: "pink", IsDefault: 0, Remark: ""},
 	}
 
 	for _, definition := range items {
@@ -516,7 +515,7 @@ func ensureRootDeptExists() model.SysDept {
 
 	if err := global.DB.
 		Where("parent_id = ? AND name = ?", 0, rootDept.Name).
-		Assign(model.SysDept{
+		Attrs(model.SysDept{
 			Ancestors: rootDept.Ancestors,
 			Sort:      rootDept.Sort,
 			Status:    rootDept.Status,
@@ -544,6 +543,19 @@ func backfillDepartmentFoundation(rootDeptID uint) {
 		Where("data_scope = 0 OR data_scope IS NULL").
 		Update("data_scope", model.DataScopeAll).Error; err != nil {
 		global.Log.Errorf("回填角色数据范围失败: %v", err)
+	}
+}
+
+func backfillExplicitSuperAdminRoles() {
+	if !global.DB.Migrator().HasColumn(&model.SysRole{}, "is_super_admin") {
+		return
+	}
+
+	if err := global.DB.Model(&model.SysRole{}).
+		Where("code IN ?", []string{"admin", "system_admin"}).
+		Where("is_super_admin = ? OR is_super_admin IS NULL", false).
+		Update("is_super_admin", true).Error; err != nil {
+		global.Log.Errorf("回填显式超管角色失败: %v", err)
 	}
 }
 
@@ -744,6 +756,115 @@ func ensureAIToolMenus() {
 	grantMenusToRoleCodes(menuIDs, []string{"admin", "system_admin"})
 }
 
+func ensureLogAuditMenus() {
+	var systemMenu model.SysMenu
+	if err := global.DB.Where("path = ? AND type = ?", "/system", 1).First(&systemMenu).Error; err != nil {
+		global.Log.Errorf("查询系统管理目录失败: %v", err)
+		return
+	}
+
+	changed := false
+	auditMenu := model.SysMenu{
+		ParentID:  systemMenu.ID,
+		Name:      "操作审计",
+		Path:      "/system/operation-audit",
+		Component: "Layout",
+		Icon:      "audit",
+		Sort:      8,
+		Type:      1,
+		Status:    1,
+		Hidden:    0,
+	}
+	result := global.DB.
+		Where("path = ? AND type = ?", auditMenu.Path, auditMenu.Type).
+		Attrs(model.SysMenu{
+			ParentID:  auditMenu.ParentID,
+			Name:      auditMenu.Name,
+			Component: auditMenu.Component,
+			Icon:      auditMenu.Icon,
+			Sort:      auditMenu.Sort,
+			Status:    auditMenu.Status,
+			Hidden:    auditMenu.Hidden,
+		}).
+		FirstOrCreate(&auditMenu)
+	if err := result.Error; err != nil {
+		global.Log.Errorf("补齐操作审计目录失败: %v", err)
+		return
+	}
+	if result.RowsAffected > 0 {
+		changed = true
+	}
+
+	menuDefinitions := []model.SysMenu{
+		{
+			ParentID:   auditMenu.ID,
+			Name:       "操作日志",
+			Path:       "/monitor/operation-log",
+			Component:  "monitor/operation-log/index",
+			Icon:       "file-text",
+			Sort:       1,
+			Type:       2,
+			Permission: "monitor:operation-log:list",
+			Status:     1,
+			Hidden:     0,
+		},
+		{
+			ParentID:   auditMenu.ID,
+			Name:       "登录日志",
+			Path:       "/monitor/login-log",
+			Component:  "monitor/login-log/index",
+			Icon:       "login",
+			Sort:       2,
+			Type:       2,
+			Permission: "monitor:login-log:list",
+			Status:     1,
+			Hidden:     0,
+		},
+	}
+
+	menuIDs := []uint{auditMenu.ID}
+	for _, definition := range menuDefinitions {
+		menu := definition
+		result := global.DB.
+			Where("permission = ? AND type = ?", menu.Permission, menu.Type).
+			Attrs(model.SysMenu{
+				ParentID:  menu.ParentID,
+				Name:      menu.Name,
+				Path:      menu.Path,
+				Component: menu.Component,
+				Icon:      menu.Icon,
+				Sort:      menu.Sort,
+				Status:    menu.Status,
+				Hidden:    menu.Hidden,
+			}).
+			FirstOrCreate(&menu)
+		if err := result.Error; err != nil {
+			global.Log.Errorf("补齐日志审计菜单失败(%s): %v", definition.Permission, err)
+			continue
+		}
+		if result.RowsAffected > 0 {
+			changed = true
+		}
+
+		if menu.ParentID != auditMenu.ID {
+			if err := global.DB.Model(&menu).Update("parent_id", auditMenu.ID).Error; err != nil {
+				global.Log.Errorf("迁移日志审计菜单父级失败(%s): %v", definition.Permission, err)
+				continue
+			}
+			menu.ParentID = auditMenu.ID
+			changed = true
+		}
+		menuIDs = append(menuIDs, menu.ID)
+	}
+
+	grantMenusToRoleCodes(menuIDs, []string{"admin", "system_admin"})
+	if changed {
+		if err := service.Cache.ClearAllUserInfoCache(); err != nil {
+			global.Log.Errorf("清理用户菜单缓存失败: %v", err)
+		}
+	}
+}
+
 func ensureAIApiAccess() {
 	apiDefinitions := []model.SysApi{
 		{Path: "/api/v1/ai/conversations", Method: "GET", Group: "AI对话", Description: "获取对话列表", NeedAuth: true},
@@ -757,8 +878,10 @@ func ensureAIApiAccess() {
 		{Path: "/api/v1/ai/messages/:id", Method: "DELETE", Group: "AI对话", Description: "删除单条消息", NeedAuth: true},
 		{Path: "/api/v1/ai/chat", Method: "POST", Group: "AI对话", Description: "AI对话", NeedAuth: true},
 		{Path: "/api/v1/ai/chat/stream", Method: "POST", Group: "AI对话", Description: "AI流式对话", NeedAuth: true},
-		{Path: "/api/v1/ai/test", Method: "POST", Group: "AI对话", Description: "测试AI配置", NeedAuth: true},
-		{Path: "/api/v1/ai/providers/models/fetch", Method: "POST", Group: "AI对话", Description: "拉取平台模型列表", NeedAuth: true},
+		{Path: "/api/v1/ai/config", Method: "GET", Group: "AI配置", Description: "获取AI配置", NeedAuth: true},
+		{Path: "/api/v1/ai/config", Method: "PUT", Group: "AI配置", Description: "保存AI配置", NeedAuth: true},
+		{Path: "/api/v1/ai/test", Method: "POST", Group: "AI配置", Description: "测试AI配置", NeedAuth: true},
+		{Path: "/api/v1/ai/providers/models/fetch", Method: "POST", Group: "AI配置", Description: "拉取平台模型列表", NeedAuth: true},
 	}
 
 	for _, definition := range apiDefinitions {
@@ -769,7 +892,7 @@ func ensureAIApiAccess() {
 func ensureApiAccessInheritedFrom(api model.SysApi, sourcePath, sourceMethod string) {
 	if err := global.DB.
 		Where("path = ? AND method = ?", api.Path, api.Method).
-		Assign(model.SysApi{
+		Attrs(model.SysApi{
 			Group:       api.Group,
 			Description: api.Description,
 			NeedAuth:    api.NeedAuth,
@@ -825,7 +948,7 @@ func ensureApiAccessInheritedFrom(api model.SysApi, sourcePath, sourceMethod str
 func ensureApiAccessForRoleCodes(api model.SysApi, roleCodes []string) {
 	if err := global.DB.
 		Where("path = ? AND method = ?", api.Path, api.Method).
-		Assign(model.SysApi{
+		Attrs(model.SysApi{
 			Group:       api.Group,
 			Description: api.Description,
 			NeedAuth:    api.NeedAuth,
@@ -1028,6 +1151,94 @@ func cleanupStorageBuiltInData() {
 		for _, api := range storageApis {
 			if ok, err := global.Enforcer.RemoveFilteredPolicy(1, api.Path, api.Method); err != nil {
 				global.Log.Errorf("清理旧存储 Casbin 策略失败(%s %s): %v", api.Method, api.Path, err)
+			} else if ok {
+				policyChanged = true
+			}
+		}
+		if policyChanged {
+			_ = global.Enforcer.SavePolicy()
+		}
+	}
+}
+
+func cleanupSlowLogBuiltInData() {
+	tx := global.DB.Begin()
+	if tx.Error != nil {
+		global.Log.Errorf("初始化慢查询日志内置数据清理事务失败: %v", tx.Error)
+		return
+	}
+
+	var menuIDs []uint
+	if err := tx.Model(&model.SysMenu{}).
+		Where("path = ? OR permission = ?", "/monitor/show-log", "monitor:show-log:list").
+		Pluck("id", &menuIDs).Error; err != nil {
+		tx.Rollback()
+		global.Log.Errorf("查询慢查询日志菜单失败: %v", err)
+		return
+	}
+	menuChanged := len(menuIDs) > 0
+	if menuChanged {
+		if err := tx.Exec("DELETE FROM sys_role_menu WHERE sys_menu_id IN ?", menuIDs).Error; err != nil {
+			tx.Rollback()
+			global.Log.Errorf("清理慢查询日志菜单角色关联失败: %v", err)
+			return
+		}
+		if err := tx.Where("id IN ?", menuIDs).Delete(&model.SysMenu{}).Error; err != nil {
+			tx.Rollback()
+			global.Log.Errorf("删除慢查询日志菜单失败: %v", err)
+			return
+		}
+	}
+
+	type apiPolicy struct {
+		Path   string
+		Method string
+	}
+
+	slowLogApis := []apiPolicy{
+		{Path: "/api/v1/logs/slow", Method: "GET"},
+		{Path: "/api/v1/logs/slow/:id", Method: "DELETE"},
+	}
+	apiPaths := make([]string, 0, len(slowLogApis))
+	for _, api := range slowLogApis {
+		apiPaths = append(apiPaths, api.Path)
+	}
+
+	var apiIDs []uint
+	if err := tx.Model(&model.SysApi{}).Where("path IN ?", apiPaths).Pluck("id", &apiIDs).Error; err != nil {
+		tx.Rollback()
+		global.Log.Errorf("查询慢查询日志 API 失败: %v", err)
+		return
+	}
+	if len(apiIDs) > 0 {
+		if err := tx.Exec("DELETE FROM sys_role_api WHERE sys_api_id IN ?", apiIDs).Error; err != nil {
+			tx.Rollback()
+			global.Log.Errorf("清理慢查询日志 API 角色关联失败: %v", err)
+			return
+		}
+		if err := tx.Where("id IN ?", apiIDs).Delete(&model.SysApi{}).Error; err != nil {
+			tx.Rollback()
+			global.Log.Errorf("删除慢查询日志 API 失败: %v", err)
+			return
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		global.Log.Errorf("提交慢查询日志内置数据清理失败: %v", err)
+		return
+	}
+
+	if menuChanged {
+		if err := service.Cache.ClearAllUserInfoCache(); err != nil {
+			global.Log.Errorf("清理慢查询日志菜单缓存失败: %v", err)
+		}
+	}
+
+	if global.Enforcer != nil {
+		policyChanged := false
+		for _, api := range slowLogApis {
+			if ok, err := global.Enforcer.RemoveFilteredPolicy(1, api.Path, api.Method); err != nil {
+				global.Log.Errorf("清理慢查询日志 Casbin 策略失败(%s %s): %v", api.Method, api.Path, err)
 			} else if ok {
 				policyChanged = true
 			}

@@ -137,7 +137,6 @@ const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
 const groupTreeData = ref<{ key: string; title: string }[]>([])
 const selectedGroup = ref<string>('')
 const columns = [
-  { title: 'ID', dataIndex: 'id', key: 'id', width: 80,align: 'center' },
   { title: '用户名', dataIndex: 'username', key: 'username', width: 100,align: 'center' },
   { title: 'IP', dataIndex: 'ip', key: 'ip', width: 120 ,align: 'center'},
   { title: '方法', key: 'method', width: 80,align: 'center' },

@@ -177,7 +177,6 @@ const paramsColumns = [
 // 使用工具函数动态生成列配置
 const columns = useTableColumns(
   [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
     { title: 'API路径', dataIndex: 'path', key: 'path', ellipsis: true },
     { title: '方法', key: 'method', width: 80 },
     { title: '认证', key: 'need_auth', width: 80 },

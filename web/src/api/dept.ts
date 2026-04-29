@@ -1,3 +1,4 @@
+import type { AxiosRequestConfig } from 'axios'
 import type { ApiResponse, Dept, ManageableDeptTreeData } from '@/types'
 import request from '@/utils/request'
 
@@ -5,8 +6,8 @@ export function getDeptTree() {
   return request.get<any, ApiResponse<Dept[]>>('/depts/tree')
 }
 
-export function getManageableDeptTree() {
-  return request.get<any, ApiResponse<ManageableDeptTreeData>>('/depts/manageable-tree')
+export function getManageableDeptTree(config?: AxiosRequestConfig) {
+  return request.get<any, ApiResponse<ManageableDeptTreeData>>('/depts/manageable-tree', config)
 }
 
 export function getDept(id: number) {

@@ -32,7 +32,7 @@ The system MUST prevent invalid department tree mutations that would create cycl
 - **THEN** the system MUST reject the request and MUST NOT persist the change
 
 ### Requirement: Department deletion must enforce usage constraints
-The system MUST reject department deletion when the department still has child departments or assigned users.
+The system MUST reject department deletion when the department still has child departments, assigned users, or role data-scope references.
 
 #### Scenario: Reject deleting department with children
 - **GIVEN** a department has one or more child departments
@@ -41,6 +41,11 @@ The system MUST reject department deletion when the department still has child d
 
 #### Scenario: Reject deleting department with assigned users
 - **GIVEN** one or more users are assigned to the target department
+- **WHEN** an administrator requests deletion
+- **THEN** the system MUST reject the delete request
+
+#### Scenario: Reject deleting department referenced by role data scope
+- **GIVEN** the target department is referenced by one or more role custom data-scope selections
 - **WHEN** an administrator requests deletion
 - **THEN** the system MUST reject the delete request
 
