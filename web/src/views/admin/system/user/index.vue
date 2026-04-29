@@ -65,19 +65,39 @@
               <a-button type="primary" @click="handleAdd" v-permission="'system:user:add'">
                 <PlusOutlined /> 新增
               </a-button>
-              <a-button type="primary" :disabled="selectedRowKeys.length === 0" @click="handleBatchStatusChange(1)" v-permission="'system:user:batchEnable'">
+              <a-button
+                type="primary"
+                :disabled="selectedRowKeys.length === 0 || hasRestrictedManagedSelection"
+                @click="handleBatchStatusChange(1)"
+                v-permission="'system:user:batchEnable'"
+              >
                 批量启用
                 <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
               </a-button>
-              <a-button danger :disabled="selectedRowKeys.length === 0" @click="handleBatchStatusChange(0)" v-permission="'system:user:batchDisable'">
+              <a-button
+                danger
+                :disabled="selectedRowKeys.length === 0 || hasRestrictedManagedSelection"
+                @click="handleBatchStatusChange(0)"
+                v-permission="'system:user:batchDisable'"
+              >
                 批量禁用
                 <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
               </a-button>
-              <a-button :disabled="selectedRowKeys.length === 0" @click="handleBatchResetPwd" v-permission="'system:user:batchResetPwd'">
+              <a-button
+                :disabled="selectedRowKeys.length === 0 || hasRestrictedManagedSelection"
+                @click="handleBatchResetPwd"
+                v-permission="'system:user:batchResetPwd'"
+              >
                 批量重置密码
                 <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
               </a-button>
-              <a-button type="primary" danger :disabled="selectedRowKeys.length === 0" @click="handleBatchDelete" v-permission="'system:user:delete'">
+              <a-button
+                type="primary"
+                danger
+                :disabled="selectedRowKeys.length === 0 || hasRestrictedManagedSelection"
+                @click="handleBatchDelete"
+                v-permission="'system:user:delete'"
+              >
                 <DeleteOutlined /> 批量删除
                 <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
               </a-button>
@@ -93,6 +113,7 @@
             <template v-if="column.key === 'status'">
               <a-switch
                 :checked="record.status === 1"
+                :disabled="!canMutateManagedRecord(record)"
                 @change="(checked: boolean) => handleStatusChange(record, checked)"
               />
             </template>
@@ -113,14 +134,25 @@
             <template v-if="column.key === 'created_at'">{{ formatTime(record.created_at) }}</template>
             <template v-if="column.key === 'action'">
               <a-space :size="0">
-                <a-button type="link" size="small" @click="handleEdit(record)" v-permission="'system:user:edit'">编辑</a-button>
+                <a-button
+                  v-if="canMutateManagedRecord(record)"
+                  type="link"
+                  size="small"
+                  @click="handleEdit(record)"
+                  v-permission="'system:user:edit'"
+                >编辑</a-button>
                 <a-button v-if="showProfileButton" type="link" size="small" @click="handleViewProfiles(record)">身份</a-button>
-                <a-dropdown>
+                <a-dropdown v-if="canMutateManagedRecord(record)">
                   <a-button type="link" size="small">更多 <DownOutlined /></a-button>
                   <template #overlay>
                     <a-menu>
                       <a-menu-item key="resetPwd" v-permission="'system:user:resetPwd'" @click="handleResetPwd(record)">重置密码</a-menu-item>
-                      <a-menu-item key="delete" v-permission="'system:user:delete'" @click="confirmDelete(record)">
+                      <a-menu-item
+                        v-if="canDeleteRecord(record)"
+                        key="delete"
+                        v-permission="'system:user:delete'"
+                        @click="confirmDelete(record)"
+                      >
                         <span style="color: #ff4d4f">删除</span>
                       </a-menu-item>
                       <a-menu-item key="offline" v-permission="'system:user:forceOffline'" @click="confirmForceOffline(record)">
@@ -218,6 +250,7 @@ const genderOptions = ref<GenderOption[]>([])
 const deptTree = ref<Dept[]>([])
 const deptSelectTree = ref<Dept[]>([])
 const unassignedUserCount = ref(0)
+const defaultUserAvatarUrl = ref('')
 const selectedTreeKey = ref<string>('all')
 const expandedTreeKeys = ref<string[]>([])
 const treeInitialized = ref(false)
@@ -241,6 +274,9 @@ const selectedUsers = computed(() =>
 )
 
 const currentUserId = computed(() => userStore.user?.id ?? 0)
+const hasRestrictedManagedSelection = computed(() =>
+  selectedUsers.value.some(user => isRestrictedManagedRecord(user))
+)
 
 const searchForm = reactive({
   username: '',
@@ -353,6 +389,7 @@ const fetchDeptTree = async () => {
 
     const tree = Array.isArray(userTreeRes.data?.tree) ? userTreeRes.data.tree : []
     const unassignedCount = typeof userTreeRes.data?.unassigned_user_count === 'number' ? userTreeRes.data.unassigned_user_count : 0
+    const defaultAvatarUrl = typeof userTreeRes.data?.default_avatar_url === 'string' ? userTreeRes.data.default_avatar_url : ''
     const selectTree = Array.isArray(deptSelectRes.data?.tree) ? deptSelectRes.data.tree : []
 
     if (!Array.isArray(userTreeRes.data?.tree)) {
@@ -362,6 +399,7 @@ const fetchDeptTree = async () => {
     deptTree.value = tree
     deptSelectTree.value = selectTree
     unassignedUserCount.value = unassignedCount
+    defaultUserAvatarUrl.value = defaultAvatarUrl
     const allKeys = collectTreeKeys(tree)
     expandedTreeKeys.value = treeInitialized.value
       ? expandedTreeKeys.value.filter(key => allKeys.includes(key))
@@ -372,6 +410,7 @@ const fetchDeptTree = async () => {
     deptTree.value = []
     deptSelectTree.value = []
     unassignedUserCount.value = 0
+    defaultUserAvatarUrl.value = ''
     showDeptTreeErrorModal('获取可管理部门树失败，请稍后重试。')
   } finally {
     deptLoading.value = false
@@ -415,6 +454,7 @@ const handleTreeExpand = (keys: string[]) => {
 const handleAdd = () => {
   const defaultDeptId = getDefaultDeptIdFromSelection()
   const defaultDept = defaultDeptId ? findDeptById(deptTree.value, defaultDeptId) : null
+  const defaultAvatarUrl = defaultUserAvatarUrl.value || configStore.get('register_logo')
   isEdit.value = false
   currentId.value = 0
   drawerTitle.value = '新增用户'
@@ -430,12 +470,16 @@ const handleAdd = () => {
     role_ids: [2],
     statusChecked: true,
     avatar_file_id: undefined,
-    avatar_file_url: ''
+    avatar_file_url: defaultAvatarUrl || ''
   }
   drawerVisible.value = true
 }
 
 const handleEdit = (record: User) => {
+  if (!canMutateManagedRecord(record)) {
+    message.warning(isCurrentUserRecord(record) ? '不能在用户管理中修改当前登录账号' : '受保护管理员账号不允许编辑')
+    return
+  }
   isEdit.value = true
   currentId.value = record.id
   drawerTitle.value = '编辑用户'
@@ -472,12 +516,20 @@ const handleDrawerSubmit = async (values: any) => {
 }
 
 const handleStatusChange = async (record: User, checked: boolean) => {
+  if (!canMutateManagedRecord(record)) {
+    message.warning(isCurrentUserRecord(record) ? '不能修改当前登录账号状态' : '受保护管理员账号不允许修改状态')
+    return
+  }
   await updateUserStatus(record.id, checked ? 1 : 0)
   message.success('修改成功')
   fetchData()
 }
 
 const handleResetPwd = async (record: User) => {
+  if (!canMutateManagedRecord(record)) {
+    message.warning(isCurrentUserRecord(record) ? '不能在用户管理中重置当前登录账号密码' : '受保护管理员账号不允许重置密码')
+    return
+  }
   Modal.confirm({
     title: '确认重置密码',
     icon: createVNode(ExclamationCircleOutlined),
@@ -493,6 +545,10 @@ const handleResetPwd = async (record: User) => {
 }
 
 const confirmDelete = (record: User) => {
+  if (!canDeleteRecord(record)) {
+    message.warning(record.id === currentUserId.value ? '不能删除当前登录账号' : '受保护管理员账号不允许删除')
+    return
+  }
   Modal.confirm({
     title: '确认删除',
     icon: createVNode(ExclamationCircleOutlined),
@@ -516,12 +572,23 @@ const clearSelectedRows = () => {
   selectedRowKeys.value = []
 }
 
-const isProtectedBatchStatusRecord = (record: User) => {
+const isCurrentUserRecord = (record: User) => record.id === currentUserId.value
+
+const isProtectedDeleteRecord = (record: User) => {
   if (record.id === 1 || record.username === 'admin') {
     return true
   }
   return (record.roles || []).some(role => role.id === 1 || role.code === 'admin' || role.code === 'super_admin')
 }
+
+const isRestrictedManagedRecord = (record: User) =>
+  isCurrentUserRecord(record) || isProtectedDeleteRecord(record)
+
+const canMutateManagedRecord = (record: User) =>
+  !isRestrictedManagedRecord(record)
+
+const canDeleteRecord = (record: User) =>
+  canMutateManagedRecord(record)
 
 const getBatchStatusTargetIds = (status: number) => {
   if (selectedRowKeys.value.length === 0) {
@@ -529,13 +596,13 @@ const getBatchStatusTargetIds = (status: number) => {
     return null
   }
 
-  if (selectedUsers.value.some(user => isProtectedBatchStatusRecord(user))) {
+  if (selectedUsers.value.some(user => isProtectedDeleteRecord(user))) {
     message.warning('当前选择包含受保护管理员账号，无法批量修改状态')
     return null
   }
 
-  if (status === 0 && selectedUsers.value.some(user => user.id === currentUserId.value)) {
-    message.warning('不能批量禁用自己')
+  if (selectedUsers.value.some(user => isCurrentUserRecord(user))) {
+    message.warning('不能批量修改当前登录账号状态')
     return null
   }
 
@@ -570,6 +637,14 @@ const handleBatchResetPwd = () => {
     message.warning('请选择要重置密码的用户')
     return
   }
+  if (selectedUsers.value.some(user => isCurrentUserRecord(user))) {
+    message.warning('不能批量重置当前登录账号密码')
+    return
+  }
+  if (selectedUsers.value.some(user => isProtectedDeleteRecord(user))) {
+    message.warning('当前选择包含受保护管理员账号，无法批量重置密码')
+    return
+  }
 
   Modal.confirm({
     title: '确认批量重置密码',
@@ -590,6 +665,14 @@ const handleBatchResetPwd = () => {
 const handleBatchDelete = () => {
   if (selectedRowKeys.value.length === 0) {
     message.warning('请选择要删除的用户')
+    return
+  }
+  if (selectedUsers.value.some(user => isCurrentUserRecord(user))) {
+    message.warning('不能批量删除当前登录账号')
+    return
+  }
+  if (selectedUsers.value.some(user => isProtectedDeleteRecord(user))) {
+    message.warning('当前选择包含受保护管理员账号，无法批量删除')
     return
   }
   Modal.confirm({
@@ -613,6 +696,10 @@ const handleBatchDelete = () => {
 }
 
 const confirmForceOffline = (record: User) => {
+  if (!canMutateManagedRecord(record)) {
+    message.warning(isCurrentUserRecord(record) ? '不能强制下线自己' : '受保护管理员账号不允许强制下线')
+    return
+  }
   Modal.confirm({
     title: '确认强制下线',
     icon: createVNode(ExclamationCircleOutlined),
@@ -732,7 +819,7 @@ const buildDeptSelectOptions = (depts: Dept[]): TreeSelectOption[] =>
 const getGenderOption = (value: number) => resolveGenderOption(genderOptions.value, value)
 
 onMounted(async () => {
-  await Promise.all([fetchRoles(), fetchDeptTree(), fetchGenderOptions()])
+  await Promise.all([configStore.loadConfigs(), fetchRoles(), fetchDeptTree(), fetchGenderOptions()])
   await fetchData()
 })
 </script>

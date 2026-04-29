@@ -3,6 +3,8 @@ package user
 import (
 	"errors"
 	"fmt"
+	"net/mail"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -24,9 +26,12 @@ var Default = &UserService{}
 const (
 	userDefaultPasswordConfigKey = "user_default_password"
 	userDefaultPasswordFallback  = "123456"
+	registerLogoConfigKey        = "register_logo"
 )
 
-func isProtectedBatchStatusUser(user model.SysUser) bool {
+var mainlandPhoneRegex = regexp.MustCompile(`^1[3-9]\d{9}$`)
+
+func isProtectedUser(user model.SysUser) bool {
 	if user.ID == 1 || user.Username == "admin" {
 		return true
 	}
@@ -46,20 +51,40 @@ func validateBatchUserStatusTargets(ids []uint, status int, operatorID uint, use
 		return errors.New("状态值无效")
 	}
 
-	if status == 0 {
-		for _, id := range ids {
-			if id == operatorID {
-				return errors.New("不能批量禁用自己")
-			}
-		}
-	}
+	return validateRestrictedManagedUserTargets(
+		operatorID,
+		users,
+		"不能批量修改当前登录账号状态",
+		"当前选择包含受保护管理员账号，无法批量修改状态",
+	)
+}
 
+func validateDeleteTargets(operatorID uint, users []model.SysUser) error {
 	for _, user := range users {
-		if isProtectedBatchStatusUser(user) {
-			return fmt.Errorf("用户「%s」为受保护管理员，不能批量修改状态", user.Username)
+		if user.ID == operatorID {
+			return errors.New("不能删除当前登录账号")
+		}
+		if isProtectedUser(user) {
+			return errors.New("受保护管理员账号不允许删除")
 		}
 	}
+	return nil
+}
 
+func validateRestrictedManagedUserTargets(
+	operatorID uint,
+	users []model.SysUser,
+	selfMessage string,
+	protectedMessage string,
+) error {
+	for _, user := range users {
+		if selfMessage != "" && user.ID == operatorID {
+			return errors.New(selfMessage)
+		}
+		if protectedMessage != "" && isProtectedUser(user) {
+			return errors.New(protectedMessage)
+		}
+	}
 	return nil
 }
 
@@ -68,6 +93,64 @@ func validateUserGender(gender int) error {
 		return errors.New("性别值无效")
 	}
 	return nil
+}
+
+func normalizeOptionalContact(value string) string {
+	return strings.TrimSpace(value)
+}
+
+func validateOptionalEmail(email string) error {
+	if email == "" {
+		return nil
+	}
+
+	parsed, err := mail.ParseAddress(email)
+	if err != nil || parsed.Address != email {
+		return errors.New("邮箱格式不正确")
+	}
+	return nil
+}
+
+func validateOptionalMainlandPhone(phone string) error {
+	if phone == "" {
+		return nil
+	}
+	if !mainlandPhoneRegex.MatchString(phone) {
+		return errors.New("手机号格式不正确")
+	}
+	return nil
+}
+
+func validateOptionalContactFields(email, phone string) error {
+	if err := validateOptionalEmail(email); err != nil {
+		return err
+	}
+	if err := validateOptionalMainlandPhone(phone); err != nil {
+		return err
+	}
+	return nil
+}
+
+func resolveRegisterLogoAvatarFileID() (uint, error) {
+	config, err := configsvc.Default.GetConfigByKey(registerLogoConfigKey)
+	if err != nil {
+		return 0, nil
+	}
+
+	logoURL := strings.TrimSpace(config.Value)
+	if logoURL == "" {
+		return 0, nil
+	}
+
+	var file model.SysFile
+	if err := global.DB.Where("url = ? AND status = ?", logoURL, 1).First(&file).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return 0, nil
+		}
+		return 0, err
+	}
+
+	return file.ID, nil
 }
 
 func (s *UserService) GetUserOptions(operatorID uint) ([]map[string]interface{}, error) {
@@ -174,7 +257,13 @@ func (s *UserService) GetUserList(operatorID uint, req *request.UserListRequest)
 }
 
 func (s *UserService) CreateUser(operatorID uint, req *request.CreateUserRequest) error {
+	req.Email = normalizeOptionalContact(req.Email)
+	req.Phone = normalizeOptionalContact(req.Phone)
+
 	if err := validateUserGender(req.Gender); err != nil {
+		return err
+	}
+	if err := validateOptionalContactFields(req.Email, req.Phone); err != nil {
 		return err
 	}
 	if err := core.EnsureDeptManageableForResource(operatorID, req.DeptID, core.DataScopeResourceUserManagement); err != nil {
@@ -210,6 +299,12 @@ func (s *UserService) CreateUser(operatorID uint, req *request.CreateUserRequest
 			return errors.New("头像文件不存在")
 		}
 		user.AvatarFileID = file.ID
+	} else {
+		defaultAvatarFileID, err := resolveRegisterLogoAvatarFileID()
+		if err != nil {
+			return err
+		}
+		user.AvatarFileID = defaultAvatarFileID
 	}
 
 	return global.DB.Transaction(func(tx *gorm.DB) error {
@@ -232,11 +327,25 @@ func (s *UserService) CreateUser(operatorID uint, req *request.CreateUserRequest
 }
 
 func (s *UserService) UpdateUser(operatorID, id uint, req *request.UpdateUserRequest) error {
+	req.Email = normalizeOptionalContact(req.Email)
+	req.Phone = normalizeOptionalContact(req.Phone)
+
 	if err := validateUserGender(req.Gender); err != nil {
+		return err
+	}
+	if err := validateOptionalContactFields(req.Email, req.Phone); err != nil {
 		return err
 	}
 	user, err := core.EnsureUserManageableForResource(operatorID, id, core.DataScopeResourceUserManagement)
 	if err != nil {
+		return err
+	}
+	if err := validateRestrictedManagedUserTargets(
+		operatorID,
+		[]model.SysUser{*user},
+		"不能在用户管理中修改当前登录账号",
+		"受保护管理员账号不允许编辑",
+	); err != nil {
 		return err
 	}
 
@@ -322,7 +431,11 @@ func (s *UserService) UpdateUser(operatorID, id uint, req *request.UpdateUserReq
 }
 
 func (s *UserService) DeleteUser(operatorID, id uint) error {
-	if _, err := core.EnsureUserManageableForResource(operatorID, id, core.DataScopeResourceUserManagement); err != nil {
+	user, err := core.EnsureUserManageableForResource(operatorID, id, core.DataScopeResourceUserManagement)
+	if err != nil {
+		return err
+	}
+	if err := validateDeleteTargets(operatorID, []model.SysUser{*user}); err != nil {
 		return err
 	}
 	return s.deleteUserByID(id)
@@ -360,7 +473,11 @@ func (s *UserService) BatchDeleteUsers(operatorID uint, ids []uint) (int, []stri
 	var failedMsgs []string
 
 	normalized := core.NormalizeIDs(ids)
-	if _, err := core.EnsureUsersManageableForResource(operatorID, normalized, core.DataScopeResourceUserManagement); err != nil {
+	users, err := core.EnsureUsersManageableForResource(operatorID, normalized, core.DataScopeResourceUserManagement)
+	if err != nil {
+		return 0, []string{err.Error()}
+	}
+	if err := validateDeleteTargets(operatorID, users); err != nil {
 		return 0, []string{err.Error()}
 	}
 
@@ -379,11 +496,20 @@ func (s *UserService) UpdateUserStatus(operatorID, id uint, status int) error {
 	if status != 0 && status != 1 {
 		return errors.New("状态值无效")
 	}
-	if _, err := core.EnsureUserManageableForResource(operatorID, id, core.DataScopeResourceUserManagement); err != nil {
+	user, err := core.EnsureUserManageableForResource(operatorID, id, core.DataScopeResourceUserManagement)
+	if err != nil {
+		return err
+	}
+	if err := validateRestrictedManagedUserTargets(
+		operatorID,
+		[]model.SysUser{*user},
+		"不能修改当前登录账号状态",
+		"受保护管理员账号不允许修改状态",
+	); err != nil {
 		return err
 	}
 
-	err := global.DB.Model(&model.SysUser{}).Where("id = ?", id).Update("status", status).Error
+	err = global.DB.Model(&model.SysUser{}).Where("id = ?", id).Update("status", status).Error
 	if err == nil {
 		core.Default.ClearUserInfoCache(id)
 	}
@@ -447,7 +573,16 @@ func (s *UserService) managedUserDefaultPassword() string {
 }
 
 func (s *UserService) ResetManagedUserPassword(operatorID, id uint) error {
-	if _, err := core.EnsureUserManageableForResource(operatorID, id, core.DataScopeResourceUserManagement); err != nil {
+	user, err := core.EnsureUserManageableForResource(operatorID, id, core.DataScopeResourceUserManagement)
+	if err != nil {
+		return err
+	}
+	if err := validateRestrictedManagedUserTargets(
+		operatorID,
+		[]model.SysUser{*user},
+		"不能在用户管理中重置当前登录账号密码",
+		"受保护管理员账号不允许重置密码",
+	); err != nil {
 		return err
 	}
 	return s.ResetPassword(id, s.managedUserDefaultPassword())
@@ -459,7 +594,16 @@ func (s *UserService) BatchResetManagedUserPasswords(operatorID uint, ids []uint
 		return errors.New("请选择要重置密码的用户")
 	}
 
-	if _, err := core.EnsureUsersManageableForResource(operatorID, normalized, core.DataScopeResourceUserManagement); err != nil {
+	users, err := core.EnsureUsersManageableForResource(operatorID, normalized, core.DataScopeResourceUserManagement)
+	if err != nil {
+		return err
+	}
+	if err := validateRestrictedManagedUserTargets(
+		operatorID,
+		users,
+		"不能批量重置当前登录账号密码",
+		"当前选择包含受保护管理员账号，无法批量重置密码",
+	); err != nil {
 		return err
 	}
 
@@ -467,10 +611,16 @@ func (s *UserService) BatchResetManagedUserPasswords(operatorID uint, ids []uint
 }
 
 func (s *UserService) ForceOffline(operatorID, id uint) error {
-	if operatorID == id {
-		return errors.New("不能强制下线自己")
+	user, err := core.EnsureUserManageableForResource(operatorID, id, core.DataScopeResourceUserManagement)
+	if err != nil {
+		return err
 	}
-	if _, err := core.EnsureUserManageableForResource(operatorID, id, core.DataScopeResourceUserManagement); err != nil {
+	if err := validateRestrictedManagedUserTargets(
+		operatorID,
+		[]model.SysUser{*user},
+		"不能强制下线自己",
+		"受保护管理员账号不允许强制下线",
+	); err != nil {
 		return err
 	}
 	return utils.RemoveUserToken(id)
@@ -524,6 +674,13 @@ func (s *UserService) ChangePassword(id uint, oldPassword, newPassword string) e
 }
 
 func (s *UserService) UpdateProfile(id uint, req *request.UpdateProfileRequest) error {
+	req.Email = normalizeOptionalContact(req.Email)
+	req.Phone = normalizeOptionalContact(req.Phone)
+
+	if err := validateOptionalContactFields(req.Email, req.Phone); err != nil {
+		return err
+	}
+
 	updates := map[string]interface{}{
 		"nickname": req.Nickname,
 		"email":    req.Email,
@@ -578,11 +735,8 @@ func (s *UserService) Register(username, password, email string) error {
 		Status:   1,
 	}
 
-	if config, err := configsvc.Default.GetConfigByKey("register_logo"); err == nil && config.Value != "" {
-		var file model.SysFile
-		if err := global.DB.Where("url = ? AND status = ?", config.Value, 1).First(&file).Error; err == nil {
-			user.AvatarFileID = file.ID
-		}
+	if defaultAvatarFileID, err := resolveRegisterLogoAvatarFileID(); err == nil {
+		user.AvatarFileID = defaultAvatarFileID
 	}
 
 	return global.DB.Transaction(func(tx *gorm.DB) error {

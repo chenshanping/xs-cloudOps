@@ -31,7 +31,7 @@ func (a *DeptApi) GetManageableDeptTree(c *gin.Context) {
 	if resourceCode == "" {
 		resourceCode = core.DataScopeResourceDeptManagement
 	}
-	tree, unassignedCount, err := service.Dept.GetManageableDeptTreeForResource(operatorID, resourceCode)
+	tree, unassignedCount, defaultAvatarURL, err := service.Dept.GetManageableDeptTreeWithDefaultsForResource(operatorID, resourceCode)
 	if err != nil {
 		response.Fail(c, "获取可管理部门树失败")
 		return
@@ -39,6 +39,7 @@ func (a *DeptApi) GetManageableDeptTree(c *gin.Context) {
 	response.OkWithData(c, gin.H{
 		"tree":                  tree,
 		"unassigned_user_count": unassignedCount,
+		"default_avatar_url":    defaultAvatarURL,
 	})
 }
 

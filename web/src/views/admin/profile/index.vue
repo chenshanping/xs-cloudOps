@@ -103,10 +103,16 @@
       </a-col>
       <a-col :span="16">
         <a-card title="编辑资料" style="margin-bottom: 16px">
-          <a-form :model="profileForm" :label-col="{ span: 4 }" :wrapper-col="{ span: 16 }">
+          <a-form
+            ref="profileFormRef"
+            :model="profileForm"
+            :rules="profileRules"
+            :label-col="{ span: 4 }"
+            :wrapper-col="{ span: 16 }"
+          >
             <a-form-item label="昵称"><a-input v-model:value="profileForm.nickname" /></a-form-item>
-            <a-form-item label="邮箱"><a-input v-model:value="profileForm.email" /></a-form-item>
-            <a-form-item label="手机"><a-input v-model:value="profileForm.phone" /></a-form-item>
+            <a-form-item label="邮箱" name="email"><a-input v-model:value="profileForm.email" /></a-form-item>
+            <a-form-item label="手机" name="phone"><a-input v-model:value="profileForm.phone" /></a-form-item>
             <a-form-item :wrapper-col="{ offset: 4 }">
               <a-button type="primary" :loading="profileLoading" @click="handleUpdateProfile">保存修改</a-button>
             </a-form-item>
@@ -139,6 +145,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, shallowRef, defineAsyncComponent, nextTick } from 'vue'
+import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import { message } from 'ant-design-vue'
 import * as Icons from '@ant-design/icons-vue'
 import { EditOutlined } from '@ant-design/icons-vue'
@@ -153,6 +160,9 @@ const profileLoading = ref(false)
 const passwordLoading = ref(false)
 const profilesLoading = ref(false)
 const userProfiles = ref<UserProfile[]>([])
+const profileFormRef = ref<FormInstance>()
+const mainlandPhonePattern = /^1[3-9]\d{9}$/
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 // 身份编辑相关
 const identityDrawerVisible = ref(false)
@@ -166,6 +176,33 @@ const profileForm = reactive({
   avatar: '',
   avatar_file_id: undefined as number | undefined
 })
+
+const normalizeOptionalText = (value?: string) => value?.trim() ?? ''
+
+const validateOptionalEmail = async (_rule: Rule, value?: string) => {
+  const normalized = normalizeOptionalText(value)
+  if (!normalized) {
+    return
+  }
+  if (!emailPattern.test(normalized)) {
+    throw new Error('请输入正确的邮箱格式')
+  }
+}
+
+const validateOptionalPhone = async (_rule: Rule, value?: string) => {
+  const normalized = normalizeOptionalText(value)
+  if (!normalized) {
+    return
+  }
+  if (!mainlandPhonePattern.test(normalized)) {
+    throw new Error('请输入正确的手机号格式')
+  }
+}
+
+const profileRules: Record<string, Rule[]> = {
+  email: [{ trigger: 'blur', validator: validateOptionalEmail }],
+  phone: [{ trigger: 'blur', validator: validateOptionalPhone }]
+}
 
 const passwordForm = reactive({
   old_password: '',
@@ -256,6 +293,14 @@ const handleAvatarSuccess = async (file: FileInfo) => {
 }
 
 const handleUpdateProfile = async () => {
+  try {
+    await profileFormRef.value?.validate()
+  } catch {
+    return
+  }
+
+  profileForm.email = normalizeOptionalText(profileForm.email)
+  profileForm.phone = normalizeOptionalText(profileForm.phone)
   profileLoading.value = true
   try {
     await updateProfile(profileForm)

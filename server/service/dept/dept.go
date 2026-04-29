@@ -12,6 +12,7 @@ import (
 	"server/global"
 	"server/model"
 	"server/model/request"
+	"server/service/configsvc"
 	"server/service/core"
 )
 
@@ -70,6 +71,20 @@ func (s *DeptService) GetManageableDeptTreeForResource(operatorID uint, resource
 	tree := s.buildDeptTree(filteredDepts, 0)
 	s.decorateDeptTree(tree, directUserCountMap, allowedManageableSet)
 	return tree, unassignedCount, nil
+}
+
+func (s *DeptService) GetManageableDeptTreeWithDefaultsForResource(operatorID uint, resourceCode string) ([]model.SysDept, int64, string, error) {
+	tree, unassignedCount, err := s.GetManageableDeptTreeForResource(operatorID, resourceCode)
+	if err != nil {
+		return nil, 0, "", err
+	}
+
+	defaultAvatarURL, err := s.getDefaultUserAvatarURL()
+	if err != nil {
+		return nil, 0, "", err
+	}
+
+	return tree, unassignedCount, defaultAvatarURL, nil
 }
 
 func (s *DeptService) GetDept(id uint) (*model.SysDept, error) {
@@ -301,6 +316,17 @@ func (s *DeptService) getVisibleDeptUserCounts(scope *core.UserDataScope) (map[u
 	}
 
 	return countMap, unassignedCount, nil
+}
+
+func (s *DeptService) getDefaultUserAvatarURL() (string, error) {
+	config, err := configsvc.Default.GetConfigByKey("register_logo")
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", nil
+		}
+		return "", err
+	}
+	return strings.TrimSpace(config.Value), nil
 }
 
 func expandDeptIDsWithAncestors(allDepts []model.SysDept, deptSet map[uint]struct{}) map[uint]struct{} {

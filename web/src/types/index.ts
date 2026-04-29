@@ -54,6 +54,7 @@ export interface Dept {
 export interface ManageableDeptTreeData {
   tree: Dept[]
   unassigned_user_count: number
+  default_avatar_url?: string
 }
 
 // 角色

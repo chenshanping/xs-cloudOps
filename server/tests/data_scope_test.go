@@ -1180,6 +1180,328 @@ func TestUserServiceUpdateUserAllowsUnchangedLegacyParentDept(t *testing.T) {
 	}
 }
 
+func TestUserServiceDeleteUserRejectsSelf(t *testing.T) {
+	db := setupDataScopeTestDB(t)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+
+	roleAll := model.SysRole{Name: "管理员", Code: "delete-self-admin", DataScope: model.DataScopeAll, Status: 1}
+	if err := db.Create(&roleAll).Error; err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+
+	operator := model.SysUser{
+		Username: "delete-self-operator",
+		Password: "pwd",
+		Nickname: "删除自己操作员",
+		Status:   1,
+		DeptID:   root.ID,
+		Roles:    []model.SysRole{roleAll},
+	}
+	if err := db.Create(&operator).Error; err != nil {
+		t.Fatalf("create operator: %v", err)
+	}
+
+	if err := User.DeleteUser(operator.ID, operator.ID); err == nil {
+		t.Fatalf("DeleteUser should reject deleting self")
+	}
+}
+
+func TestUserServiceDeleteUserRejectsProtectedAdmin(t *testing.T) {
+	db := setupDataScopeTestDB(t)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+
+	roleAll := model.SysRole{Name: "管理员", Code: "delete-admin-operator", DataScope: model.DataScopeAll, Status: 1}
+	roleProtected := model.SysRole{Name: "超管", Code: "super_admin", DataScope: model.DataScopeAll, Status: 1}
+	for _, role := range []*model.SysRole{&roleAll, &roleProtected} {
+		if err := db.Create(role).Error; err != nil {
+			t.Fatalf("create role %s: %v", role.Code, err)
+		}
+	}
+
+	operator := model.SysUser{
+		Username: "delete-admin-operator",
+		Password: "pwd",
+		Nickname: "删除管理员操作员",
+		Status:   1,
+		DeptID:   root.ID,
+		Roles:    []model.SysRole{roleAll},
+	}
+	protectedUser := model.SysUser{
+		Username: "admin",
+		Password: "pwd",
+		Nickname: "受保护管理员",
+		Status:   1,
+		DeptID:   root.ID,
+		Roles:    []model.SysRole{roleProtected},
+	}
+	for _, user := range []*model.SysUser{&operator, &protectedUser} {
+		if err := db.Create(user).Error; err != nil {
+			t.Fatalf("create user %s: %v", user.Username, err)
+		}
+	}
+
+	if err := User.DeleteUser(operator.ID, protectedUser.ID); err == nil {
+		t.Fatalf("DeleteUser should reject deleting protected admin")
+	}
+}
+
+func TestUserServiceBatchDeleteUsersRejectsSelfOrProtectedWithoutPartialDelete(t *testing.T) {
+	db := setupDataScopeTestDB(t)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+
+	roleAll := model.SysRole{Name: "管理员", Code: "batch-delete-operator", DataScope: model.DataScopeAll, Status: 1}
+	roleProtected := model.SysRole{Name: "超管", Code: "super_admin", DataScope: model.DataScopeAll, Status: 1}
+	for _, role := range []*model.SysRole{&roleAll, &roleProtected} {
+		if err := db.Create(role).Error; err != nil {
+			t.Fatalf("create role %s: %v", role.Code, err)
+		}
+	}
+
+	operator := model.SysUser{
+		Username: "batch-delete-operator",
+		Password: "pwd",
+		Nickname: "批量删除操作员",
+		Status:   1,
+		DeptID:   root.ID,
+		Roles:    []model.SysRole{roleAll},
+	}
+	normalUser := model.SysUser{
+		Username: "batch-delete-normal",
+		Password: "pwd",
+		Nickname: "普通用户",
+		Status:   1,
+		DeptID:   root.ID,
+	}
+	protectedUser := model.SysUser{
+		Username: "batch-delete-admin",
+		Password: "pwd",
+		Nickname: "受保护管理员",
+		Status:   1,
+		DeptID:   root.ID,
+		Roles:    []model.SysRole{roleProtected},
+	}
+	for _, user := range []*model.SysUser{&operator, &normalUser, &protectedUser} {
+		if err := db.Create(user).Error; err != nil {
+			t.Fatalf("create user %s: %v", user.Username, err)
+		}
+	}
+
+	successCount, failedMsgs := User.BatchDeleteUsers(operator.ID, []uint{normalUser.ID, operator.ID})
+	if successCount != 0 || len(failedMsgs) == 0 {
+		t.Fatalf("BatchDeleteUsers should reject self delete before any deletion, got success=%d failed=%v", successCount, failedMsgs)
+	}
+
+	var normalCount int64
+	if err := db.Model(&model.SysUser{}).Where("id = ?", normalUser.ID).Count(&normalCount).Error; err != nil {
+		t.Fatalf("count normal user after self-protected batch: %v", err)
+	}
+	if normalCount != 1 {
+		t.Fatalf("normal user should remain after rejected self batch, count=%d", normalCount)
+	}
+
+	successCount, failedMsgs = User.BatchDeleteUsers(operator.ID, []uint{normalUser.ID, protectedUser.ID})
+	if successCount != 0 || len(failedMsgs) == 0 {
+		t.Fatalf("BatchDeleteUsers should reject protected admin before any deletion, got success=%d failed=%v", successCount, failedMsgs)
+	}
+
+	if err := db.Model(&model.SysUser{}).Where("id = ?", normalUser.ID).Count(&normalCount).Error; err != nil {
+		t.Fatalf("count normal user after admin-protected batch: %v", err)
+	}
+	if normalCount != 1 {
+		t.Fatalf("normal user should remain after rejected protected batch, count=%d", normalCount)
+	}
+}
+
+func TestUserServiceUpdateUserRejectsSelfOrProtectedAdmin(t *testing.T) {
+	db := setupDataScopeTestDB(t)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+
+	roleAll := model.SysRole{Name: "管理员", Code: "update-operator", DataScope: model.DataScopeAll, Status: 1}
+	roleProtected := model.SysRole{Name: "超管", Code: "super_admin", DataScope: model.DataScopeAll, Status: 1}
+	roleUser := model.SysRole{Name: "普通用户", Code: "user", DataScope: model.DataScopeSelf, Status: 1}
+	for _, role := range []*model.SysRole{&roleAll, &roleProtected, &roleUser} {
+		if err := db.Create(role).Error; err != nil {
+			t.Fatalf("create role %s: %v", role.Code, err)
+		}
+	}
+
+	operator := model.SysUser{Username: "update-self-operator", Password: "pwd", Nickname: "操作员", Status: 1, DeptID: root.ID, Roles: []model.SysRole{roleAll}}
+	protectedUser := model.SysUser{Username: "update-protected-admin", Password: "pwd", Nickname: "受保护管理员", Status: 1, DeptID: root.ID, Roles: []model.SysRole{roleProtected}}
+	for _, user := range []*model.SysUser{&operator, &protectedUser} {
+		if err := db.Create(user).Error; err != nil {
+			t.Fatalf("create user %s: %v", user.Username, err)
+		}
+	}
+
+	selfReq := &request.UpdateUserRequest{
+		Nickname: "尝试修改自己",
+		Email:    "self@example.com",
+		Phone:    "13800003000",
+		Status:   1,
+		DeptID:   root.ID,
+		RoleIds:  []uint{roleAll.ID},
+	}
+	if err := User.UpdateUser(operator.ID, operator.ID, selfReq); err == nil {
+		t.Fatalf("UpdateUser should reject editing self in user management")
+	}
+
+	protectedReq := &request.UpdateUserRequest{
+		Nickname: "尝试修改受保护管理员",
+		Email:    "protected@example.com",
+		Phone:    "13800004000",
+		Status:   1,
+		DeptID:   root.ID,
+		RoleIds:  []uint{roleProtected.ID},
+	}
+	if err := User.UpdateUser(operator.ID, protectedUser.ID, protectedReq); err == nil {
+		t.Fatalf("UpdateUser should reject editing protected admin")
+	}
+}
+
+func TestUserServiceUpdateUserStatusRejectsSelfOrProtectedAdmin(t *testing.T) {
+	db := setupDataScopeTestDB(t)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+
+	roleAll := model.SysRole{Name: "管理员", Code: "status-operator", DataScope: model.DataScopeAll, Status: 1}
+	roleProtected := model.SysRole{Name: "超管", Code: "super_admin", DataScope: model.DataScopeAll, Status: 1}
+	for _, role := range []*model.SysRole{&roleAll, &roleProtected} {
+		if err := db.Create(role).Error; err != nil {
+			t.Fatalf("create role %s: %v", role.Code, err)
+		}
+	}
+
+	operator := model.SysUser{Username: "status-self-operator", Password: "pwd", Nickname: "操作员", Status: 1, DeptID: root.ID, Roles: []model.SysRole{roleAll}}
+	protectedUser := model.SysUser{Username: "status-protected-admin", Password: "pwd", Nickname: "受保护管理员", Status: 1, DeptID: root.ID, Roles: []model.SysRole{roleProtected}}
+	for _, user := range []*model.SysUser{&operator, &protectedUser} {
+		if err := db.Create(user).Error; err != nil {
+			t.Fatalf("create user %s: %v", user.Username, err)
+		}
+	}
+
+	if err := User.UpdateUserStatus(operator.ID, operator.ID, 0); err == nil {
+		t.Fatalf("UpdateUserStatus should reject self target")
+	}
+	if err := User.UpdateUserStatus(operator.ID, protectedUser.ID, 0); err == nil {
+		t.Fatalf("UpdateUserStatus should reject protected admin target")
+	}
+}
+
+func TestUserServiceResetManagedUserPasswordRejectsProtectedAdmin(t *testing.T) {
+	db := setupDataScopeTestDB(t)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+
+	roleAll := model.SysRole{Name: "管理员", Code: "reset-operator", DataScope: model.DataScopeAll, Status: 1}
+	roleProtected := model.SysRole{Name: "超管", Code: "super_admin", DataScope: model.DataScopeAll, Status: 1}
+	for _, role := range []*model.SysRole{&roleAll, &roleProtected} {
+		if err := db.Create(role).Error; err != nil {
+			t.Fatalf("create role %s: %v", role.Code, err)
+		}
+	}
+
+	operator := model.SysUser{Username: "reset-operator", Password: "pwd", Nickname: "操作员", Status: 1, DeptID: root.ID, Roles: []model.SysRole{roleAll}}
+	protectedUser := model.SysUser{Username: "reset-protected-admin", Password: "pwd", Nickname: "受保护管理员", Status: 1, DeptID: root.ID, Roles: []model.SysRole{roleProtected}}
+	for _, user := range []*model.SysUser{&operator, &protectedUser} {
+		if err := db.Create(user).Error; err != nil {
+			t.Fatalf("create user %s: %v", user.Username, err)
+		}
+	}
+
+	if err := User.ResetManagedUserPassword(operator.ID, protectedUser.ID); err == nil {
+		t.Fatalf("ResetManagedUserPassword should reject protected admin")
+	}
+}
+
+func TestUserServiceBatchResetManagedUserPasswordsRejectsProtectedAdminWithoutPartialReset(t *testing.T) {
+	db := setupDataScopeTestDB(t)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+
+	roleAll := model.SysRole{Name: "管理员", Code: "batch-reset-operator", DataScope: model.DataScopeAll, Status: 1}
+	roleProtected := model.SysRole{Name: "超管", Code: "super_admin", DataScope: model.DataScopeAll, Status: 1}
+	for _, role := range []*model.SysRole{&roleAll, &roleProtected} {
+		if err := db.Create(role).Error; err != nil {
+			t.Fatalf("create role %s: %v", role.Code, err)
+		}
+	}
+
+	operator := model.SysUser{Username: "batch-reset-operator", Password: "pwd", Nickname: "操作员", Status: 1, DeptID: root.ID, Roles: []model.SysRole{roleAll}}
+	normalUser := model.SysUser{Username: "batch-reset-normal", Password: "old-normal", Nickname: "普通用户", Status: 1, DeptID: root.ID}
+	protectedUser := model.SysUser{Username: "batch-reset-protected-admin", Password: "old-protected", Nickname: "受保护管理员", Status: 1, DeptID: root.ID, Roles: []model.SysRole{roleProtected}}
+	for _, user := range []*model.SysUser{&operator, &normalUser, &protectedUser} {
+		if err := db.Create(user).Error; err != nil {
+			t.Fatalf("create user %s: %v", user.Username, err)
+		}
+	}
+
+	if err := User.BatchResetManagedUserPasswords(operator.ID, []uint{normalUser.ID, protectedUser.ID}); err == nil {
+		t.Fatalf("BatchResetManagedUserPasswords should reject protected admin")
+	}
+
+	var reloaded model.SysUser
+	if err := db.First(&reloaded, normalUser.ID).Error; err != nil {
+		t.Fatalf("reload normal user: %v", err)
+	}
+	if reloaded.Password != normalUser.Password {
+		t.Fatalf("normal user password should remain unchanged after rejected batch reset")
+	}
+}
+
+func TestUserServiceForceOfflineRejectsProtectedAdmin(t *testing.T) {
+	db := setupDataScopeTestDB(t)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+
+	roleAll := model.SysRole{Name: "管理员", Code: "offline-operator", DataScope: model.DataScopeAll, Status: 1}
+	roleProtected := model.SysRole{Name: "超管", Code: "super_admin", DataScope: model.DataScopeAll, Status: 1}
+	for _, role := range []*model.SysRole{&roleAll, &roleProtected} {
+		if err := db.Create(role).Error; err != nil {
+			t.Fatalf("create role %s: %v", role.Code, err)
+		}
+	}
+
+	operator := model.SysUser{Username: "offline-operator", Password: "pwd", Nickname: "操作员", Status: 1, DeptID: root.ID, Roles: []model.SysRole{roleAll}}
+	protectedUser := model.SysUser{Username: "offline-protected-admin", Password: "pwd", Nickname: "受保护管理员", Status: 1, DeptID: root.ID, Roles: []model.SysRole{roleProtected}}
+	for _, user := range []*model.SysUser{&operator, &protectedUser} {
+		if err := db.Create(user).Error; err != nil {
+			t.Fatalf("create user %s: %v", user.Username, err)
+		}
+	}
+
+	if err := User.ForceOffline(operator.ID, protectedUser.ID); err == nil {
+		t.Fatalf("ForceOffline should reject protected admin")
+	}
+}
+
 func TestUserServiceResetManagedUserPasswordUsesConfiguredDefault(t *testing.T) {
 	db := setupDataScopeTestDB(t)
 
@@ -1385,5 +1707,260 @@ func TestRoleServicePersistsCustomDeptDataScope(t *testing.T) {
 	}
 	if len(updated.Depts) != 0 {
 		t.Fatalf("updated role custom dept len = %d, want 0", len(updated.Depts))
+	}
+}
+
+func TestUserServiceCreateUserRejectsInvalidEmailOrPhone(t *testing.T) {
+	db := setupDataScopeTestDB(t)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+
+	roleAll := model.SysRole{Name: "管理员", Code: "create-validation-operator", DataScope: model.DataScopeAll, Status: 1}
+	if err := db.Create(&roleAll).Error; err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+
+	operator := model.SysUser{
+		Username: "create-validation-operator",
+		Password: "pwd",
+		Nickname: "创建校验操作员",
+		Status:   1,
+		DeptID:   root.ID,
+		Roles:    []model.SysRole{roleAll},
+	}
+	if err := db.Create(&operator).Error; err != nil {
+		t.Fatalf("create operator: %v", err)
+	}
+
+	tests := []struct {
+		name string
+		req  request.CreateUserRequest
+	}{
+		{
+			name: "invalid email",
+			req: request.CreateUserRequest{
+				Username: "invalid-create-email",
+				Password: "123456",
+				Nickname: "非法邮箱",
+				Gender:   1,
+				Email:    "invalid-email",
+				Phone:    "13800001111",
+				Status:   1,
+				DeptID:   root.ID,
+			},
+		},
+		{
+			name: "invalid phone",
+			req: request.CreateUserRequest{
+				Username: "invalid-create-phone",
+				Password: "123456",
+				Nickname: "非法手机号",
+				Gender:   1,
+				Email:    "valid-create@example.com",
+				Phone:    "12345",
+				Status:   1,
+				DeptID:   root.ID,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := User.CreateUser(operator.ID, &tt.req); err == nil {
+				t.Fatalf("CreateUser should reject %s", tt.name)
+			}
+		})
+	}
+}
+
+func TestUserServiceCreateUserFallsBackToRegisterLogoAvatar(t *testing.T) {
+	db := setupDataScopeTestDB(t)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+
+	roleAll := model.SysRole{Name: "管理员", Code: "create-avatar-fallback-operator", DataScope: model.DataScopeAll, Status: 1}
+	if err := db.Create(&roleAll).Error; err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+
+	operator := model.SysUser{
+		Username: "create-avatar-fallback-operator",
+		Password: "pwd",
+		Nickname: "默认头像操作员",
+		Status:   1,
+		DeptID:   root.ID,
+		Roles:    []model.SysRole{roleAll},
+	}
+	if err := db.Create(&operator).Error; err != nil {
+		t.Fatalf("create operator: %v", err)
+	}
+
+	file := model.SysFile{
+		Name:   "register-avatar.png",
+		Path:   "/uploads/register-avatar.png",
+		URL:    "https://cdn.example.com/register-avatar.png",
+		Status: 1,
+	}
+	if err := db.Create(&file).Error; err != nil {
+		t.Fatalf("create file: %v", err)
+	}
+
+	if err := db.Create(&model.SysConfig{
+		Name:      "注册默认头像",
+		Key:       "register_logo",
+		Value:     file.URL,
+		ValueType: "string",
+		Remark:    "新增用户默认头像",
+	}).Error; err != nil {
+		t.Fatalf("create config: %v", err)
+	}
+
+	req := &request.CreateUserRequest{
+		Username: "register-logo-fallback-user",
+		Password: "123456",
+		Nickname: "默认头像用户",
+		Gender:   1,
+		Email:    "register-logo@example.com",
+		Phone:    "13800006666",
+		Status:   1,
+		DeptID:   root.ID,
+	}
+	if err := User.CreateUser(operator.ID, req); err != nil {
+		t.Fatalf("CreateUser error: %v", err)
+	}
+
+	var created model.SysUser
+	if err := db.Where("username = ?", req.Username).First(&created).Error; err != nil {
+		t.Fatalf("load created user: %v", err)
+	}
+	if created.AvatarFileID != file.ID {
+		t.Fatalf("created avatar_file_id = %d, want %d", created.AvatarFileID, file.ID)
+	}
+}
+
+func TestUserServiceUpdateUserRejectsInvalidEmailOrPhone(t *testing.T) {
+	db := setupDataScopeTestDB(t)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+
+	roleAll := model.SysRole{Name: "管理员", Code: "update-validation-operator", DataScope: model.DataScopeAll, Status: 1}
+	roleUser := model.SysRole{Name: "普通用户", Code: "update-validation-user", DataScope: model.DataScopeSelf, Status: 1}
+	for _, role := range []*model.SysRole{&roleAll, &roleUser} {
+		if err := db.Create(role).Error; err != nil {
+			t.Fatalf("create role %s: %v", role.Code, err)
+		}
+	}
+
+	operator := model.SysUser{
+		Username: "update-validation-operator",
+		Password: "pwd",
+		Nickname: "更新校验操作员",
+		Status:   1,
+		DeptID:   root.ID,
+		Roles:    []model.SysRole{roleAll},
+	}
+	target := model.SysUser{
+		Username: "update-validation-target",
+		Password: "pwd",
+		Nickname: "更新校验目标",
+		Status:   1,
+		DeptID:   root.ID,
+		Roles:    []model.SysRole{roleUser},
+	}
+	for _, user := range []*model.SysUser{&operator, &target} {
+		if err := db.Create(user).Error; err != nil {
+			t.Fatalf("create user %s: %v", user.Username, err)
+		}
+	}
+
+	tests := []struct {
+		name string
+		req  request.UpdateUserRequest
+	}{
+		{
+			name: "invalid email",
+			req: request.UpdateUserRequest{
+				Nickname: "非法邮箱更新",
+				Gender:   1,
+				Email:    "invalid-email",
+				Phone:    "13800002222",
+				Status:   1,
+				DeptID:   root.ID,
+				RoleIds:  []uint{roleUser.ID},
+			},
+		},
+		{
+			name: "invalid phone",
+			req: request.UpdateUserRequest{
+				Nickname: "非法手机号更新",
+				Gender:   1,
+				Email:    "valid-update@example.com",
+				Phone:    "10086",
+				Status:   1,
+				DeptID:   root.ID,
+				RoleIds:  []uint{roleUser.ID},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := User.UpdateUser(operator.ID, target.ID, &tt.req); err == nil {
+				t.Fatalf("UpdateUser should reject %s", tt.name)
+			}
+		})
+	}
+}
+
+func TestUserServiceUpdateProfileRejectsInvalidEmailOrPhone(t *testing.T) {
+	db := setupDataScopeTestDB(t)
+
+	user := model.SysUser{
+		Username: "profile-validation-user",
+		Password: "pwd",
+		Nickname: "资料校验用户",
+		Status:   1,
+	}
+	if err := db.Create(&user).Error; err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	tests := []struct {
+		name string
+		req  request.UpdateProfileRequest
+	}{
+		{
+			name: "invalid email",
+			req: request.UpdateProfileRequest{
+				Nickname: "非法邮箱资料",
+				Email:    "invalid-email",
+				Phone:    "13800003333",
+			},
+		},
+		{
+			name: "invalid phone",
+			req: request.UpdateProfileRequest{
+				Nickname: "非法手机资料",
+				Email:    "valid-profile@example.com",
+				Phone:    "phone-number",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := User.UpdateProfile(user.ID, &tt.req); err == nil {
+				t.Fatalf("UpdateProfile should reject %s", tt.name)
+			}
+		})
 	}
 }

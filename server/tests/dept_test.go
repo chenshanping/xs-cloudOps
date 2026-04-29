@@ -23,6 +23,7 @@ func setupDeptTestDB(t *testing.T) *gorm.DB {
 
 	if err := db.AutoMigrate(
 		&model.SysFile{},
+		&model.SysConfig{},
 		&model.SysDept{},
 		&model.SysRole{},
 		&model.SysRoleDataScope{},
@@ -243,6 +244,56 @@ func TestDeptServiceGetManageableDeptTreeReturnsEmptySliceWhenNoDeptVisible(t *t
 	}
 	if unassignedCount != 0 {
 		t.Fatalf("unassigned count = %d, want 0", unassignedCount)
+	}
+}
+
+func TestDeptServiceGetManageableDeptTreeWithDefaultsReturnsRegisterLogo(t *testing.T) {
+	db := setupDeptTestDB(t)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+
+	roleAll := model.SysRole{Name: "管理员", Code: "dept-default-avatar-role", DataScope: model.DataScopeAll, Status: 1}
+	if err := db.Create(&roleAll).Error; err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+
+	operator := model.SysUser{
+		Username: "dept-default-avatar-operator",
+		Password: "pwd",
+		Nickname: "部门树默认头像操作员",
+		Status:   1,
+		DeptID:   root.ID,
+		Roles:    []model.SysRole{roleAll},
+	}
+	if err := db.Create(&operator).Error; err != nil {
+		t.Fatalf("create operator: %v", err)
+	}
+
+	if err := db.Create(&model.SysConfig{
+		Name:      "注册默认头像",
+		Key:       "register_logo",
+		Value:     "https://cdn.example.com/register-default-avatar.png",
+		ValueType: "string",
+		Remark:    "用户管理新增默认头像",
+	}).Error; err != nil {
+		t.Fatalf("create config: %v", err)
+	}
+
+	tree, unassignedCount, defaultAvatarURL, err := Dept.GetManageableDeptTreeWithDefaultsForResource(operator.ID, "system:user-management")
+	if err != nil {
+		t.Fatalf("GetManageableDeptTreeWithDefaultsForResource error: %v", err)
+	}
+	if tree == nil {
+		t.Fatalf("expected dept tree slice, got nil")
+	}
+	if unassignedCount != 0 {
+		t.Fatalf("unassigned count = %d, want 0", unassignedCount)
+	}
+	if defaultAvatarURL != "https://cdn.example.com/register-default-avatar.png" {
+		t.Fatalf("default avatar url = %q", defaultAvatarURL)
 	}
 }
 

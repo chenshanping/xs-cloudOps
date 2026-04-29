@@ -38,10 +38,10 @@
           </a-select-option>
         </a-select>
       </a-form-item>
-      <a-form-item label="邮箱">
+      <a-form-item label="邮箱" name="email">
         <a-input v-model:value="formState.email" />
       </a-form-item>
-      <a-form-item label="手机号">
+      <a-form-item label="手机号" name="phone">
         <a-input v-model:value="formState.phone" />
       </a-form-item>
       <a-form-item label="所属部门" name="deptSelection">
@@ -143,6 +143,8 @@ const emit = defineEmits<{
 }>()
 
 const formRef = ref<FormInstance>()
+const mainlandPhonePattern = /^1[3-9]\d{9}$/
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const formState = reactive<UserFormValue>({
   username: '',
@@ -189,10 +191,43 @@ const findDeptOption = (options: TreeSelectOption[], targetValue?: number): Tree
 const canKeepLegacyDeptSelection = (value?: TreeSelectValue) =>
   isLegacyDeptBinding.value && value?.value === props.initialValue?.dept_id
 
+const normalizeOptionalText = (value?: string) => value?.trim() ?? ''
+
+const validateOptionalEmail = async (_rule: Rule, value?: string) => {
+  const normalized = normalizeOptionalText(value)
+  if (!normalized) {
+    return
+  }
+  if (!emailPattern.test(normalized)) {
+    throw new Error('请输入正确的邮箱格式')
+  }
+}
+
+const validateOptionalPhone = async (_rule: Rule, value?: string) => {
+  const normalized = normalizeOptionalText(value)
+  if (!normalized) {
+    return
+  }
+  if (!mainlandPhonePattern.test(normalized)) {
+    throw new Error('请输入正确的手机号格式')
+  }
+}
+
 const formRules = computed<Record<string, Rule[]>>(() => ({
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: props.isEdit ? [] : [{ required: true, message: '请输入密码', trigger: 'blur' }],
-  avatar_file_id: [{ required: true, message: '请上传头像', trigger: 'change' }],
+  avatar_file_id: [
+    {
+      trigger: 'change',
+      validator: async () => {
+        if (!formState.avatar_file_id && !normalizeOptionalText(formState.avatar_file_url)) {
+          throw new Error('请上传头像')
+        }
+      }
+    }
+  ],
+  email: [{ trigger: 'blur', validator: validateOptionalEmail }],
+  phone: [{ trigger: 'blur', validator: validateOptionalPhone }],
   deptSelection: [
     { required: true, message: '请选择所属部门', trigger: 'change' },
     {
@@ -276,8 +311,8 @@ const handleSubmit = async () => {
     password: formState.password,
     nickname: formState.nickname,
     gender: formState.gender,
-    email: formState.email,
-    phone: formState.phone,
+    email: normalizeOptionalText(formState.email),
+    phone: normalizeOptionalText(formState.phone),
     dept_id: formState.deptSelection?.value,
     role_ids: [...formState.role_ids],
     status: formState.statusChecked ? 1 : 0,

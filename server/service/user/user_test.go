@@ -56,14 +56,14 @@ func TestValidateBatchUserStatusTargets(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:       "allows enable self",
+			name:       "rejects self enable",
 			ids:        []uint{2},
 			status:     1,
 			operatorID: 2,
 			users: []model.SysUser{
 				{BaseModel: model.BaseModel{ID: 2}, Username: "operator"},
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 	}
 
