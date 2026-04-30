@@ -1,10 +1,10 @@
 package v1
 
 import (
-	"server/model/request"
 	"strconv"
 
 	"server/model"
+	"server/model/request"
 	"server/model/response"
 	"server/service"
 
@@ -39,14 +39,13 @@ func (a *ConfigApi) GetConfigByKey(c *gin.Context) {
 
 // GetConfigsByKeys 批量获取配置
 func (a *ConfigApi) GetConfigsByKeys(c *gin.Context) {
-	var req struct {
-		Keys []string `json:"keys"`
-	}
+	var req request.ConfigKeysRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "参数错误")
 		return
 	}
-	configs, err := service.Config.GetConfigsByKeys(req.Keys)
+
+	configs, err := service.Config.GetPublicConfigsByKeys(req.Keys)
 	if err != nil {
 		response.Fail(c, "获取配置失败")
 		return

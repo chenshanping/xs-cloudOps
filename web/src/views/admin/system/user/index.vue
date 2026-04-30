@@ -821,7 +821,7 @@ const buildDeptSelectOptions = (depts: Dept[]): TreeSelectOption[] =>
 const getGenderOption = (value: number) => resolveGenderOption(genderOptions.value, value)
 
 onMounted(async () => {
-  await Promise.all([configStore.loadConfigs(), fetchRoles(), fetchDeptTree(), fetchGenderOptions()])
+  await Promise.all([configStore.loadConfigs(false, 'public'), fetchRoles(), fetchDeptTree(), fetchGenderOptions()])
   await fetchData()
 })
 </script>

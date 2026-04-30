@@ -270,7 +270,7 @@ router.beforeEach(async (to, from, next) => {
     if (userStore.token && !userStore.user) {
       try {
         await userStore.getUserInfoAction()
-        await configStore.loadConfigs()
+        await configStore.loadConfigs(false, 'public')
       } catch (error) {
         // 前台页面加载失败不强制跳转，继续访问
         console.error('加载用户信息失败', error)
@@ -298,7 +298,7 @@ router.beforeEach(async (to, from, next) => {
     try {
       await userStore.getUserInfoAction()
       // 加载系统配置
-      await configStore.loadConfigs()
+      await configStore.loadConfigs(false, 'public')
       // 添加动态路由
       addDynamicRoutes(userStore.menus)
       console.log(userStore)

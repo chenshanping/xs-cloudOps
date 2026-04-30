@@ -19,6 +19,6 @@ app.directive('permission', permission)
 
 // 先加载配置，再挂载应用
 const configStore = useConfigStore()
-configStore.loadConfigs().finally(() => {
+configStore.loadConfigs(false, 'public').finally(() => {
   app.mount('#app')
 })

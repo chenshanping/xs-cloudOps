@@ -1,6 +1,7 @@
 package service
 
 import (
+	"server/model"
 	"server/service/ai"
 	"server/service/apisvc"
 	"server/service/auth"
@@ -17,7 +18,6 @@ import (
 	"server/service/role"
 	"server/service/storagesvc"
 	"server/service/user"
-	"server/model"
 )
 
 // Service singletons
@@ -56,9 +56,18 @@ const (
 	FileDeleteModeConfigKey      = file.FileDeleteModeConfigKey
 	FileDeleteModeLogical        = file.FileDeleteModeLogical
 	FileDeleteModePhysical       = file.FileDeleteModePhysical
+	PublicConfigKeysConfigKey    = configsvc.PublicConfigKeysConfigKey
 	StorageTypeConfigKey         = configsvc.StorageTypeConfigKey
 	LegacyStorageConfigConfigKey = configsvc.LegacyStorageConfigConfigKey
 )
+
+func DefaultPublicConfigKeys() []string {
+	return configsvc.DefaultPublicConfigKeys()
+}
+
+func DefaultPublicConfigKeysValue() string {
+	return configsvc.DefaultPublicConfigKeysValue()
+}
 
 func NewAuthFlowService() *auth.AuthFlowService {
 	return auth.NewAuthFlowService()

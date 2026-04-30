@@ -135,6 +135,35 @@ func TestEnsureBuiltInDataDoesNotOverwriteCustomizedRootDept(t *testing.T) {
 	}
 }
 
+func TestEnsureBuiltInDataCreatesPublicConfigKeysWithoutOverwritingCustomizedValue(t *testing.T) {
+	db := setupInitializeTestDB(t)
+
+	customValue := `["sys_name","custom_public_key"]`
+	customConfig := model.SysConfig{
+		Name:      "自定义公开配置键",
+		Key:       service.PublicConfigKeysConfigKey,
+		Value:     customValue,
+		ValueType: "json",
+		Remark:    "保留已有公开配置白名单",
+	}
+	if err := db.Create(&customConfig).Error; err != nil {
+		t.Fatalf("create custom public config keys: %v", err)
+	}
+
+	ensureBuiltInData()
+
+	var updated model.SysConfig
+	if err := db.Where("`key` = ?", service.PublicConfigKeysConfigKey).First(&updated).Error; err != nil {
+		t.Fatalf("reload public config keys: %v", err)
+	}
+	if updated.Value != customValue {
+		t.Fatalf("public_config_keys overwritten = %s, want %s", updated.Value, customValue)
+	}
+	if updated.Name != customConfig.Name {
+		t.Fatalf("public_config_keys name overwritten = %s, want %s", updated.Name, customConfig.Name)
+	}
+}
+
 func TestEnsureBuiltInDataCreatesAIMenus(t *testing.T) {
 	db := setupInitializeTestDB(t)
 

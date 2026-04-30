@@ -29,6 +29,7 @@
 - For admin create/edit/other non-trivial popup interactions, default to `Drawer` unless the user explicitly asks for `Modal` or another interaction.
 - Non-trivial popup/drawer content should be extracted into local `components/` instead of being kept inline in a large page file.
 - Theme/layout work should follow the current Ant Design Vue + Pinia layout preference approach already present in `web/src/layouts` and `web/src/store/ui.ts`.
+- For system config features that define security boundaries such as anonymous-readable config keys, auth bypass, exposure white/blacklists, secret visibility, or other high-risk access controls, default to backend-coded policy. Do not add admin UI or DB-configurable toggles for these controls unless the user explicitly asks for that operational model.
 
 ## OpenSpec Decision Rule
 
@@ -126,6 +127,7 @@ Known caveat:
 - Follow existing flat module placement under `server/api/v1`, `server/service`, `server/model`, and `server/router/modules`.
 - Keep business logic in services, not handlers.
 - Reuse existing response helpers, auth flow, cache invalidation, and permission refresh patterns.
+- Treat security-sensitive system config rules as backend-owned policy by default. If a config item changes anonymous exposure, auth boundaries, secret visibility, or other high-risk behavior, prefer code-defined allow/deny lists and reviewed deployment changes over admin-page runtime configuration.
 
 ## Built-In Bootstrap Rules
 

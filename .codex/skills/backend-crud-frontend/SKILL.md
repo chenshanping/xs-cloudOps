@@ -68,6 +68,27 @@ When a target file does not exist, search the nearest real module and follow tha
 
 Do not cite or depend on external docs that are not present in the current workspace.
 
+## System Config Safety Rule
+
+When the task adds or changes items under system config, decide first whether the item is just a normal display/business setting or actually a security boundary.
+
+Treat it as backend-owned policy, not normal admin config, when it controls any of these:
+
+- anonymous-readable config exposure
+- auth bypass or guest access boundaries
+- secret visibility or credential masking rules
+- high-risk allowlists / denylists
+- any rule that widens who can read protected data
+
+For those cases:
+
+- prefer backend code constants, allowlists, denylists, or guarded logic in `server/service/*`
+- do not default to adding a system-config page switch, textarea, tab, or DB-driven runtime toggle
+- do not assume “put it in 系统配置” is the right UX just because the data looks like a config key/value
+- if runtime admin control is really required, require explicit user confirmation and call out the security tradeoff first
+
+Normal visual/business settings such as titles, logos, slogans, page copy, frontend mode display, and non-sensitive feature presentation can still use the regular system-config flow.
+
 ## Dictionary Binding Decision Rule
 
 When analyzing requirements, database design, API contracts, or admin forms/tables, decide explicitly whether a field should bind to the system dictionary instead of hardcoding options.

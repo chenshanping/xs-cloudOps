@@ -71,14 +71,6 @@ const emit = defineEmits<{
 
 const basicSaving = ref(false)
 
-const BASIC_CONFIG_KEYS = [
-  'sys_name',
-  'sys_logo',
-  'front_mode',
-  'user_profile_button_visible',
-  'user_default_password',
-] as const
-
 const basicForm = reactive({
   sys_name: configStore.get('sys_name'),
   sys_logo: configStore.get('sys_logo'),
@@ -123,9 +115,12 @@ const save = async () => {
 
   basicSaving.value = true
   try {
-    const configs: Record<string, string> = {}
-    for (const key of BASIC_CONFIG_KEYS) {
-      configs[key] = basicForm[key]
+    const configs: Record<string, string> = {
+      sys_name: basicForm.sys_name,
+      sys_logo: basicForm.sys_logo,
+      front_mode: basicForm.front_mode,
+      user_profile_button_visible: basicForm.user_profile_button_visible,
+      user_default_password: basicForm.user_default_password,
     }
     await configStore.updateConfigs(configs)
     baselineSnapshot.value = createSnapshot(getBasicState())

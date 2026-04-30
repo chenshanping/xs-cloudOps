@@ -271,7 +271,7 @@ onBeforeRouteLeave(async () => {
 
 onMounted(async () => {
   window.addEventListener('beforeunload', handleBeforeUnload)
-  await configStore.loadConfigs(true)
+  await configStore.loadConfigs(true, 'all')
   if (window.location.search.includes('tab=storage') || window.location.search.includes('tab=file')) {
     activeTab.value = 'file'
   }

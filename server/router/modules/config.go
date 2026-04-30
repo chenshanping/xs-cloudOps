@@ -21,7 +21,7 @@ func (m *SysConfigModule) Name() string {
 
 func (m *SysConfigModule) RegisterPublicRoutes(rg *gin.RouterGroup) {
 	// 公开路由，无需认证
-	R(rg, "POST", "/configs/keys", m.Name(), "批量获取配置", v1.Config.GetConfigsByKeys)
+	R(rg, "POST", "/configs/keys", m.Name(), "批量获取公开配置", v1.Config.GetConfigsByKeys, registry.WithRequest(request.ConfigKeysRequest{}))
 }
 
 func (m *SysConfigModule) RegisterPrivateRoutes(rg *gin.RouterGroup) {

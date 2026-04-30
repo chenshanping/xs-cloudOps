@@ -225,7 +225,7 @@ const handleLogin = async () => {
 
 onMounted(async() => {
   // 加载系统配置
-  await configStore.loadConfigs()
+  await configStore.loadConfigs(false, 'public')
   
   try {
     const captchaRes = await getCaptchaConfig()

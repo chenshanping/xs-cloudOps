@@ -1,10 +1,10 @@
-import { getConfigsByKeys, batchUpdateConfigs } from '@/api/config';
+import { getConfigList, getConfigsByKeys, batchUpdateConfigs } from '@/api/config';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 
-// 系统配置键
-export const CONFIG_KEYS = [
+// 公开配置键：未登录阶段允许加载
+export const PUBLIC_CONFIG_KEYS = [
   'sys_name',
   'sys_logo',
   'register_logo',
@@ -21,6 +21,13 @@ export const CONFIG_KEYS = [
   'login_images_max',
   // 注册相关配置
   'enable_register',
+  // 前台模式配置
+  'front_mode',  // 'full': 完整前台, 'profile': 仅个人中心(用于身份认证)
+  'user_profile_button_visible',
+] as const
+
+// 后台配置键：登录后后台按需补充加载
+export const ADMIN_CONFIG_KEYS = [
   // 邮箱配置
   'email_smtp_host',
   'email_smtp_port',
@@ -35,10 +42,8 @@ export const CONFIG_KEYS = [
   'register_email_verify',
   'frontend_url',
   'slider_captcha_bg',
-  // 前台模式配置
-  'front_mode',  // 'full': 完整前台, 'profile': 仅个人中心(用于身份认证)
-  'user_profile_button_visible',
   'user_default_password',
+  'public_config_keys',
   'file_delete_mode',
   'storage_type',
   'storage_local_config',
@@ -46,6 +51,8 @@ export const CONFIG_KEYS = [
   'storage_tencent_config',
   'storage_minio_config'
 ] as const
+
+export const CONFIG_KEYS = [...PUBLIC_CONFIG_KEYS, ...ADMIN_CONFIG_KEYS] as const
 
 // 默认配置
 const DEFAULT_CONFIG: Record<string, string> = {
@@ -87,6 +94,7 @@ const DEFAULT_CONFIG: Record<string, string> = {
   front_mode: 'full',
   user_profile_button_visible: 'false',
   user_default_password: '123456',
+  public_config_keys: JSON.stringify(PUBLIC_CONFIG_KEYS),
   file_delete_mode: 'logical',
   storage_type: 'local',
   storage_local_config: JSON.stringify({
@@ -117,33 +125,59 @@ const DEFAULT_CONFIG: Record<string, string> = {
 }
 
 export type ConfigKey = typeof CONFIG_KEYS[number]
+type ConfigScope = 'public' | 'all'
 
 export const useConfigStore = defineStore('config', () => {
   const configs = ref<Record<string, string>>({ ...DEFAULT_CONFIG })
   const loading = ref(false)
-  const loaded = ref(false) // 标记是否已加载
+  const publicLoaded = ref(false)
+  const adminLoaded = ref(false)
 
   // 获取单个配置值
   const get = (key: string): string => {
     return configs.value[key] || DEFAULT_CONFIG[key] || ''
   }
 
-  // 加载配置（支持强制刷新）
-  const loadConfigs = async (force = false) => {
-    // 已加载且非强制刷新，直接返回
-    if (loaded.value && !force) {
+  const applyConfigs = (keys: readonly string[], data: Record<string, any>) => {
+    for (const key of keys) {
+      if (data[key]) {
+        configs.value[key] = data[key].value
+      }
+    }
+  }
+
+  const applyConfigList = (items: Array<{ key: string; value: string }>) => {
+    for (const item of items) {
+      configs.value[item.key] = item.value
+    }
+  }
+
+  // 加载配置（支持按公开/后台作用域加载）
+  const loadConfigs = async (force = false, scope: ConfigScope = 'public') => {
+    const needPublic = force || !publicLoaded.value
+    const needAdmin = scope === 'all' && (force || !adminLoaded.value)
+
+    if (!needPublic && !needAdmin) {
       return
     }
+
     loading.value = true
     try {
-      const res = await getConfigsByKeys([...CONFIG_KEYS])
-      const data = res.data
-      for (const key of CONFIG_KEYS) {
-        if (data[key]) {
-          configs.value[key] = data[key].value
-        }
+      if (needAdmin) {
+        const res = await getConfigList()
+        const items = Array.isArray(res.data) ? res.data : []
+        applyConfigList(items)
+        publicLoaded.value = true
+        adminLoaded.value = true
+        return
       }
-      loaded.value = true
+
+      if (needPublic) {
+        const res = await getConfigsByKeys([...PUBLIC_CONFIG_KEYS])
+        const data = res.data
+        applyConfigs(PUBLIC_CONFIG_KEYS, data)
+        publicLoaded.value = true
+      }
     } catch (e) {
       console.error('加载配置失败', e)
     } finally {
@@ -168,7 +202,8 @@ export const useConfigStore = defineStore('config', () => {
   return {
     configs,
     loading,
-    loaded,
+    publicLoaded,
+    adminLoaded,
     get,
     set,
     loadConfigs,

@@ -130,7 +130,7 @@ watch(
 
 // 确保配置加载后更新 favicon
 onMounted(async () => {
-  await configStore.loadConfigs()
+  await configStore.loadConfigs(false, 'public')
   updateFavicon(configStore.get('sys_logo'))
 })
 </script>
