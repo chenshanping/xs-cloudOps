@@ -62,8 +62,8 @@ const contentStyle = computed(() => {
     borderRadius: '16px',
     minHeight: '280px',
     overflow: 'auto',
-    background: uiStore.isDark ? '#111827' : '#ffffff',
-    boxShadow: uiStore.isDark ? 'none' : '0 12px 32px rgba(15, 23, 42, 0.06)',
+    background: 'var(--app-surface-color)',
+    boxShadow: 'var(--app-card-shadow)',
   }
 })
 </script>
@@ -72,14 +72,14 @@ const contentStyle = computed(() => {
 .layout {
   min-height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(22, 119, 255, 0.14), transparent 28%),
-    #f5f7fb;
+    radial-gradient(circle at top left, var(--app-layout-radial, rgba(22, 119, 255, 0.14)), transparent 28%),
+    var(--app-layout-bg, #f5f7fb);
 }
 
 .layout-dark {
   background:
-    radial-gradient(circle at top left, rgba(56, 189, 248, 0.12), transparent 24%),
-    #020617;
+    radial-gradient(circle at top left, var(--app-layout-radial, rgba(56, 189, 248, 0.12)), transparent 24%),
+    var(--app-layout-bg, #0b1220);
 }
 
 .main-layout {

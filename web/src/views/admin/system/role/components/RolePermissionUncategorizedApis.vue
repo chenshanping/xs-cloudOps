@@ -67,10 +67,10 @@ const getMethodColor = (method: string) => {
 
 <style scoped>
 .uncategorized-card {
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--permission-border);
   border-radius: 8px;
   overflow: hidden;
-  background: #fff;
+  background: var(--permission-surface);
 }
 
 .uncategorized-header {
@@ -80,8 +80,8 @@ const getMethodColor = (method: string) => {
   gap: 16px;
   padding: 12px 16px;
   font-weight: 500;
-  background: #fafafa;
-  border-bottom: 1px solid #f0f0f0;
+  background: var(--permission-surface-soft);
+  border-bottom: 1px solid var(--permission-border);
 }
 
 .uncategorized-body {
@@ -102,7 +102,7 @@ const getMethodColor = (method: string) => {
 }
 
 .api-row:hover {
-  background: #f5f5f5;
+  background: var(--permission-hover);
 }
 
 .api-content {
@@ -112,22 +112,22 @@ const getMethodColor = (method: string) => {
 }
 
 .api-group {
-  color: #262626;
+  color: var(--permission-text-default);
   font-size: 12px;
-  background: #f5f5f5;
+  background: var(--permission-code-bg);
   padding: 2px 6px;
   border-radius: 10px;
 }
 
 .api-path {
   font-size: 13px;
-  color: #666;
+  color: var(--permission-text-secondary);
   font-family: monospace;
 }
 
 .api-desc {
   font-size: 13px;
-  color: #333;
+  color: var(--permission-text-strong);
 }
 
 .uncategorized-body :deep(.ant-tag) {

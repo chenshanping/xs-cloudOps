@@ -573,6 +573,7 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: 16px;
+  color: var(--app-text-color);
 }
 
 .ai-config-layout {
@@ -584,9 +585,9 @@ defineExpose({
 
 .provider-panel,
 .models-panel {
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--app-border-color);
   border-radius: 10px;
-  background: #fff;
+  background: var(--app-surface-color);
   padding: 16px;
 }
 
@@ -601,12 +602,12 @@ defineExpose({
 .panel-title {
   font-size: 16px;
   font-weight: 600;
-  color: #1f1f1f;
+  color: var(--app-text-strong);
 }
 
 .panel-subtitle {
   margin-top: 4px;
-  color: #8c8c8c;
+  color: var(--app-text-secondary);
   word-break: break-all;
 }
 
@@ -618,19 +619,20 @@ defineExpose({
 
 .provider-item {
   width: 100%;
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--app-border-color);
   border-radius: 10px;
   padding: 14px 16px;
-  background: #fafafa;
+  background: var(--app-surface-soft);
   cursor: pointer;
   text-align: left;
   transition: all 0.2s ease;
+  color: var(--app-text-color);
 }
 
 .provider-item:hover,
 .provider-item--active {
-  border-color: #1677ff;
-  background: #f0f7ff;
+  border-color: var(--app-primary-color);
+  background: var(--app-primary-color-soft);
 }
 
 .provider-item__header {
@@ -643,12 +645,12 @@ defineExpose({
 .provider-item__name {
   min-width: 0;
   font-weight: 600;
-  color: #1f1f1f;
+  color: var(--app-text-strong);
 }
 
 .provider-item__meta {
   margin-top: 8px;
-  color: #8c8c8c;
+  color: var(--app-text-secondary);
   font-size: 12px;
 }
 
@@ -667,16 +669,70 @@ defineExpose({
 .models-title {
   font-size: 15px;
   font-weight: 600;
-  color: #1f1f1f;
+  color: var(--app-text-strong);
 }
 
 .models-subtitle {
   margin-top: 4px;
-  color: #8c8c8c;
+  color: var(--app-text-secondary);
 }
 
 .models-table :deep(.ant-table-cell) {
   vertical-align: middle;
+}
+
+.ai-config :deep(.ant-empty-description) {
+  color: var(--app-text-secondary);
+}
+
+.ai-config :deep(.ant-alert) {
+  border-color: var(--app-border-color);
+}
+
+.ai-config :deep(.ant-alert-message),
+.ai-config :deep(.ant-alert-description) {
+  color: var(--app-text-color);
+}
+
+.models-table :deep(.ant-table) {
+  background: transparent;
+  color: var(--app-text-color);
+}
+
+.models-table :deep(.ant-table-container) {
+  border: 1px solid var(--app-border-color);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.models-table :deep(.ant-table-thead > tr > th) {
+  background: var(--app-surface-soft);
+  color: var(--app-text-strong);
+  border-bottom-color: var(--app-border-color);
+}
+
+.models-table :deep(.ant-table-tbody > tr > td) {
+  background: var(--app-surface-color);
+  border-bottom-color: var(--app-border-color);
+  color: var(--app-text-color);
+}
+
+.models-table :deep(.ant-table-tbody > tr:hover > td) {
+  background: var(--app-hover-bg);
+}
+
+.models-table :deep(.ant-table-placeholder > td) {
+  background: var(--app-surface-color);
+}
+
+.models-table :deep(.ant-input) {
+  background: var(--app-surface-soft);
+  border-color: var(--app-border-color);
+  color: var(--app-text-color);
+}
+
+.models-table :deep(.ant-input::placeholder) {
+  color: var(--app-text-muted);
 }
 
 .model-actions {

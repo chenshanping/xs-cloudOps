@@ -202,14 +202,14 @@ const showBrand = computed(() => uiStore.layout.mode !== 'sidebar' || !uiStore.e
 const headerDark = computed(() => uiStore.isDark || uiStore.theme.headerDark)
 
 const headerStyle = computed(() => {
-  const background = headerDark.value ? '#111827' : '#ffffff'
-  const color = headerDark.value ? 'rgba(255,255,255,0.92)' : '#111827'
+  const background = headerDark.value ? 'var(--app-elevated-bg)' : 'var(--app-surface-color)'
+  const color = headerDark.value ? 'var(--app-text-strong)' : 'var(--app-text-strong)'
 
   return {
     background,
     color,
-    borderBottom: `1px solid ${headerDark.value ? 'rgba(255,255,255,0.08)' : '#f0f0f0'}`,
-    boxShadow: headerDark.value ? 'none' : '0 1px 4px rgba(15, 23, 42, 0.06)',
+    borderBottom: `1px solid ${headerDark.value ? 'var(--app-border-color)' : 'var(--app-border-color)'}`,
+    boxShadow: headerDark.value ? '0 1px 0 rgba(148, 163, 184, 0.08)' : '0 1px 4px rgba(15, 23, 42, 0.06)',
   }
 })
 
@@ -255,12 +255,12 @@ const handleRefresh = () => {
 }
 
 .header-dark {
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--app-text-strong);
 }
 
 .header-dark .brand-title,
 .header-dark .username {
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--app-text-strong);
 }
 
 .header-left,
@@ -285,13 +285,13 @@ const handleRefresh = () => {
 }
 
 .header-dark .header-icon-button {
-  color: rgba(255, 255, 255, 0.88);
+  color: var(--app-text-strong);
 }
 
 .header-dark .header-icon-button:hover,
 .header-dark .header-icon-button:focus {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.08);
+  color: var(--app-text-strong);
+  background: var(--app-hover-bg);
 }
 
 .brand {
@@ -335,19 +335,19 @@ const handleRefresh = () => {
 .header-dark .top-menu :deep(.ant-menu-title-content),
 .header-dark .top-menu :deep(.ant-menu-item .ant-menu-item-icon),
 .header-dark .top-menu :deep(.ant-menu-submenu-title .ant-menu-item-icon) {
-  color: rgba(255, 255, 255, 0.78) !important;
+  color: var(--app-text-secondary) !important;
 }
 
 .header-dark .top-menu :deep(.ant-menu-item:hover),
 .header-dark .top-menu :deep(.ant-menu-submenu-title:hover) {
-  color: #ffffff !important;
-  background: rgba(255, 255, 255, 0.08);
+  color: var(--app-text-strong) !important;
+  background: var(--app-hover-bg);
 }
 
 .header-dark .top-menu :deep(.ant-menu-item-selected),
 .header-dark .top-menu :deep(.ant-menu-submenu-selected > .ant-menu-submenu-title) {
-  color: #ffffff !important;
-  background: rgba(255, 255, 255, 0.08);
+  color: var(--app-text-strong) !important;
+  background: var(--app-hover-bg);
 }
 
 .header-dark .top-menu :deep(.ant-menu-horizontal) {
@@ -366,20 +366,20 @@ const handleRefresh = () => {
 
 .header-dark .breadcrumb :deep(.ant-breadcrumb-link),
 .header-dark .breadcrumb :deep(.ant-breadcrumb-link a) {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--app-text-secondary);
 }
 
 .header-dark .breadcrumb :deep(.ant-breadcrumb-link a:hover) {
-  color: #ffffff;
+  color: var(--app-text-strong);
 }
 
 .header-dark .breadcrumb :deep(.ant-breadcrumb-separator) {
-  color: rgba(255, 255, 255, 0.38);
+  color: var(--app-text-muted);
 }
 
 .header-dark .breadcrumb :deep(.ant-breadcrumb > span:last-child .ant-breadcrumb-link),
 .header-dark .breadcrumb :deep(.ant-breadcrumb > span:last-child .ant-breadcrumb-link a) {
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--app-text-strong);
 }
 
 .user-info {
@@ -397,7 +397,7 @@ const handleRefresh = () => {
 }
 
 .header-dark .user-info:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--app-hover-bg);
 }
 
 .username {

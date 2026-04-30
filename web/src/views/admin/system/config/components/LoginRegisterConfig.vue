@@ -485,19 +485,20 @@ defineExpose({
   font-weight: 500;
   margin-bottom: 16px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid var(--app-border-color);
+  color: var(--app-text-strong);
 }
 
 .form-tip {
   margin-top: 4px;
   font-size: 12px;
-  color: #999;
+  color: var(--app-text-muted);
 }
 
 /* 登录页预览 */
 .login-preview-new {
   height: 300px;
-  border: 1px solid #d9d9d9;
+  border: 1px solid var(--app-border-color);
   border-radius: 8px;
   overflow: hidden;
   display: flex;
@@ -585,7 +586,7 @@ defineExpose({
 
 .login-preview-right {
   width: 140px;
-  background: #fff;
+  background: var(--app-surface-color);
   padding: 20px 12px;
   display: flex;
   flex-direction: column;
@@ -596,14 +597,14 @@ defineExpose({
 .preview-form-title {
   font-size: 12px;
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--app-text-strong);
   margin-bottom: 2px;
   text-align: center;
 }
 
 .preview-form-subtitle {
   font-size: 9px;
-  color: #666;
+  color: var(--app-text-secondary);
   margin-bottom: 12px;
   text-align: center;
 }
@@ -613,10 +614,10 @@ defineExpose({
   align-items: center;
   gap: 4px;
   padding: 6px 8px;
-  border: 1px solid #d9d9d9;
+  border: 1px solid var(--app-border-color);
   border-radius: 4px;
   font-size: 10px;
-  color: #999;
+  color: var(--app-text-muted);
   margin-bottom: 8px;
 }
 
@@ -649,8 +650,8 @@ defineExpose({
 }
 
 .feature-card {
-  background: #fafafa;
-  border: 1px solid #e8e8e8;
+  background: var(--app-surface-soft);
+  border: 1px solid var(--app-border-color);
   border-radius: 8px;
   padding: 12px;
   display: flex;
@@ -672,8 +673,8 @@ defineExpose({
 }
 
 .image-card {
-  background: #fafafa;
-  border: 1px solid #e8e8e8;
+  background: var(--app-surface-soft);
+  border: 1px solid var(--app-border-color);
   border-radius: 8px;
   padding: 12px;
   display: flex;

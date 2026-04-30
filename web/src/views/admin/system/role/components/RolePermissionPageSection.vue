@@ -113,10 +113,10 @@ const isSectionApiIndeterminate = computed(() => {
 
 <style scoped>
 .section-card {
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--permission-border);
   border-radius: 8px;
   overflow: hidden;
-  background: #fff;
+  background: var(--permission-surface);
 }
 
 .section-header {
@@ -125,8 +125,8 @@ const isSectionApiIndeterminate = computed(() => {
   justify-content: space-between;
   gap: 16px;
   padding: 12px 16px;
-  background: #fafafa;
-  border-bottom: 1px solid #f0f0f0;
+  background: var(--permission-surface-soft);
+  border-bottom: 1px solid var(--permission-border);
 }
 
 .section-title {
@@ -140,7 +140,7 @@ const isSectionApiIndeterminate = computed(() => {
 .section-counts {
   display: flex;
   gap: 12px;
-  color: #8c8c8c;
+  color: var(--permission-text-muted);
   font-size: 12px;
   white-space: nowrap;
 }
@@ -158,14 +158,14 @@ const isSectionApiIndeterminate = computed(() => {
 }
 
 .section-grid--split > * + * {
-  border-left: 1px solid #f0f0f0;
+  border-left: 1px solid var(--permission-border);
 }
 
 .permission-code {
   font-size: 12px;
-  color: #999;
+  color: var(--permission-text-muted);
   font-family: monospace;
-  background: #f5f5f5;
+  background: var(--permission-code-bg);
   padding: 2px 6px;
   border-radius: 3px;
 }
@@ -177,7 +177,7 @@ const isSectionApiIndeterminate = computed(() => {
 
   .section-grid--split > * + * {
     border-left: 0;
-    border-top: 1px solid #f0f0f0;
+    border-top: 1px solid var(--permission-border);
   }
 }
 </style>

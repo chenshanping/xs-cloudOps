@@ -140,13 +140,13 @@ const handleBatchAction = ({ key }: MenuInfo) => {
 <style scoped>
 .tabs-wrapper {
   padding: 8px 20px 0;
-  background: #ffffff;
-  border-bottom: 1px solid #f0f0f0;
+  background: var(--app-surface-color);
+  border-bottom: 1px solid var(--app-border-color);
 }
 
 .tabs-wrapper-dark {
-  background: #0f172a;
-  border-bottom-color: rgba(255, 255, 255, 0.08);
+  background: var(--app-elevated-bg);
+  border-bottom-color: var(--app-border-color);
 }
 
 .tabs-wrapper :deep(.ant-tabs) {
@@ -169,18 +169,18 @@ const handleBatchAction = ({ key }: MenuInfo) => {
 }
 
 .tabs-wrapper-dark :deep(.ant-tabs-tab) {
-  color: rgba(255, 255, 255, 0.8);
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.08);
+  color: var(--app-text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--app-border-color);
 }
 
 .tabs-wrapper-dark :deep(.ant-tabs-tab:hover) {
-  color: #ffffff;
+  color: var(--app-text-strong);
 }
 
 .tabs-wrapper-dark :deep(.ant-tabs-tab-active) {
   background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.12);
+  border-color: var(--app-border-strong);
 }
 
 .tabs-wrapper-dark :deep(.ant-tabs-tab-active .ant-tabs-tab-btn),
@@ -190,10 +190,10 @@ const handleBatchAction = ({ key }: MenuInfo) => {
 }
 
 .tabs-wrapper-dark :deep(.ant-tabs-tab-remove:hover) {
-  color: #ffffff;
+  color: var(--app-text-strong);
 }
 
 .tabs-wrapper-dark :deep(.ant-tabs-nav::before) {
-  border-bottom-color: rgba(255, 255, 255, 0.08);
+  border-bottom-color: var(--app-border-color);
 }
 </style>

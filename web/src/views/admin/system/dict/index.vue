@@ -284,6 +284,7 @@ const {
 <style scoped>
 .dict-page {
   padding: 16px;
+  color: var(--app-text-color);
 }
 
 .dict-panel {
@@ -312,17 +313,19 @@ const {
   padding: 12px 8px;
   cursor: pointer;
   border-radius: 10px;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
   border: 1px solid transparent;
+  color: var(--app-text-color);
 }
 
 .dict-type-item:hover {
-  background: #fafafa;
+  background: var(--app-hover-bg);
 }
 
 .dict-type-item--active {
-  background: #f0f7ff;
-  border-color: #91caff;
+  background: var(--app-primary-color-soft);
+  border-color: var(--app-primary-color);
+  box-shadow: inset 3px 0 0 var(--app-primary-color);
 }
 
 .dict-type-item__title {
@@ -334,7 +337,7 @@ const {
 
 .dict-type-item__name {
   font-weight: 600;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--app-text-strong);
 }
 
 .dict-type-item__description {
@@ -344,7 +347,7 @@ const {
 }
 
 .dict-type-item__remark {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--app-text-secondary);
   line-height: 1.5;
 }
 
@@ -370,7 +373,7 @@ const {
 .dict-data-header__main {
   font-size: 16px;
   font-weight: 600;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--app-text-strong);
 }
 
 .dict-data-header__meta {
@@ -388,12 +391,12 @@ const {
 }
 
 .dict-data-summary__label {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--app-text-secondary);
   white-space: nowrap;
 }
 
 .dict-data-summary__text {
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--app-text-color);
   line-height: 1.5;
 }
 
@@ -402,6 +405,89 @@ const {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+.dict-page :deep(.ant-card) {
+  border-color: var(--app-border-color);
+  background: var(--app-surface-color);
+}
+
+.dict-page :deep(.ant-card-head) {
+  border-bottom-color: var(--app-border-color);
+}
+
+.dict-page :deep(.ant-card-head-title),
+.dict-page :deep(.ant-tag),
+.dict-page :deep(.ant-list-item-action),
+.dict-page :deep(.ant-typography),
+.dict-page :deep(.ant-empty-description) {
+  color: var(--app-text-color);
+}
+
+.dict-page :deep(.ant-alert) {
+  border-color: var(--app-border-color);
+}
+
+.dict-page :deep(.ant-alert-message),
+.dict-page :deep(.ant-alert-description) {
+  color: var(--app-text-color);
+}
+
+.dict-page :deep(.ant-input-search .ant-input),
+.dict-page :deep(.ant-input-search .ant-input-group-addon),
+.dict-page :deep(.ant-input-affix-wrapper),
+.dict-page :deep(.ant-input),
+.dict-page :deep(.ant-pagination .ant-select-selector) {
+  background: var(--app-surface-soft);
+  border-color: var(--app-border-color);
+  color: var(--app-text-color);
+}
+
+.dict-page :deep(.ant-input::placeholder),
+.dict-page :deep(.ant-input-affix-wrapper input::placeholder),
+.dict-page :deep(.ant-empty-description),
+.dict-page :deep(.ant-pagination),
+.dict-page :deep(.ant-typography-secondary) {
+  color: var(--app-text-muted);
+}
+
+.dict-page :deep(.ant-list-item) {
+  border-bottom-color: transparent;
+}
+
+.dict-page :deep(.ant-table) {
+  background: transparent;
+  color: var(--app-text-color);
+}
+
+.dict-page :deep(.ant-table-container) {
+  border: 1px solid var(--app-border-color);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.dict-page :deep(.ant-table-thead > tr > th) {
+  background: var(--app-surface-soft);
+  color: var(--app-text-strong);
+  border-bottom-color: var(--app-border-color);
+}
+
+.dict-page :deep(.ant-table-tbody > tr > td) {
+  background: var(--app-surface-color);
+  border-bottom-color: var(--app-border-color);
+  color: var(--app-text-color);
+}
+
+.dict-page :deep(.ant-table-tbody > tr:hover > td) {
+  background: var(--app-hover-bg);
+}
+
+.dict-page :deep(.ant-table-placeholder > td) {
+  background: var(--app-surface-color);
+}
+
+.dict-page :deep(.ant-btn-link) {
+  color: var(--app-primary-color);
 }
 
 @media (max-width: 1199px) {

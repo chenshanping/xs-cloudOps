@@ -110,6 +110,7 @@ const handleDeptChange = (resourceCode: string, value: number[]) => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  color: var(--permission-text-default);
 }
 
 .data-scope-cards {
@@ -130,7 +131,7 @@ const handleDeptChange = (resourceCode: string, value: number[]) => {
 
 .card-description {
   margin-bottom: 16px;
-  color: #666;
+  color: var(--permission-text-secondary);
   font-size: 13px;
 }
 </style>

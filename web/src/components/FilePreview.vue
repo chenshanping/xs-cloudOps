@@ -488,7 +488,7 @@ onUnmounted(() => {
 }
 
 .preview-notice {
-  color: #666;
+  color: var(--app-text-secondary);
 }
 
 .preview-shell {
@@ -538,7 +538,7 @@ onUnmounted(() => {
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
-  background: #f5f5f5;
+  background: var(--app-surface-soft);
 }
 
 .image-stage {
@@ -560,8 +560,8 @@ onUnmounted(() => {
   display: flex;
   justify-content: center;
   padding: 12px 16px;
-  border-top: 1px solid #f0f0f0;
-  background: #fff;
+  border-top: 1px solid var(--app-border-color);
+  background: var(--app-surface-color);
 }
 
 .media-preview {
@@ -606,7 +606,7 @@ onUnmounted(() => {
   min-height: 100%;
   border: none;
   display: block;
-  background: #fff;
+  background: var(--app-surface-color);
 }
 
 .preview-office-wrap {
@@ -618,14 +618,14 @@ onUnmounted(() => {
   height: 100%;
   width: 100%;
   overflow: auto;
-  background: #f5f5f5;
+  background: var(--app-surface-soft);
   box-sizing: border-box;
 }
 
 .office-viewer {
   display: block;
   width: 100%;
-  background: #fff;
+  background: var(--app-surface-color);
   box-sizing: border-box;
 }
 
@@ -658,7 +658,7 @@ onUnmounted(() => {
   height: 100%;
   flex: 1;
   min-height: 0;
-  background: #f5f5f5;
+  background: var(--app-surface-soft);
   overflow: hidden;
 }
 
@@ -673,6 +673,7 @@ onUnmounted(() => {
   margin: 0;
   white-space: pre-wrap;
   word-wrap: break-word;
+  color: var(--app-text-color);
 }
 
 .unsupported-preview {
@@ -687,7 +688,7 @@ onUnmounted(() => {
 
 .unsupported-preview .file-icon {
   font-size: 64px;
-  color: #999;
+  color: var(--app-text-muted);
   margin-bottom: 16px;
 }
 
@@ -698,12 +699,12 @@ onUnmounted(() => {
 }
 
 .unsupported-preview .file-info {
-  color: #999;
+  color: var(--app-text-muted);
   margin-bottom: 24px;
 }
 
 .unsupported-message {
-  color: #666;
+  color: var(--app-text-secondary);
   margin-bottom: 0;
 }
 
@@ -725,10 +726,14 @@ onUnmounted(() => {
   flex-direction: column;
   height: calc(100dvh - 32px);
   max-height: calc(100dvh - 32px);
+  background: var(--app-surface-color);
+  color: var(--app-text-color);
 }
 
 :global(.file-preview-modal .ant-modal-header) {
   flex: none;
+  background: var(--app-surface-color);
+  border-bottom-color: var(--app-border-color);
 }
 
 :global(.file-preview-modal .ant-modal-body) {
@@ -736,6 +741,7 @@ onUnmounted(() => {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  background: var(--app-surface-color);
 }
 
 @media (max-width: 768px) {

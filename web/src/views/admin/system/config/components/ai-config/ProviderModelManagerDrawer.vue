@@ -200,12 +200,12 @@ watch(
 .provider-title {
   font-size: 16px;
   font-weight: 600;
-  color: #1f1f1f;
+  color: var(--app-text-strong);
 }
 
 .provider-meta {
   margin-top: 4px;
-  color: #8c8c8c;
+  color: var(--app-text-secondary);
   word-break: break-all;
 }
 

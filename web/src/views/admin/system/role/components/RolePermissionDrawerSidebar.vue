@@ -46,8 +46,9 @@ const getTotalCount = (menu: Menu) => collectAssignableMenuIds(menu).length
 .group-list-header {
   padding: 12px 16px;
   font-weight: 500;
-  background: #fafafa;
-  border-bottom: 1px solid #f0f0f0;
+  background: var(--permission-surface-soft);
+  border-bottom: 1px solid var(--permission-border);
+  color: var(--permission-text-strong);
 }
 
 .group-list-content {
@@ -61,17 +62,20 @@ const getTotalCount = (menu: Menu) => collectAssignableMenuIds(menu).length
   gap: 8px;
   padding: 10px 12px;
   cursor: pointer;
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid var(--permission-border-soft);
   transition: background 0.2s;
+  color: var(--permission-text-strong);
 }
 
 .group-item:hover {
-  background: #f5f5f5;
+  background: var(--permission-hover);
+  color: var(--permission-text-default);
 }
 
 .group-item.active {
   background: var(--app-primary-color-soft, rgba(0, 107, 230, 0.12));
   border-left: 3px solid var(--app-primary-color, #006be6);
+  color: var(--permission-text-default);
 }
 
 .group-item-name {
@@ -79,10 +83,11 @@ const getTotalCount = (menu: Menu) => collectAssignableMenuIds(menu).length
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: inherit;
 }
 
 .group-item-total {
-  color: #999;
+  color: var(--permission-text-muted);
   font-size: 12px;
 }
 </style>

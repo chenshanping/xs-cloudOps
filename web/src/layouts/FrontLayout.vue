@@ -1,5 +1,5 @@
 <template>
-  <div class="front-layout">
+  <div :class="['front-layout', { 'front-layout--dark': uiStore.isDark }]">
     <!-- 顶部导航 -->
     <header class="front-header">
       <div class="header-content">
@@ -76,11 +76,13 @@ import { useRouter } from 'vue-router'
 import { UserOutlined, DownOutlined, LogoutOutlined } from '@ant-design/icons-vue'
 import { useUserStore } from '@/store/user'
 import { useConfigStore } from '@/store/config'
+import { useUiStore } from '@/store/ui'
 import SvgIcon from '@/components/SvgIcon.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
 const configStore = useConfigStore()
+const uiStore = useUiStore()
 
 // 前台模式: 'full' = 完整前台, 'profile' = 仅个人中心
 const frontMode = computed(() => configStore.get('front_mode') || 'full')
@@ -121,14 +123,15 @@ const handleLogout = () => {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f5f7fa;
+  background: var(--app-layout-bg);
+  color: var(--app-text-color);
 }
 .logo-img {
   width: 32px;
   height: 32px;
 }
 .front-header {
-  background: #fff;
+  background: var(--app-surface-color);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   position: sticky;
   top: 0;
@@ -163,13 +166,13 @@ const handleLogout = () => {
     .logo-text {
       font-size: 20px;
       font-weight: 600;
-      color: #1a1a1a;
+      color: var(--app-text-strong);
     }
   }
   
   .profile-mode-hint {
     font-size: 16px;
-    color: #666;
+    color: var(--app-text-secondary);
     font-weight: 500;
   }
   
@@ -180,7 +183,7 @@ const handleLogout = () => {
     .nav-item {
       padding: 8px 16px;
       border-radius: 6px;
-      color: #666;
+      color: var(--app-text-secondary);
       text-decoration: none;
       display: flex;
       align-items: center;
@@ -188,13 +191,13 @@ const handleLogout = () => {
       transition: all 0.2s;
       
       &:hover {
-        color: #1890ff;
-        background: #e6f7ff;
+        color: var(--app-primary-color);
+        background: var(--app-primary-color-soft);
       }
       
       &.active {
-        color: #1890ff;
-        background: #e6f7ff;
+        color: var(--app-primary-color);
+        background: var(--app-primary-color-soft);
         font-weight: 500;
       }
     }
@@ -211,7 +214,7 @@ const handleLogout = () => {
       transition: background 0.2s;
       
       &:hover {
-        background: #f5f5f5;
+        background: var(--app-hover-bg);
       }
       
       .username {
@@ -233,14 +236,20 @@ const handleLogout = () => {
 }
 
 .front-footer {
-  background: #fff;
+  background: var(--app-surface-color);
   padding: 24px;
   text-align: center;
-  color: #999;
-  border-top: 1px solid #e8e8e8;
+  color: var(--app-text-muted);
+  border-top: 1px solid var(--app-border-color);
   
   p {
     margin: 0;
+  }
+}
+
+.front-layout--dark {
+  .front-header {
+    box-shadow: 0 1px 0 rgba(148, 163, 184, 0.08);
   }
 }
 </style>

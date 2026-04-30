@@ -227,20 +227,23 @@ onMounted(() => {
 .left-tree {
   width: 220px;
   flex-shrink: 0;
-  background: #fff;
+  background: var(--app-surface-color);
   border-radius: 4px;
   padding: 12px;
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--app-border-color);
 }
 .tree-header {
   font-weight: 500;
   margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--app-border-color);
+  color: var(--app-text-strong);
 }
 .left-tree :deep(.ant-tree) {
   max-height: 500px;
   overflow-y: auto;
+  background: transparent;
+  color: var(--app-text-color);
 }
 .right-content {
   flex: 1;
@@ -253,19 +256,19 @@ onMounted(() => {
 .json-viewer-wrap {
   max-height: 300px;
   overflow: auto;
-  background: #fafafa;
+  background: var(--app-surface-soft);
   border-radius: 4px;
-  border: 1px solid #d9d9d9;
+  border: 1px solid var(--app-border-color);
 }
 .json-pre {
   margin: 0;
   padding: 12px;
-  background: #fafafa;
+  background: var(--app-surface-soft);
   font-size: 12px;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
   white-space: pre-wrap;
   word-break: break-all;
-  color: #333;
+  color: var(--app-text-color);
   line-height: 1.5;
 }
 </style>

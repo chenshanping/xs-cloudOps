@@ -97,7 +97,27 @@ export function useDictPage() {
 
       dictTypes.value = res.data.list || []
       typePagination.total = res.data.total
-      selectedType.value = reconcileSelectedType(dictTypes.value, selectedType.value)
+      const previousSelectedType = selectedType.value
+      const reconciledSelectedType = reconcileSelectedType(dictTypes.value, previousSelectedType)
+
+      if (!reconciledSelectedType && dictTypes.value.length > 0) {
+        selectedType.value = dictTypes.value[0]
+      } else {
+        selectedType.value = reconciledSelectedType
+      }
+
+      if (selectedType.value?.type) {
+        if (
+          previousSelectedType?.id !== selectedType.value.id
+          || dictDataList.value.length === 0
+        ) {
+          dataPagination.current = 1
+          await fetchDictData(selectedType.value.type)
+        }
+      } else {
+        dictDataList.value = []
+        dataPagination.total = 0
+      }
     } finally {
       typeLoading.value = false
     }

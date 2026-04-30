@@ -134,7 +134,7 @@ const getMenuTagColor = (type: number) => {
   gap: 12px;
   padding: 12px 16px;
   font-weight: 500;
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid var(--permission-border-soft);
 }
 
 .panel-actions {
@@ -163,7 +163,7 @@ const getMenuTagColor = (type: number) => {
 }
 
 .menu-row:hover {
-  background: #f5f5f5;
+  background: var(--permission-hover);
 }
 
 .menu-label {
@@ -174,9 +174,9 @@ const getMenuTagColor = (type: number) => {
 
 .permission-code {
   font-size: 12px;
-  color: #999;
+  color: var(--permission-text-muted);
   font-family: monospace;
-  background: #f5f5f5;
+  background: var(--permission-code-bg);
   padding: 2px 6px;
   border-radius: 3px;
 }

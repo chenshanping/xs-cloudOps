@@ -7,7 +7,7 @@
   >
     <div class="markdown-viewer">
       <div v-if="!content" class="empty-content">
-        <FileTextOutlined style="font-size: 48px; color: #d9d9d9; margin-bottom: 12px;" />
+        <FileTextOutlined class="empty-icon" />
         <div>暂无内容</div>
       </div>
       <div v-else class="markdown-body" v-html="renderedContent"></div>
@@ -106,6 +106,13 @@ const renderedContent = computed(() => renderMarkdown(props.content))
 .markdown-viewer {
   max-height: 600px;
   overflow-y: auto;
+  color: var(--app-text-color);
+}
+
+.empty-icon {
+  font-size: 48px;
+  color: var(--app-text-muted);
+  margin-bottom: 12px;
 }
 
 .empty-content {
@@ -114,15 +121,15 @@ const renderedContent = computed(() => renderMarkdown(props.content))
   align-items: center;
   justify-content: center;
   padding: 60px 0;
-  color: #999;
+  color: var(--app-text-muted);
   font-size: 14px;
 }
 
 .markdown-body {
   padding: 16px;
-  background: #fafafa;
+  background: var(--app-surface-soft);
   border-radius: 8px;
-  border: 1px solid #e8e8e8;
+  border: 1px solid var(--app-border-color);
   line-height: 1.8;
 }
 
@@ -136,7 +143,7 @@ const renderedContent = computed(() => renderMarkdown(props.content))
   margin-bottom: 16px;
   font-weight: 600;
   line-height: 1.4;
-  color: #333;
+  color: var(--app-text-strong);
 }
 
 .markdown-body :deep(h1:first-child),
@@ -151,13 +158,13 @@ const renderedContent = computed(() => renderMarkdown(props.content))
 .markdown-body :deep(h1) {
   font-size: 28px;
   padding-bottom: 12px;
-  border-bottom: 2px solid #e8e8e8;
+  border-bottom: 2px solid var(--app-border-color);
 }
 
 .markdown-body :deep(h2) {
   font-size: 24px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid var(--app-border-color);
 }
 
 .markdown-body :deep(h3) {
@@ -178,7 +185,7 @@ const renderedContent = computed(() => renderMarkdown(props.content))
 
 .markdown-body :deep(p) {
   margin-bottom: 16px;
-  color: #555;
+  color: var(--app-text-secondary);
 }
 
 .markdown-body :deep(ul),
@@ -191,7 +198,7 @@ const renderedContent = computed(() => renderMarkdown(props.content))
 .markdown-body :deep(ol li) {
   margin-bottom: 8px;
   line-height: 1.8;
-  color: #555;
+  color: var(--app-text-secondary);
 }
 
 .markdown-body :deep(ul) {
@@ -203,11 +210,11 @@ const renderedContent = computed(() => renderMarkdown(props.content))
 }
 
 .markdown-body :deep(blockquote) {
-  border-left: 4px solid #1890ff;
+  border-left: 4px solid var(--app-primary-color);
   padding: 12px 16px;
   margin: 16px 0;
-  background: #f0f8ff;
-  color: #666;
+  background: var(--app-primary-color-soft);
+  color: var(--app-text-secondary);
 }
 
 .markdown-body :deep(blockquote p) {
@@ -215,12 +222,12 @@ const renderedContent = computed(() => renderMarkdown(props.content))
 }
 
 .markdown-body :deep(code) {
-  background: #f5f5f5;
+  background: var(--app-code-bg);
   padding: 2px 6px;
   border-radius: 3px;
   font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
   font-size: 13px;
-  color: #e83e8c;
+  color: var(--app-text-strong);
 }
 
 .markdown-body :deep(pre) {
@@ -246,29 +253,29 @@ const renderedContent = computed(() => renderMarkdown(props.content))
 
 .markdown-body :deep(table th),
 .markdown-body :deep(table td) {
-  border: 1px solid #e8e8e8;
+  border: 1px solid var(--app-border-color);
   padding: 10px 12px;
   text-align: left;
 }
 
 .markdown-body :deep(table th) {
-  background: #f5f5f5;
+  background: var(--app-code-bg);
   font-weight: 600;
-  color: #333;
+  color: var(--app-text-strong);
 }
 
 .markdown-body :deep(table tr:hover) {
-  background: #fafafa;
+  background: var(--app-hover-bg);
 }
 
 .markdown-body :deep(hr) {
   border: none;
-  border-top: 1px solid #e8e8e8;
+  border-top: 1px solid var(--app-border-color);
   margin: 24px 0;
 }
 
 .markdown-body :deep(a) {
-  color: #1890ff;
+  color: var(--app-primary-color);
   text-decoration: none;
 }
 
@@ -285,7 +292,7 @@ const renderedContent = computed(() => renderMarkdown(props.content))
 
 .markdown-body :deep(strong) {
   font-weight: 600;
-  color: #333;
+  color: var(--app-text-strong);
 }
 
 .markdown-body :deep(em) {

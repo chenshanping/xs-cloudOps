@@ -137,13 +137,20 @@ const handleOpenChange = (keys: string[]) => {
   z-index: 30;
   display: flex;
   flex-direction: column;
+  background: var(--app-surface-color);
   border-inline-end: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.sider-dark {
+  background: var(--app-elevated-bg);
+  border-inline-end-color: var(--app-border-color);
 }
 
 .sider :deep(.ant-layout-sider-children) {
   display: flex;
   flex-direction: column;
   height: 100%;
+  background: inherit;
 }
 
 .logo {
@@ -154,6 +161,10 @@ const handleOpenChange = (keys: string[]) => {
   padding: 0 20px;
   cursor: pointer;
   border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.sider-dark .logo {
+  border-bottom-color: var(--app-border-color);
 }
 
 .logo-img {
@@ -215,24 +226,24 @@ const handleOpenChange = (keys: string[]) => {
 .sider-dark .sidebar-menu :deep(.ant-menu-item .ant-menu-item-icon),
 .sider-dark .sidebar-menu :deep(.ant-menu-submenu-title .ant-menu-item-icon),
 .sider-dark .sidebar-menu :deep(.ant-menu-submenu-arrow) {
-  color: rgba(255, 255, 255, 0.76) !important;
+  color: var(--app-text-secondary) !important;
 }
 
 .sider-dark .sidebar-menu :deep(.ant-menu-item:hover),
 .sider-dark .sidebar-menu :deep(.ant-menu-submenu-title:hover) {
-  color: #ffffff !important;
-  background: rgba(255, 255, 255, 0.08) !important;
+  color: var(--app-text-strong) !important;
+  background: var(--app-hover-bg) !important;
 }
 
 .sider-dark .sidebar-menu :deep(.ant-menu-item-selected),
 .sider-dark .sidebar-menu :deep(.ant-menu-submenu-selected > .ant-menu-submenu-title) {
-  color: #ffffff !important;
+  color: var(--app-text-strong) !important;
 }
 
 .sider-dark .sidebar-menu :deep(.ant-menu-item-selected .ant-menu-item-icon),
 .sider-dark .sidebar-menu :deep(.ant-menu-submenu-selected > .ant-menu-submenu-title .ant-menu-item-icon),
 .sider-dark .sidebar-menu :deep(.ant-menu-item-selected .ant-menu-title-content),
 .sider-dark .sidebar-menu :deep(.ant-menu-submenu-selected > .ant-menu-submenu-title .ant-menu-title-content) {
-  color: #ffffff !important;
+  color: var(--app-text-strong) !important;
 }
 </style>

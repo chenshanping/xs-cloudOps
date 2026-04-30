@@ -192,7 +192,7 @@ const handleSubmit = async () => {
 }
 
 .dict-data-drawer__preview-label {
-  color: #8c8c8c;
+  color: var(--app-text-secondary);
   font-size: 12px;
 }
 </style>

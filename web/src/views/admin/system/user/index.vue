@@ -1,5 +1,5 @@
 <template>
-  <div class="user-page">
+  <div :class="['user-page', { 'user-page--dark': uiStore.isDark }]">
     <div class="page-layout">
       <div class="left-tree">
         <div class="tree-header">
@@ -217,6 +217,7 @@ import { getManageableDeptTree } from '@/api/dept'
 import { formatTime } from '@/utils/format'
 import { useTableColumns } from '@/utils/permission'
 import { useConfigStore } from '@/store/config'
+import { useUiStore } from '@/store/ui'
 import { useUserStore } from '@/store/user'
 import type { Dept, Role, User } from '@/types'
 import { normalizeGenderDictOptions, resolveGenderOption, type GenderOption } from './user-gender'
@@ -241,6 +242,7 @@ interface TreeSelectOption {
 
 const simpleImage = Empty.PRESENTED_IMAGE_SIMPLE
 const configStore = useConfigStore()
+const uiStore = useUiStore()
 const userStore = useUserStore()
 const loading = ref(false)
 const deptLoading = ref(false)
@@ -825,6 +827,18 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.user-page {
+  --user-tree-surface: #ffffff;
+  --user-tree-border: #f0f0f0;
+  --user-tree-header-border: #f0f0f0;
+}
+
+.user-page--dark {
+  --user-tree-surface: #101826;
+  --user-tree-border: rgba(148, 163, 184, 0.18);
+  --user-tree-header-border: rgba(148, 163, 184, 0.18);
+}
+
 .page-layout {
   display: flex;
   gap: 16px;
@@ -833,10 +847,10 @@ onMounted(async () => {
 .left-tree {
   width: 260px;
   flex-shrink: 0;
-  background: #fff;
+  background: var(--user-tree-surface);
   border-radius: 4px;
   padding: 12px;
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--user-tree-border);
 }
 
 .tree-header {
@@ -846,7 +860,7 @@ onMounted(async () => {
   font-weight: 500;
   margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--user-tree-header-border);
 }
 
 .left-tree :deep(.ant-tree) {

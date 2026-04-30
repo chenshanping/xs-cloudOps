@@ -1480,6 +1480,177 @@ function renderMarkdown(text: string): string {
   }
 }
 
+/* Theme bridge for stored pages with heavy custom styles */
+.ai-chat-container {
+  background: var(--app-surface-soft);
+  color: var(--app-text-color);
+}
+
+.ai-chat-container.front-style {
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.ai-chat-container.front-style .conversation-sidebar,
+.conversation-sidebar {
+  background: var(--app-surface-color);
+  border-right: 1px solid var(--app-border-color);
+}
+
+.ai-chat-container.front-style .message-list,
+.chat-main,
+.chat-main .message-list {
+  background: var(--app-surface-soft);
+}
+
+.conversation-sidebar .sidebar-header,
+.chat-main .chat-header,
+.chat-main .chat-input-area {
+  border-color: var(--app-border-color);
+}
+
+.conversation-sidebar .sidebar-header .batch-count,
+.chat-main .message-item .message-content .reasoning-panel .reasoning-header,
+.chat-main .message-item .message-content .reasoning-panel .reasoning-content,
+.chat-main .message-list .empty-chat,
+.chat-main .chat-input-area .attachment-list .attachment-item .att-size,
+.chat-main .chat-input-area .input-wrapper .attach-btn,
+.conversation-sidebar .conversation-list .conversation-item .conv-icon,
+.conversation-sidebar .conversation-list .conversation-item .conv-actions .edit-icon,
+.conversation-sidebar .conversation-list .conversation-item .conv-actions .delete-icon {
+  color: var(--app-text-muted);
+}
+
+.conversation-sidebar .conversation-list .conversation-item {
+  color: var(--app-text-color);
+}
+
+.conversation-sidebar .conversation-list .conversation-item:hover {
+  background: var(--app-hover-bg);
+}
+
+.conversation-sidebar .conversation-list .conversation-item.active {
+  background: var(--app-primary-color-soft);
+  border: 1px solid var(--app-primary-color);
+}
+
+.conversation-sidebar .conversation-list .conversation-item.selected {
+  background: var(--app-primary-color-soft);
+  border: 1px solid var(--app-primary-color);
+}
+
+.conversation-sidebar .conversation-list .conversation-item .conv-actions .edit-icon:hover {
+  color: var(--app-primary-color);
+}
+
+.conversation-sidebar .conversation-list .conversation-item .conv-title,
+.chat-main .message-list .message-item .message-content :deep(h1),
+.chat-main .message-list .message-item .message-content :deep(h2),
+.chat-main .message-list .message-item .message-content :deep(h3),
+.chat-main .message-list .message-item .message-content :deep(h4),
+.chat-main .message-list .message-item .message-content :deep(strong) {
+  color: var(--app-text-strong);
+}
+
+.chat-main .message-list .message-item.assistant .message-content .message-text,
+.ai-chat-container.front-style .message-list .message-item.assistant .message-content .message-text {
+  background: var(--app-surface-color);
+  color: var(--app-text-color);
+  box-shadow: var(--app-card-shadow);
+}
+
+.chat-main .message-list .message-item .message-content .reasoning-panel {
+  background: var(--app-surface-color);
+  border-color: var(--app-border-color);
+}
+
+.chat-main .message-list .message-item .message-content .reasoning-panel .reasoning-header {
+  background: var(--app-surface-soft);
+}
+
+.chat-main .message-list .message-item .message-content .reasoning-panel .reasoning-content {
+  border-top-color: var(--app-border-color);
+}
+
+.chat-main .message-list .message-item .message-content .message-text :deep(code:not(pre code)) {
+  background: var(--app-code-bg);
+  color: var(--app-text-strong);
+}
+
+.chat-main .message-list .message-item .message-content .message-text :deep(h2) {
+  border-bottom-color: var(--app-border-color);
+}
+
+.chat-main .message-list .message-item .message-content .message-text :deep(h5),
+.chat-main .message-list .message-item .message-content .message-text :deep(h6),
+.chat-main .message-list .message-item .message-content .message-text :deep(em),
+.chat-main .message-list .message-item .message-content .message-text :deep(p),
+.chat-main .message-list .message-item .message-content .message-text :deep(li) {
+  color: var(--app-text-secondary);
+}
+
+.chat-main .message-list .message-item .message-content .message-text :deep(table th),
+.chat-main .message-list .message-item .message-content .message-text :deep(table td) {
+  border-color: var(--app-border-color);
+}
+
+.chat-main .message-list .message-item .message-content .message-text :deep(table th),
+.chat-main .message-list .message-item .message-content .message-text :deep(table tr:nth-child(even) td) {
+  background: var(--app-surface-soft);
+}
+
+.chat-main .message-list .message-item .message-content .message-text :deep(table tr:hover td) {
+  background: var(--app-hover-bg);
+}
+
+.chat-main .message-list .message-item .message-actions :deep(.ant-btn) {
+  color: var(--app-text-muted);
+}
+
+.chat-main .message-list .message-item .message-actions :deep(.ant-btn:hover) {
+  color: var(--app-primary-color);
+}
+
+.chat-main .message-list .typing-indicator span {
+  background: var(--app-text-muted);
+}
+
+.chat-main .message-list .empty-chat .empty-icon,
+.ai-chat-container.front-style .message-list .empty-chat .empty-icon {
+  color: var(--app-text-muted);
+}
+
+.ai-chat-container.front-style .message-list .empty-chat h3,
+.chat-main .message-list .empty-chat h3 {
+  color: var(--app-text-strong);
+}
+
+.chat-main .chat-input-area .attachment-list .attachment-item {
+  background: var(--app-surface-color);
+  border-color: var(--app-border-color);
+}
+
+.chat-main .chat-input-area .attachment-list .attachment-item .att-name {
+  color: var(--app-text-color);
+}
+
+.chat-main .chat-input-area .input-wrapper :deep(.ant-input),
+.chat-main .chat-input-area .input-wrapper :deep(.ant-input-affix-wrapper),
+.chat-main .chat-input-area .input-wrapper :deep(.ant-input-textarea textarea) {
+  background: var(--app-surface-color);
+  color: var(--app-text-color);
+  border-color: var(--app-border-color);
+}
+
+.chat-main .chat-input-area .input-wrapper :deep(.ant-input::placeholder),
+.chat-main .chat-input-area .input-wrapper :deep(textarea::placeholder) {
+  color: var(--app-text-muted);
+}
+
+.chat-main .chat-input-area .input-wrapper .attach-btn:hover {
+  color: var(--app-primary-color);
+  background: var(--app-hover-bg);
+}
+
 @media (max-width: 768px) {
   .conversation-sidebar {
     display: none;

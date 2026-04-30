@@ -149,6 +149,7 @@ Current frontend patterns:
 - For create, edit, and similar action surfaces, default to a drawer-based flow unless the user explicitly asks for a modal or another pattern
 - Reuse `AvatarUpload`, `ImageUpload`, `FileUpload`, and `FilePreview` when the module needs them
 - Do not add self-explanatory helper copy such as extra "说明", "提示", "温馨提示", or responsibility prose in forms, drawers, tabs, and toolbars unless the user explicitly asks for it or the existing page already follows that pattern
+- This workspace has dark mode. For custom page containers, tree sidebars, cards, drawer internals, split panels, and other non-Ant-default surfaces, do not hardcode light-only backgrounds, borders, or text colors such as `#fff`, `#fafafa`, `#f5f5f5`, `#f0f0f0`, `#666`, or `#999` without a theme-aware fallback. Reuse the existing `useUiStore().isDark` pattern and bridge custom styles through local CSS variables or explicit dark-state classes.
 
 ## Backend Conventions
 
@@ -250,6 +251,19 @@ When adding or exposing an interaction:
 - Do not stop at data display if the expected local CRUD loop is still obviously incomplete
 - Do not keep create or edit form markup inline in `index.vue` when it should be a reusable drawer or popup component
 - Prefer structural clarity through labels, grouping, columns, and metadata visibility; do not add explanatory copy just to teach system behavior unless the user explicitly wants that text
+- For left-driven detail pages such as dictionary, category, tree, or other split management screens, if data already exists and there is no contrary requirement, default-select the first available item and load the linked right-side content instead of leaving the initial state visually empty.
+
+### Frontend Theme Safety
+
+When you touch admin page styles, drawer internals, sidebars, trees, cards, or custom wrappers:
+
+- Assume both light mode and dark mode must remain usable.
+- Check whether the touched component is using custom `scoped` CSS that bypasses Ant Design Vue theme tokens.
+- Prefer the shared app-level semantic variables already established in the workspace such as `--app-surface-color`, `--app-surface-soft`, `--app-elevated-bg`, `--app-border-color`, `--app-hover-bg`, `--app-text-color`, `--app-text-secondary`, and `--app-text-muted` before inventing new raw colors.
+- If the component needs custom surfaces or borders, define local semantic CSS variables on the page or drawer root and override them from `useUiStore().isDark` instead of scattering raw hex colors through child components.
+- For split admin pages such as `left list/tree + right detail/table`, keep both panels on the same variable system, make the selected item visibly stronger in dark mode with brand-tinted background plus edge highlight, and ensure empty-state text and borders remain readable.
+- For teleported `Drawer`, `Modal`, and similar overlays, do not assume styles attached only to an inner wrapper will theme the teleported header, body, and footer. Style teleported container classes explicitly when needed.
+- Before finishing, do a dark-mode sanity check for every touched admin page or drawer when the change affects container, panel, background, border, or text color styling.
 
 ## Workflow
 
@@ -269,6 +283,8 @@ After substantial edits, prefer these checks when available:
 - frontend build when the change is broad: `npm run build`
 - SQL upgrade scripts: verify MySQL syntax compatibility and rerun safety, or explicitly report if no real SQL execution verification was run
 - Startup bootstrap changes: verify rerun safety and confirm customized built-in data is preserved
+- For admin UI style changes, also verify the touched page or drawer in dark mode if the edit introduced or changed custom container CSS.
+- For split admin pages, verify selected, hover, empty, disabled, and initial-load states rather than checking only the final populated state.
 
 Run narrower commands when the workspace has known unrelated failures and the change only affects one side.
 
@@ -295,4 +311,5 @@ Before finishing, verify:
 - Did I reuse `ProTable`, permission helpers, and shared upload/preview components where applicable?
 - Did I avoid introducing Spring Boot or `XTMS` path assumptions?
 - Did I keep newly exposed interactions usable instead of placeholder-only?
+- If I touched custom admin styling, did I verify dark mode for the touched surfaces, active states, and empty states?
 - If I changed `server/initialize/`, did I prove restart-safe behavior for existing customized data?
