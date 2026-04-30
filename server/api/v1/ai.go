@@ -42,7 +42,11 @@ func batchConversationDeleteFailureMessage(failedMsgs []string) string {
 
 // 获取模型列表
 func (a *AIApi) GetModels(c *gin.Context) {
-	models := service.AI.GetModels()
+	models, err := service.AI.GetModels()
+	if err != nil {
+		response.Fail(c, "获取模型列表失败")
+		return
+	}
 	response.OkWithData(c, models)
 }
 

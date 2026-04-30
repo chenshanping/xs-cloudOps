@@ -23,7 +23,7 @@ func setupInitializeTestDB(t *testing.T) *gorm.DB {
 	if err := db.AutoMigrate(&model.SysMenu{}, &model.SysRole{}, &model.SysDept{}, &model.SysUser{}); err != nil {
 		t.Fatalf("auto migrate base role/menu: %v", err)
 	}
-	if err := db.AutoMigrate(&model.SysApi{}, &model.SysConfig{}, &model.LegacyStorageRecord{}, &model.SysFile{}, &model.SysFileChunk{}, &model.SysDictType{}, &model.SysDictData{}); err != nil {
+	if err := db.AutoMigrate(&model.SysApi{}, &model.SysConfig{}, &model.AIProviderConfig{}, &model.LegacyStorageRecord{}, &model.SysFile{}, &model.SysFileChunk{}, &model.SysDictType{}, &model.SysDictData{}); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
 	if err := db.Exec("ALTER TABLE sys_file ADD COLUMN storage_id integer").Error; err != nil {
@@ -880,7 +880,86 @@ func TestEnsureBuiltInDataCreatesGenderDictWithoutOverwritingCustomizedData(t *t
 	if err := db.Model(&model.SysDictData{}).Where("dict_type = ?", "sys_gender").Count(&count).Error; err != nil {
 		t.Fatalf("count gender dict data: %v", err)
 	}
-	if count != 3 {
-		t.Fatalf("gender dict data count = %d, want 3", count)
+	if count != 2 {
+		t.Fatalf("gender dict data count = %d, want 2", count)
+	}
+}
+
+func TestEnsureBuiltInDataCreatesDefaultAIProvidersOnlyWhenBothSourcesMissing(t *testing.T) {
+	db := setupInitializeTestDB(t)
+
+	ensureBuiltInData()
+
+	var created []model.AIProviderConfig
+	if err := db.Order("sort ASC, id ASC").Find(&created).Error; err != nil {
+		t.Fatalf("load default ai providers: %v", err)
+	}
+	if len(created) != 1 {
+		t.Fatalf("default ai provider count = %d, want 1", len(created))
+	}
+	if created[0].Name != "阿里云百炼" || !created[0].IsDefault {
+		t.Fatalf("default ai provider = %#v, want 阿里云百炼 default", created[0])
+	}
+	if created[0].ModelsJSON == "" {
+		t.Fatalf("default ai provider models_json is empty")
+	}
+
+	var legacyCount int64
+	if err := db.Model(&model.SysConfig{}).Where("`key` = ?", "ai_config").Count(&legacyCount).Error; err != nil {
+		t.Fatalf("count legacy ai_config: %v", err)
+	}
+	if legacyCount != 0 {
+		t.Fatalf("legacy ai_config count = %d, want 0", legacyCount)
+	}
+}
+
+func TestEnsureBuiltInDataDoesNotOverwriteExistingAIProviders(t *testing.T) {
+	db := setupInitializeTestDB(t)
+
+	existing := model.AIProviderConfig{
+		Name:       "Existing",
+		APIKey:     "sk-existing",
+		BaseURL:    "https://existing.example/v1",
+		ModelsJSON: `[{"id":"existing-model","name":"existing-model","description":""}]`,
+		IsDefault:  true,
+		Sort:       0,
+	}
+	if err := db.Create(&existing).Error; err != nil {
+		t.Fatalf("create existing ai provider: %v", err)
+	}
+
+	ensureBuiltInData()
+
+	var updated model.AIProviderConfig
+	if err := db.Where("name = ?", "Existing").First(&updated).Error; err != nil {
+		t.Fatalf("reload ai provider: %v", err)
+	}
+	if updated.ModelsJSON != existing.ModelsJSON {
+		t.Fatalf("ai provider models_json overwritten = %s, want %s", updated.ModelsJSON, existing.ModelsJSON)
+	}
+}
+
+func TestEnsureBuiltInDataDoesNotCreateDefaultAIProvidersWhenLegacyConfigExists(t *testing.T) {
+	db := setupInitializeTestDB(t)
+
+	legacy := model.SysConfig{
+		Name:      "AI配置",
+		Key:       "ai_config",
+		Value:     `{"default_provider":"Legacy","providers":[]}`,
+		ValueType: "json",
+		Remark:    "旧 AI 配置",
+	}
+	if err := db.Create(&legacy).Error; err != nil {
+		t.Fatalf("create legacy ai_config: %v", err)
+	}
+
+	ensureBuiltInData()
+
+	var count int64
+	if err := db.Model(&model.AIProviderConfig{}).Count(&count).Error; err != nil {
+		t.Fatalf("count ai provider rows: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("ai provider row count = %d, want 0", count)
 	}
 }

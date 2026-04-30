@@ -1,8 +1,10 @@
 package initialize
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	appconfig "server/config"
 	"server/global"
 	"server/model"
 	"server/service"
@@ -23,6 +25,7 @@ func InitDBTables() {
 		&model.SysOperationLog{},
 		&model.SysLoginLog{},
 		&model.SysConfig{},
+		&model.AIProviderConfig{},
 		&model.SysFile{},
 		&model.SysFileChunk{},
 		// 数据字典
@@ -213,7 +216,6 @@ func initDefaultConfigs() {
 		{Name: "系统名称", Key: "sys_name", Value: "Go RBAC Admin", ValueType: "string", Remark: "显示在侧边栏顶部"},
 		{Name: "系统Logo", Key: "sys_logo", Value: "/src/assets/logo.svg", ValueType: "string", Remark: "系统Logo图片地址"},
 		{Name: "公开配置键", Key: service.PublicConfigKeysConfigKey, Value: service.DefaultPublicConfigKeysValue(), ValueType: "json", Remark: "允许匿名批量读取的配置键(JSON数组)，敏感键即使写入也不会公开"},
-		{Name: "AI配置", Key: "ai_config", Value: `{"default_provider":"阿里云百炼","providers":[{"name":"阿里云百炼","api_key":"","base_url":"https://dashscope.aliyuncs.com/compatible-mode/v1","models":[{"id":"deepseek-v3.2","name":"DeepSeek-V3.2","description":"DeepSeek最新模型,支持联网和思考"},{"id":"qwen3-max","name":"通义千问3-Max","description":"通义千问3系列Max模型"}]}]}`, ValueType: "json", Remark: "AI平台配置，包含平台名称、API Key、基础URL和模型列表"},
 		{Name: "前台模式", Key: "front_mode", Value: "full", ValueType: "string", Remark: "前台模式: full=完整前台, profile=仅个人中心(用于身份认证)"},
 		{Name: "用户身份按钮显示", Key: "user_profile_button_visible", Value: "false", ValueType: "string", Remark: "后台用户管理列表是否显示身份按钮"},
 		{Name: "用户默认密码", Key: "user_default_password", Value: "123456", ValueType: "string", Remark: "后台用户管理单条/批量重置密码默认值"},
@@ -237,6 +239,7 @@ func ensureBuiltInData() {
 	ensureSystemStorageConfigs()
 	ensureFileStorageSnapshots()
 	ensureGenderDictData()
+	ensureAIProvidersExist()
 	ensureConfigExists(model.SysConfig{
 		Name:      "公开配置键",
 		Key:       service.PublicConfigKeysConfigKey,
@@ -356,6 +359,119 @@ func ensureConfigExists(config model.SysConfig) {
 		if err := global.DB.Create(&config).Error; err != nil {
 			global.Log.Errorf("补齐系统配置失败(%s): %v", config.Key, err)
 		}
+	}
+}
+
+func ensureAIProvidersExist() {
+	var count int64
+	if err := global.DB.Model(&model.AIProviderConfig{}).Count(&count).Error; err != nil {
+		global.Log.Errorf("统计 AI 平台配置失败: %v", err)
+		return
+	}
+	if count > 0 {
+		return
+	}
+
+	if cfg, found, err := loadAIConfigFromLegacySysConfig(); err != nil {
+		global.Log.Errorf("读取历史 AI 配置失败: %v", err)
+		return
+	} else if found {
+		if err := createAIProvidersFromConfig(cfg); err != nil {
+			global.Log.Errorf("迁移历史 sys_config.ai_config 到 ai_providers 失败: %v", err)
+		}
+		return
+	}
+
+	if err := createAIProvidersFromConfig(defaultAIConfig()); err != nil {
+		global.Log.Errorf("补齐 AI 平台配置失败: %v", err)
+	}
+}
+
+func loadAIConfigFromLegacySysConfig() (appconfig.AI, bool, error) {
+	var cfg appconfig.AI
+	var legacy model.SysConfig
+	err := global.DB.Where("`key` = ?", "ai_config").First(&legacy).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return cfg, false, nil
+	}
+	if err != nil {
+		return cfg, false, err
+	}
+	if strings.TrimSpace(legacy.Value) == "" {
+		return cfg, false, nil
+	}
+
+	if err := json.Unmarshal([]byte(legacy.Value), &cfg); err != nil {
+		return cfg, false, err
+	}
+	return cfg, true, nil
+}
+
+func createAIProvidersFromConfig(cfg appconfig.AI) error {
+	rows, err := buildAIProviderRows(cfg)
+	if err != nil {
+		return err
+	}
+	if len(rows) == 0 {
+		return nil
+	}
+	return global.DB.Create(&rows).Error
+}
+
+func buildAIProviderRows(cfg appconfig.AI) ([]model.AIProviderConfig, error) {
+	if len(cfg.Providers) == 0 {
+		return nil, nil
+	}
+
+	defaultName := strings.TrimSpace(cfg.DefaultProvider)
+	if defaultName == "" {
+		defaultName = cfg.Providers[0].Name
+	}
+
+	hasDefault := false
+	for _, provider := range cfg.Providers {
+		if provider.Name == defaultName {
+			hasDefault = true
+			break
+		}
+	}
+	if !hasDefault {
+		defaultName = cfg.Providers[0].Name
+	}
+
+	rows := make([]model.AIProviderConfig, 0, len(cfg.Providers))
+	for index, provider := range cfg.Providers {
+		modelsJSON, err := json.Marshal(provider.Models)
+		if err != nil {
+			return nil, err
+		}
+		rows = append(rows, model.AIProviderConfig{
+			Name:       provider.Name,
+			APIKey:     provider.APIKey,
+			BaseURL:    provider.BaseURL,
+			ModelsJSON: string(modelsJSON),
+			IsDefault:  provider.Name == defaultName,
+			Sort:       index,
+		})
+	}
+
+	return rows, nil
+}
+
+func defaultAIConfig() appconfig.AI {
+	return appconfig.AI{
+		DefaultProvider: "阿里云百炼",
+		Providers: []appconfig.AIProvider{
+			{
+				Name:    "阿里云百炼",
+				APIKey:  "",
+				BaseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+				Models: []appconfig.AIModel{
+					{ID: "deepseek-v3.2", Name: "DeepSeek-V3.2", Description: "DeepSeek最新模型,支持联网和思考"},
+					{ID: "qwen3-max", Name: "通义千问3-Max", Description: "通义千问3系列Max模型"},
+				},
+			},
+		},
 	}
 }
 

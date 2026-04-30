@@ -22,7 +22,7 @@ func SetupFileServiceTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("open sqlite db: %v", err)
 	}
 
-	if err := db.AutoMigrate(&model.SysConfig{}, &model.SysFile{}, &model.SysUser{}, &model.SysFileChunk{}, &model.AIMessage{}); err != nil {
+	if err := db.AutoMigrate(&model.SysConfig{}, &model.AIProviderConfig{}, &model.SysFile{}, &model.SysUser{}, &model.SysFileChunk{}, &model.AIMessage{}); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
 
@@ -51,7 +51,7 @@ func SetupStorageServiceTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("open sqlite db: %v", err)
 	}
 
-	if err := db.AutoMigrate(&model.SysConfig{}, &model.SysFile{}); err != nil {
+	if err := db.AutoMigrate(&model.SysConfig{}, &model.AIProviderConfig{}, &model.SysFile{}); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
 

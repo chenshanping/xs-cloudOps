@@ -11,12 +11,14 @@ import (
 	"server/global"
 	"server/model"
 	"server/service/core"
-	"server/service/configsvc"
 )
 
-func (s *AIService) GetModels() []ModelInfo {
+func (s *AIService) GetModels() ([]ModelInfo, error) {
 	var models []ModelInfo
-	aiConfig := configsvc.Default.GetAIConfig()
+	aiConfig, err := s.GetAdminConfig()
+	if err != nil {
+		return nil, err
+	}
 	defaultProvider := aiConfig.DefaultProvider
 	for _, provider := range aiConfig.Providers {
 		for _, m := range provider.Models {
@@ -30,7 +32,7 @@ func (s *AIService) GetModels() []ModelInfo {
 		}
 	}
 
-	return models
+	return models, nil
 }
 
 func (s *AIService) GetConversations(userID uint, input ConversationListInput) ([]model.AIConversation, int64, error) {
@@ -68,7 +70,11 @@ func (s *AIService) GetMessages(conversationID uint, userID uint) ([]model.AIMes
 func (s *AIService) CreateConversation(userID uint, input CreateConversationInput) (*model.AIConversation, error) {
 	modelName := input.Model
 	if modelName == "" {
-		modelName = s.defaultModelID()
+		defaultModelName, err := s.defaultModelID()
+		if err != nil {
+			return nil, err
+		}
+		modelName = defaultModelName
 	}
 
 	title := input.Title
@@ -257,7 +263,10 @@ func (s *AIService) ChatStream(userID uint, input AIChatInput) (
 		messages = []ChatMessage{{Role: "user", Content: input.Message}}
 		modelName = input.Model
 		if modelName == "" {
-			modelName = s.defaultModelID()
+			modelName, err = s.defaultModelID()
+			if err != nil {
+				return 0, nil, saveConversation, "", err
+			}
 		}
 	}
 

@@ -16,7 +16,6 @@ import (
 	appconfig "server/config"
 	"server/global"
 	modelresponse "server/model/response"
-	"server/service/configsvc"
 )
 
 const (
@@ -37,16 +36,22 @@ type openAIModelsResponse struct {
 	Data []modelresponse.AIProviderModelItem `json:"data"`
 }
 
-func (s *AIService) defaultModelID() string {
-	aiConfig := configsvc.Default.GetAIConfig()
-	if provider := aiConfig.GetDefaultProvider(); provider != nil && len(provider.Models) > 0 {
-		return provider.Models[0].ID
+func (s *AIService) defaultModelID() (string, error) {
+	aiConfig, err := s.GetAdminConfig()
+	if err != nil {
+		return "", err
 	}
-	return ""
+	if provider := aiConfig.GetDefaultProvider(); provider != nil && len(provider.Models) > 0 {
+		return provider.Models[0].ID, nil
+	}
+	return "", nil
 }
 
 func (s *AIService) resolveProvider(modelName string) (*appconfig.AIProvider, error) {
-	aiConfig := configsvc.Default.GetAIConfig()
+	aiConfig, err := s.GetAdminConfig()
+	if err != nil {
+		return nil, err
+	}
 	provider := aiConfig.GetProviderByModel(modelName)
 	if provider == nil {
 		provider = aiConfig.GetDefaultProvider()

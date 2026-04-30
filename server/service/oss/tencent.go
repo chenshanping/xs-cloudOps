@@ -9,8 +9,9 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/tencentyun/cos-go-sdk-v5"
 	"server/model"
+
+	"github.com/tencentyun/cos-go-sdk-v5"
 )
 
 // TencentClient 腾讯云COS客户端
