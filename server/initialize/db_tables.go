@@ -216,6 +216,9 @@ func initDefaultConfigs() {
 	configs := []model.SysConfig{
 		{Name: "系统名称", Key: "sys_name", Value: "Go RBAC Admin", ValueType: "string", Remark: "显示在侧边栏顶部"},
 		{Name: "系统Logo", Key: "sys_logo", Value: "/src/assets/logo.svg", ValueType: "string", Remark: "系统Logo图片地址"},
+		{Name: "系统Logo文件ID", Key: service.SysLogoFileIDConfigKey, Value: "", ValueType: "string", Remark: "系统Logo关联文件ID"},
+		{Name: "注册默认头像文件ID", Key: service.RegisterLogoFileIDConfigKey, Value: "", ValueType: "string", Remark: "注册默认头像关联文件ID"},
+		{Name: "登录页背景图文件ID", Key: service.LoginBGImageFileIDConfigKey, Value: "", ValueType: "string", Remark: "登录页背景图关联文件ID"},
 		{Name: "公开配置键", Key: service.PublicConfigKeysConfigKey, Value: service.DefaultPublicConfigKeysValue(), ValueType: "json", Remark: "允许匿名批量读取的配置键(JSON数组)，敏感键即使写入也不会公开"},
 		{Name: "前台模式", Key: "front_mode", Value: "full", ValueType: "string", Remark: "前台模式: full=完整前台, profile=仅个人中心(用于身份认证)"},
 		{Name: "用户身份按钮显示", Key: "user_profile_button_visible", Value: "false", ValueType: "string", Remark: "后台用户管理列表是否显示身份按钮"},
@@ -247,6 +250,27 @@ func ensureBuiltInData() {
 		Value:     service.DefaultPublicConfigKeysValue(),
 		ValueType: "json",
 		Remark:    "允许匿名批量读取的配置键(JSON数组)，敏感键即使写入也不会公开",
+	})
+	ensureConfigExists(model.SysConfig{
+		Name:      "系统Logo文件ID",
+		Key:       service.SysLogoFileIDConfigKey,
+		Value:     "",
+		ValueType: "string",
+		Remark:    "系统Logo关联文件ID",
+	})
+	ensureConfigExists(model.SysConfig{
+		Name:      "注册默认头像文件ID",
+		Key:       service.RegisterLogoFileIDConfigKey,
+		Value:     "",
+		ValueType: "string",
+		Remark:    "注册默认头像关联文件ID",
+	})
+	ensureConfigExists(model.SysConfig{
+		Name:      "登录页背景图文件ID",
+		Key:       service.LoginBGImageFileIDConfigKey,
+		Value:     "",
+		ValueType: "string",
+		Remark:    "登录页背景图关联文件ID",
 	})
 	ensureConfigExists(model.SysConfig{
 		Name:      "用户身份按钮显示",

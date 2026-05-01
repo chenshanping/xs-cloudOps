@@ -6,6 +6,7 @@ import (
 	"net/mail"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,6 +28,7 @@ const (
 	userDefaultPasswordConfigKey = "user_default_password"
 	userDefaultPasswordFallback  = "123456"
 	registerLogoConfigKey        = "register_logo"
+	registerLogoFileIDConfigKey  = configsvc.RegisterLogoFileIDConfigKey
 )
 
 var mainlandPhoneRegex = regexp.MustCompile(`^1[3-9]\d{9}$`)
@@ -131,7 +133,40 @@ func validateOptionalContactFields(email, phone string) error {
 	return nil
 }
 
+func resolveConfigFileID(configKey string) (uint, error) {
+	config, err := configsvc.Default.GetConfigByKey(configKey)
+	if err != nil {
+		return 0, nil
+	}
+
+	rawValue := strings.TrimSpace(config.Value)
+	if rawValue == "" {
+		return 0, nil
+	}
+
+	fileID, err := strconv.ParseUint(rawValue, 10, 64)
+	if err != nil || fileID == 0 {
+		return 0, nil
+	}
+
+	var file model.SysFile
+	if err := global.DB.Where("id = ? AND status = ?", uint(fileID), 1).First(&file).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return 0, nil
+		}
+		return 0, err
+	}
+
+	return file.ID, nil
+}
+
 func resolveRegisterLogoAvatarFileID() (uint, error) {
+	if fileID, err := resolveConfigFileID(registerLogoFileIDConfigKey); err != nil {
+		return 0, err
+	} else if fileID > 0 {
+		return fileID, nil
+	}
+
 	config, err := configsvc.Default.GetConfigByKey(registerLogoConfigKey)
 	if err != nil {
 		return 0, nil
@@ -304,11 +339,17 @@ func (s *UserService) CreateUser(operatorID uint, req *request.CreateUserRequest
 		if err != nil {
 			return err
 		}
-		user.AvatarFileID = defaultAvatarFileID
+		if defaultAvatarFileID > 0 {
+			user.AvatarFileID = defaultAvatarFileID
+		}
 	}
 
 	return global.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(&user).Error; err != nil {
+		createQuery := tx
+		if user.AvatarFileID == 0 {
+			createQuery = createQuery.Omit("AvatarFileID")
+		}
+		if err := createQuery.Create(&user).Error; err != nil {
 			return err
 		}
 
@@ -386,7 +427,7 @@ func (s *UserService) UpdateUser(operatorID, id uint, req *request.UpdateUserReq
 			updates["avatar_file_id"] = file.ID
 		} else if req.Avatar != "" {
 			updates["avatar"] = req.Avatar
-			updates["avatar_file_id"] = 0
+			updates["avatar_file_id"] = nil
 		}
 
 		if err := tx.Model(&model.SysUser{}).Where("id = ?", id).Updates(updates).Error; err != nil {
@@ -457,7 +498,10 @@ func (s *UserService) deleteUserByID(id uint) error {
 			return err
 		}
 		deletedUsername := fmt.Sprintf("%s_deleted_%d_%d", user.Username, user.ID, time.Now().Unix())
-		if err := tx.Model(&user).Update("username", deletedUsername).Error; err != nil {
+		if err := tx.Model(&user).Updates(map[string]interface{}{
+			"username":       deletedUsername,
+			"avatar_file_id": nil,
+		}).Error; err != nil {
 			return err
 		}
 		return tx.Delete(&user).Error
@@ -736,11 +780,17 @@ func (s *UserService) Register(username, password, email string) error {
 	}
 
 	if defaultAvatarFileID, err := resolveRegisterLogoAvatarFileID(); err == nil {
-		user.AvatarFileID = defaultAvatarFileID
+		if defaultAvatarFileID > 0 {
+			user.AvatarFileID = defaultAvatarFileID
+		}
 	}
 
 	return global.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(&user).Error; err != nil {
+		createQuery := tx
+		if user.AvatarFileID == 0 {
+			createQuery = createQuery.Omit("AvatarFileID")
+		}
+		if err := createQuery.Create(&user).Error; err != nil {
 			return err
 		}
 

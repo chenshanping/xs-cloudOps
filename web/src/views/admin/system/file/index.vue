@@ -27,6 +27,9 @@
                   </a-select-option>
                 </a-select>
               </a-form-item>
+              <a-form-item label="仅看已引用">
+                <a-switch v-model:checked="searchForm.referencedOnly" />
+              </a-form-item>
             </template>
 
             <template #toolbar>
@@ -58,6 +61,11 @@
               <template v-if="column.key === 'storage'">
                 <a-tag color="blue">
                   {{ getStorageLabel(record) }}
+                </a-tag>
+              </template>
+              <template v-if="column.key === 'reference_count'">
+                <a-tag :color="record.reference_count > 0 ? 'processing' : 'default'">
+                  {{ record.reference_count > 0 ? `${record.reference_count} 处引用` : '未引用' }}
                 </a-tag>
               </template>
               <template v-if="column.key === 'created_at'">
@@ -96,7 +104,7 @@
     <FileMigrationDrawer
       v-model:open="migrationVisible"
       :selected-ids="selectedRowKeys"
-      :current-filters="searchForm"
+      :current-filters="currentFilters"
       :current-default-storage-type="configStore.get('storage_type') || 'local'"
       @success="handleMigrationSuccess"
     />
@@ -147,6 +155,7 @@ const migrationVisible = ref(false)
 const searchForm = reactive({
   name: '',
   ext: '',
+  referencedOnly: false,
 })
 
 const pagination = reactive({
@@ -174,9 +183,16 @@ const columns = [
   { title: '大小', key: 'size', width: 100 },
   { title: '类型', key: 'ext', width: 80 },
   { title: '存储', key: 'storage', width: 160 },
+  { title: '引用次数', key: 'reference_count', width: 120 },
   { title: '上传时间', key: 'created_at', width: 180 },
   { title: '操作', key: 'action', width: 200 },
 ]
+
+const currentFilters = computed(() => ({
+  name: searchForm.name,
+  ext: searchForm.ext,
+  referenced: searchForm.referencedOnly ? true : undefined,
+}))
 
 const getFileTypeInfo = (ext: string) => {
   if (!ext) return null
@@ -233,6 +249,7 @@ const fetchList = async () => {
       page_size: pagination.pageSize,
       name: searchForm.name,
       ext: searchForm.ext,
+      referenced: searchForm.referencedOnly ? true : undefined,
     })
     fileList.value = res.data.list
     pagination.total = res.data.total
@@ -249,6 +266,7 @@ const handleSearch = () => {
 const handleReset = () => {
   searchForm.name = ''
   searchForm.ext = ''
+  searchForm.referencedOnly = false
   pagination.current = 1
   fetchList()
 }

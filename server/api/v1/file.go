@@ -57,8 +57,22 @@ func (a *FileApi) GetFileList(c *gin.Context) {
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
 	name := c.Query("name")
 	ext := c.Query("ext")
+	var referenced *bool
+	if rawReferenced, exists := c.GetQuery("referenced"); exists {
+		switch strings.ToLower(strings.TrimSpace(rawReferenced)) {
+		case "1", "true", "used", "referenced":
+			value := true
+			referenced = &value
+		case "0", "false", "unused", "unreferenced":
+			value := false
+			referenced = &value
+		default:
+			response.BadRequest(c, "引用状态参数错误")
+			return
+		}
+	}
 
-	files, total, err := service.File.GetFileList(page, pageSize, name, ext)
+	files, total, err := service.File.GetFileList(page, pageSize, name, ext, referenced)
 	if err != nil {
 		response.Fail(c, "获取文件列表失败")
 		return

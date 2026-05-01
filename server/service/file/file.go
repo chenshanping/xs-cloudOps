@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,6 +27,11 @@ type FileService struct{}
 
 var Default = &FileService{}
 
+type fileReferenceCountRow struct {
+	FileID uint
+	Count  int64
+}
+
 const (
 	FileDeleteModeConfigKey = "file_delete_mode"
 	FileDeleteModeLogical   = "logical"
@@ -33,7 +39,7 @@ const (
 )
 
 // GetFileList 获取文件列表
-func (s *FileService) GetFileList(page, pageSize int, name, ext string) ([]model.SysFile, int64, error) {
+func (s *FileService) GetFileList(page, pageSize int, name, ext string, referenced *bool) ([]model.SysFile, int64, error) {
 	var files []model.SysFile
 	var total int64
 
@@ -50,9 +56,72 @@ func (s *FileService) GetFileList(page, pageSize int, name, ext string) ([]model
 		}
 	}
 
-	db.Count(&total)
-	err := db.Order("id desc").Offset((page - 1) * pageSize).Limit(pageSize).Find(&files).Error
-	return files, total, err
+	if referenced == nil {
+		db.Count(&total)
+		err := db.Order("id desc").Offset((page - 1) * pageSize).Limit(pageSize).Find(&files).Error
+		if err != nil {
+			return nil, 0, err
+		}
+		if err := s.fillFileReferenceCounts(files); err != nil {
+			return nil, 0, err
+		}
+		return files, total, nil
+	}
+
+	var fileIDs []uint
+	if err := db.Order("id desc").Pluck("id", &fileIDs).Error; err != nil {
+		return nil, 0, err
+	}
+	if len(fileIDs) == 0 {
+		return []model.SysFile{}, 0, nil
+	}
+
+	referenceCounts, err := s.getFileReferenceCounts(fileIDs)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	filteredIDs := make([]uint, 0, len(fileIDs))
+	for _, fileID := range fileIDs {
+		isReferenced := referenceCounts[fileID] > 0
+		if isReferenced == *referenced {
+			filteredIDs = append(filteredIDs, fileID)
+		}
+	}
+
+	total = int64(len(filteredIDs))
+	if total == 0 {
+		return []model.SysFile{}, 0, nil
+	}
+
+	start := (page - 1) * pageSize
+	if start >= len(filteredIDs) {
+		return []model.SysFile{}, total, nil
+	}
+
+	end := start + pageSize
+	if end > len(filteredIDs) {
+		end = len(filteredIDs)
+	}
+	pageIDs := filteredIDs[start:end]
+	if err := global.DB.Where("id IN ?", pageIDs).Find(&files).Error; err != nil {
+		return nil, 0, err
+	}
+
+	fileMap := make(map[uint]model.SysFile, len(files))
+	for _, file := range files {
+		file.ReferenceCount = referenceCounts[file.ID]
+		fileMap[file.ID] = file
+	}
+
+	ordered := make([]model.SysFile, 0, len(pageIDs))
+	for _, fileID := range pageIDs {
+		if file, ok := fileMap[fileID]; ok {
+			ordered = append(ordered, file)
+		}
+	}
+
+	return ordered, total, nil
 }
 
 // GetFileByID 根据ID获取文件
@@ -121,6 +190,12 @@ func (s *FileService) ensureFileNotReferenced(file model.SysFile) error {
 		return errors.New("文件正在被引用：用户头像正在使用，无法删除")
 	}
 
+	if configLabel, err := s.findConfigFileReference(file.ID); err != nil {
+		return err
+	} else if configLabel != "" {
+		return fmt.Errorf("文件正在被引用：系统配置[%s]正在使用，无法删除", configLabel)
+	}
+
 	var messages []model.AIMessage
 	if err := global.DB.Select("id", "file_ids").Where("file_ids IS NOT NULL AND file_ids <> ''").Find(&messages).Error; err != nil {
 		return err
@@ -138,6 +213,119 @@ func (s *FileService) ensureFileNotReferenced(file model.SysFile) error {
 	}
 
 	return nil
+}
+
+func parseConfigFileID(rawValue string) (uint, bool) {
+	fileID, err := strconv.ParseUint(strings.TrimSpace(rawValue), 10, 64)
+	if err != nil || fileID == 0 {
+		return 0, false
+	}
+	return uint(fileID), true
+}
+
+func (s *FileService) findConfigFileReference(fileID uint) (string, error) {
+	var configs []model.SysConfig
+	if err := global.DB.Select("key", "value").
+		Where("`key` IN ? AND value IS NOT NULL AND value <> ''", configsvc.ImageFileReferenceConfigKeys()).
+		Find(&configs).Error; err != nil {
+		return "", err
+	}
+
+	for _, config := range configs {
+		boundFileID, ok := parseConfigFileID(config.Value)
+		if !ok || boundFileID != fileID {
+			continue
+		}
+		return configsvc.ImageFileReferenceLabel(config.Key), nil
+	}
+
+	return "", nil
+}
+
+func (s *FileService) addConfigFileReferenceCounts(fileIDSet map[uint]struct{}, referenceCounts map[uint]int64) error {
+	var configs []model.SysConfig
+	if err := global.DB.Select("key", "value").
+		Where("`key` IN ? AND value IS NOT NULL AND value <> ''", configsvc.ImageFileReferenceConfigKeys()).
+		Find(&configs).Error; err != nil {
+		return err
+	}
+
+	for _, config := range configs {
+		fileID, ok := parseConfigFileID(config.Value)
+		if !ok {
+			continue
+		}
+		if _, exists := fileIDSet[fileID]; !exists {
+			continue
+		}
+		referenceCounts[fileID]++
+	}
+
+	return nil
+}
+
+func (s *FileService) fillFileReferenceCounts(files []model.SysFile) error {
+	referenceCounts, err := s.getFileReferenceCounts(s.collectFileIDs(files))
+	if err != nil {
+		return err
+	}
+	for i := range files {
+		files[i].ReferenceCount = referenceCounts[files[i].ID]
+	}
+	return nil
+}
+
+func (s *FileService) getFileReferenceCounts(fileIDs []uint) (map[uint]int64, error) {
+	referenceCounts := make(map[uint]int64, len(fileIDs))
+	if len(fileIDs) == 0 {
+		return referenceCounts, nil
+	}
+
+	fileIDSet := make(map[uint]struct{}, len(fileIDs))
+	for _, fileID := range fileIDs {
+		fileIDSet[fileID] = struct{}{}
+	}
+
+	var avatarCounts []fileReferenceCountRow
+	if err := global.DB.Model(&model.SysUser{}).
+		Select("avatar_file_id AS file_id, COUNT(*) AS count").
+		Where("avatar_file_id IN ?", fileIDs).
+		Group("avatar_file_id").
+		Scan(&avatarCounts).Error; err != nil {
+		return nil, err
+	}
+	for _, item := range avatarCounts {
+		referenceCounts[item.FileID] += item.Count
+	}
+
+	if err := s.addConfigFileReferenceCounts(fileIDSet, referenceCounts); err != nil {
+		return nil, err
+	}
+
+	var messages []model.AIMessage
+	if err := global.DB.Select("id", "file_ids").Where("file_ids IS NOT NULL AND file_ids <> ''").Find(&messages).Error; err != nil {
+		return nil, err
+	}
+	for _, msg := range messages {
+		var ids []uint
+		if err := json.Unmarshal([]byte(msg.FileIDs), &ids); err != nil {
+			continue
+		}
+
+		seenInMessage := make(map[uint]struct{}, len(ids))
+		for _, fileID := range ids {
+			if _, exists := fileIDSet[fileID]; !exists {
+				continue
+			}
+			if _, duplicated := seenInMessage[fileID]; duplicated {
+				continue
+			}
+			seenInMessage[fileID] = struct{}{}
+			referenceCounts[fileID]++
+		}
+	}
+
+	return referenceCounts, nil
 }
 
 func (s *FileService) cleanupChunkArtifacts(file model.SysFile) error {
@@ -196,6 +384,13 @@ func (s *FileService) cleanupChunkArtifacts(file model.SysFile) error {
 	return global.DB.Unscoped().Where("id IN ?", chunkIDs).Delete(&model.SysFileChunk{}).Error
 }
 
+func (s *FileService) clearSoftDeletedAvatarReferences(fileID uint) error {
+	return global.DB.Unscoped().
+		Model(&model.SysUser{}).
+		Where("avatar_file_id = ? AND deleted_at IS NOT NULL", fileID).
+		Update("avatar_file_id", nil).Error
+}
+
 // DeleteFile 删除文件
 func (s *FileService) DeleteFile(id uint) error {
 	var file model.SysFile
@@ -212,6 +407,10 @@ func (s *FileService) DeleteFile(id uint) error {
 	}
 
 	if err := s.cleanupChunkArtifacts(file); err != nil {
+		return err
+	}
+
+	if err := s.clearSoftDeletedAvatarReferences(file.ID); err != nil {
 		return err
 	}
 
@@ -569,6 +768,23 @@ func (s *FileService) collectFilesForMigration(req modelrequest.FileMigrationReq
 	if err := db.Order("id asc").Find(&files).Error; err != nil {
 		return nil, err
 	}
+
+	if req.Filters.Referenced != nil {
+		referenceCounts, err := s.getFileReferenceCounts(s.collectFileIDs(files))
+		if err != nil {
+			return nil, err
+		}
+
+		filtered := make([]model.SysFile, 0, len(files))
+		for _, file := range files {
+			isReferenced := referenceCounts[file.ID] > 0
+			if isReferenced == *req.Filters.Referenced {
+				filtered = append(filtered, file)
+			}
+		}
+		files = filtered
+	}
+
 	return files, nil
 }
 

@@ -9,6 +9,7 @@
         <a-form-item label="系统Logo">
           <ImageUpload
             v-model="basicForm.sys_logo"
+            v-model:fileId="basicForm.sys_logo_file_id"
             :width="120"
             :height="60"
             :max-size="5 * 1024 * 1024"
@@ -74,6 +75,7 @@ const basicSaving = ref(false)
 const basicForm = reactive({
   sys_name: configStore.get('sys_name'),
   sys_logo: configStore.get('sys_logo'),
+  sys_logo_file_id: Number.parseInt(configStore.get('sys_logo_file_id'), 10) || 0,
   front_mode: configStore.get('front_mode') || 'full',
   user_profile_button_visible: configStore.get('user_profile_button_visible') || 'false',
   user_default_password: configStore.get('user_default_password') || '123456',
@@ -82,6 +84,7 @@ const basicForm = reactive({
 const getBasicState = () => ({
   sys_name: basicForm.sys_name,
   sys_logo: basicForm.sys_logo,
+  sys_logo_file_id: basicForm.sys_logo_file_id,
   front_mode: basicForm.front_mode,
   user_profile_button_visible: basicForm.user_profile_button_visible,
   user_default_password: basicForm.user_default_password,
@@ -90,6 +93,7 @@ const getBasicState = () => ({
 const applyBasicState = (state: ReturnType<typeof getBasicState>) => {
   basicForm.sys_name = state.sys_name
   basicForm.sys_logo = state.sys_logo
+  basicForm.sys_logo_file_id = Number(state.sys_logo_file_id) || 0
   basicForm.front_mode = state.front_mode
   basicForm.user_profile_button_visible = state.user_profile_button_visible
   basicForm.user_default_password = state.user_default_password
@@ -118,6 +122,7 @@ const save = async () => {
     const configs: Record<string, string> = {
       sys_name: basicForm.sys_name,
       sys_logo: basicForm.sys_logo,
+      sys_logo_file_id: basicForm.sys_logo_file_id > 0 ? String(basicForm.sys_logo_file_id) : '',
       front_mode: basicForm.front_mode,
       user_profile_button_visible: basicForm.user_profile_button_visible,
       user_default_password: basicForm.user_default_password,

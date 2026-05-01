@@ -11,6 +11,7 @@ export interface FileInfo {
   storage_type: string
   uploader_id: number
   status: number
+  reference_count: number
   created_at: string
   updated_at: string
 }
@@ -134,6 +135,7 @@ export type FileMigrationScope = 'all' | 'filter' | 'selected'
 export interface FileMigrationFilters {
   name?: string
   ext?: string
+  referenced?: boolean
 }
 
 export interface FileMigrationRequest {

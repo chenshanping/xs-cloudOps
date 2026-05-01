@@ -11,7 +11,7 @@ import type {
 import type { PageResponse } from '@/types'
 
 // 获取文件列表
-export function getFileList(params: { page: number; page_size: number; name?: string; ext?: string }) {
+export function getFileList(params: { page: number; page_size: number; name?: string; ext?: string; referenced?: boolean }) {
   return request.get<PageResponse<FileInfo>>('/files', { params })
 }
 

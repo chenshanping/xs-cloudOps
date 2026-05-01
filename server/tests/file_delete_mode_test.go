@@ -1,11 +1,14 @@
 package tests
 
 import (
+	"database/sql"
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"server/global"
 	"server/model"
@@ -170,6 +173,63 @@ func TestDeleteFileRejectsReferencedAvatarFile(t *testing.T) {
 	}
 }
 
+func TestDeleteFilePhysicalModeClearsSoftDeletedAvatarReference(t *testing.T) {
+	testutil.SetupFileServiceTestDB(t)
+	dir := t.TempDir()
+	seedLocalFileDeleteConfig(t, dir, FileDeleteModePhysical)
+
+	fullPath := filepath.Join(dir, "avatar.png")
+	if err := os.WriteFile(fullPath, []byte("avatar"), 0o600); err != nil {
+		t.Fatalf("write local file: %v", err)
+	}
+
+	file := model.SysFile{
+		Name:        "avatar.png",
+		Path:        "avatar.png",
+		URL:         "/api/v1/upload/avatar.png",
+		StorageType: string(model.StorageTypeLocal),
+		Status:      1,
+	}
+	if err := global.DB.Create(&file).Error; err != nil {
+		t.Fatalf("create file: %v", err)
+	}
+
+	user := model.SysUser{
+		Username:     "deleted-avatar-user",
+		Password:     "pwd",
+		Nickname:     "Deleted Avatar User",
+		Status:       1,
+		AvatarFileID: file.ID,
+	}
+	if err := global.DB.Create(&user).Error; err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	deletedAt := time.Now()
+	if err := global.DB.Unscoped().Model(&model.SysUser{}).Where("id = ?", user.ID).Update("deleted_at", deletedAt).Error; err != nil {
+		t.Fatalf("soft delete user directly: %v", err)
+	}
+
+	if err := File.DeleteFile(file.ID); err != nil {
+		t.Fatalf("DeleteFile physical with soft deleted user error: %v", err)
+	}
+
+	var deletedUser model.SysUser
+	if err := global.DB.Unscoped().First(&deletedUser, user.ID).Error; err != nil {
+		t.Fatalf("query deleted user: %v", err)
+	}
+	var avatarFileID sql.NullInt64
+	if err := global.DB.Raw("SELECT avatar_file_id FROM sys_user WHERE id = ?", user.ID).Scan(&avatarFileID).Error; err != nil {
+		t.Fatalf("query raw avatar_file_id: %v", err)
+	}
+	if avatarFileID.Valid {
+		t.Fatalf("soft deleted user avatar_file_id should be NULL, got %d", avatarFileID.Int64)
+	}
+	if !deletedUser.DeletedAt.Valid {
+		t.Fatalf("expected user to remain soft deleted")
+	}
+}
+
 func TestDeleteFileRejectsReferencedAIMessageFile(t *testing.T) {
 	testutil.SetupFileServiceTestDB(t)
 	dir := t.TempDir()
@@ -205,6 +265,41 @@ func TestDeleteFileRejectsReferencedAIMessageFile(t *testing.T) {
 		t.Fatalf("expected referenced ai file delete to fail")
 	}
 	if !strings.Contains(err.Error(), "AI对话附件") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestDeleteFileRejectsConfigReferencedFile(t *testing.T) {
+	testutil.SetupFileServiceTestDB(t)
+	dir := t.TempDir()
+	seedLocalFileDeleteConfig(t, dir, FileDeleteModePhysical)
+
+	file := model.SysFile{
+		Name:        "logo.png",
+		Path:        "logo.png",
+		URL:         "/api/v1/upload/logo.png",
+		StorageType: string(model.StorageTypeLocal),
+		Status:      1,
+	}
+	if err := global.DB.Create(&file).Error; err != nil {
+		t.Fatalf("create file: %v", err)
+	}
+
+	config := model.SysConfig{
+		Name:      "系统Logo文件ID",
+		Key:       "sys_logo_file_id",
+		Value:     strconv.FormatUint(uint64(file.ID), 10),
+		ValueType: "string",
+	}
+	if err := global.DB.Create(&config).Error; err != nil {
+		t.Fatalf("create config: %v", err)
+	}
+
+	err := File.DeleteFile(file.ID)
+	if err == nil {
+		t.Fatalf("expected config referenced file delete to fail")
+	}
+	if !strings.Contains(err.Error(), "系统 Logo") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

@@ -13,7 +13,8 @@
           </a-form-item>
           <a-form-item label="注册用户默认头像">
             <ImageUpload 
-              v-model="formData.register_logo" 
+              v-model="formData.register_logo"
+              v-model:fileId="formData.register_logo_file_id"
               :width="120" 
               :height="60" 
               placeholder="注册用户默认头像"
@@ -33,7 +34,8 @@
           
           <a-form-item label="背景图片">
             <ImageUpload 
-              v-model="formData.login_bg_image" 
+              v-model="formData.login_bg_image"
+              v-model:fileId="formData.login_bg_image_file_id"
               :width="160" 
               :height="90"
               :max-size="10 * 1024 * 1024"
@@ -276,6 +278,7 @@ const LOGIN_CONFIG_KEYS = [
 // 直接从 store 初始化数据
 const formData = reactive({
   login_bg_image: configStore.get('login_bg_image'),
+  login_bg_image_file_id: Number.parseInt(configStore.get('login_bg_image_file_id'), 10) || 0,
   login_title: configStore.get('login_title'),
   login_subtitle: configStore.get('login_subtitle'),
   login_bg_color: configStore.get('login_bg_color'),
@@ -285,7 +288,8 @@ const formData = reactive({
   login_features_max: parseInt(configStore.get('login_features_max')) || 4,
   login_images: configStore.get('login_images'),
   login_images_max: parseInt(configStore.get('login_images_max')) || 4,
-  register_logo: configStore.get('register_logo')
+  register_logo: configStore.get('register_logo'),
+  register_logo_file_id: Number.parseInt(configStore.get('register_logo_file_id'), 10) || 0,
 })
 
 // 特性标签列表
@@ -348,7 +352,9 @@ try {
 
 const getConfigState = () => ({
   register_logo: formData.register_logo || '',
+  register_logo_file_id: formData.register_logo_file_id,
   login_bg_image: formData.login_bg_image,
+  login_bg_image_file_id: formData.login_bg_image_file_id,
   login_title: formData.login_title,
   login_subtitle: formData.login_subtitle,
   login_bg_color: formData.login_bg_color,
@@ -364,7 +370,9 @@ const getConfigState = () => ({
 const applyConfigState = (state: ReturnType<typeof getConfigState>) => {
   enableRegister.value = state.enable_register === 'true'
   formData.register_logo = state.register_logo
+  formData.register_logo_file_id = Number(state.register_logo_file_id) || 0
   formData.login_bg_image = state.login_bg_image
+  formData.login_bg_image_file_id = Number(state.login_bg_image_file_id) || 0
   formData.login_title = state.login_title
   formData.login_subtitle = state.login_subtitle
   formData.login_bg_color = state.login_bg_color
@@ -391,6 +399,11 @@ watch(hasUnsavedChanges, (value) => {
   emit('dirty-change', value)
 }, { immediate: true })
 
+const FILE_ID_CONFIG_KEYS = new Set([
+  'register_logo_file_id',
+  'login_bg_image_file_id',
+])
+
 // 保存配置
 const save = async () => {
   // 验证：开启注册功能时需要填写默认头像
@@ -403,6 +416,10 @@ const save = async () => {
   try {
     const configs: Record<string, string> = {}
     for (const [key, value] of Object.entries(getConfigState())) {
+      if (FILE_ID_CONFIG_KEYS.has(key)) {
+        configs[key] = Number(value) > 0 ? String(value) : ''
+        continue
+      }
       configs[key] = typeof value === 'number' ? String(value) : value
     }
     await configStore.updateConfigs(configs)
@@ -435,11 +452,14 @@ const handleSave = async () => {
 const handleReset = () => {
   enableRegister.value = false
   formData.login_bg_image = ''
+  formData.login_bg_image_file_id = 0
   formData.login_title = '欢迎回来'
   formData.login_subtitle = '企业级后台管理系统'
   formData.login_bg_color = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
   formData.login_slogan = '智能化企业管理平台'
   formData.login_desc = '实时数据联动，智能分析策略，多渠道展示整合，让管理更简单，让体验更美好。'
+  formData.register_logo = ''
+  formData.register_logo_file_id = 0
   formData.login_features_max = 4
   formData.login_images_max = 4
   featureList.value = [

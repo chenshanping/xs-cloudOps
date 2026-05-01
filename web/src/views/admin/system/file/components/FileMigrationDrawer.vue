@@ -190,6 +190,7 @@ const props = defineProps<{
   currentFilters: {
     name?: string
     ext?: string
+    referenced?: boolean
   }
 }>()
 
@@ -212,7 +213,9 @@ const form = reactive({
   targetStorageType: '',
 })
 
-const hasActiveFilters = computed(() => !!props.currentFilters.name || !!props.currentFilters.ext)
+const hasActiveFilters = computed(() =>
+  !!props.currentFilters.name || !!props.currentFilters.ext || props.currentFilters.referenced === true
+)
 
 const scopeOptions = computed(() => [
   { label: '全部文件', value: 'all' },
@@ -497,6 +500,7 @@ const buildPayload = (): FileMigrationRequest => {
     payload.filters = {
       name: props.currentFilters.name || '',
       ext: props.currentFilters.ext || '',
+      referenced: props.currentFilters.referenced,
     }
   }
 

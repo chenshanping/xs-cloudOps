@@ -57,6 +57,9 @@ const (
 	FileDeleteModeLogical        = file.FileDeleteModeLogical
 	FileDeleteModePhysical       = file.FileDeleteModePhysical
 	PublicConfigKeysConfigKey    = configsvc.PublicConfigKeysConfigKey
+	SysLogoFileIDConfigKey       = configsvc.SysLogoFileIDConfigKey
+	RegisterLogoFileIDConfigKey  = configsvc.RegisterLogoFileIDConfigKey
+	LoginBGImageFileIDConfigKey  = configsvc.LoginBGImageFileIDConfigKey
 	StorageTypeConfigKey         = configsvc.StorageTypeConfigKey
 	LegacyStorageConfigConfigKey = configsvc.LegacyStorageConfigConfigKey
 )

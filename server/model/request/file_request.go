@@ -9,6 +9,7 @@ type FileMigrationRequest struct {
 }
 
 type FileMigrationFilters struct {
-	Name string `json:"name"`
-	Ext  string `json:"ext"`
+	Name       string `json:"name"`
+	Ext        string `json:"ext"`
+	Referenced *bool  `json:"referenced"`
 }

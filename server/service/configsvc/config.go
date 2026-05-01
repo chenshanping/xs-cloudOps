@@ -16,6 +16,18 @@ var Default = &ConfigService{}
 
 const PublicConfigKeysConfigKey = "public_config_keys"
 
+const (
+	SysLogoFileIDConfigKey      = "sys_logo_file_id"
+	RegisterLogoFileIDConfigKey = "register_logo_file_id"
+	LoginBGImageFileIDConfigKey = "login_bg_image_file_id"
+)
+
+var imageFileReferenceConfigLabels = map[string]string{
+	SysLogoFileIDConfigKey:      "系统 Logo",
+	RegisterLogoFileIDConfigKey: "注册默认头像",
+	LoginBGImageFileIDConfigKey: "登录页背景图",
+}
+
 // defaultPublicConfigKeys 定义匿名接口 /api/v1/configs/keys 默认允许返回的配置键。
 // 这里应只放“前台展示必需、且不包含敏感信息”的配置。
 var defaultPublicConfigKeys = []string{
@@ -104,6 +116,21 @@ func DefaultPublicConfigKeysValue() string {
 		return "[]"
 	}
 	return string(bytes)
+}
+
+func ImageFileReferenceConfigKeys() []string {
+	return []string{
+		SysLogoFileIDConfigKey,
+		RegisterLogoFileIDConfigKey,
+		LoginBGImageFileIDConfigKey,
+	}
+}
+
+func ImageFileReferenceLabel(key string) string {
+	if label, ok := imageFileReferenceConfigLabels[key]; ok {
+		return label
+	}
+	return key
 }
 
 // GetResolvedPublicConfigKeys 返回最终生效的匿名公开配置键。
