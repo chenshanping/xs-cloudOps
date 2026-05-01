@@ -70,7 +70,7 @@
           <a-radio-group v-model:value="formState.type">
             <a-radio :value="1">目录</a-radio>
             <a-radio :value="2">菜单</a-radio>
-            <a-radio :value="3">按顲</a-radio>
+            <a-radio :value="3">按钮</a-radio>
           </a-radio-group>
         </a-form-item>
         <a-form-item label="菜单名称" required>
@@ -84,6 +84,18 @@
         </a-form-item>
         <a-form-item label="权限标识" v-if="formState.type !== 1">
           <a-input v-model:value="formState.permission" />
+        </a-form-item>
+        <a-form-item label="关联API" v-if="formState.type !== 1">
+          <a-select
+            v-model:value="formState.api_ids"
+            mode="multiple"
+            :options="apiOptionGroups"
+            :max-tag-count="'responsive'"
+            placeholder="请选择关联 API"
+            option-filter-prop="label"
+            show-search
+            allow-clear
+          />
         </a-form-item>
         <a-form-item label="图标" v-if="formState.type !== 3">
           <IconSelect v-model="formState.icon" />
@@ -108,12 +120,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import * as AntIcons from '@ant-design/icons-vue'
 import IconSelect from '@/components/IconSelect.vue'
-import { getMenuTree, createMenu, updateMenu, deleteMenu } from '@/api/menu'
+import { getMenuTree, createMenu, updateMenu, updateMenuApis, deleteMenu } from '@/api/menu'
 import { getAllApis } from '@/api/api'
 import { useTableColumns } from '@/utils/permission'
 import { useUserStore } from '@/store/user'
@@ -151,6 +163,7 @@ const getCustomIconUrl = (iconName?: string) => {
 
 const loading = ref(false)
 const tableData = ref<Menu[]>([])
+const allApis = ref<Api[]>([])
 const drawerVisible = ref(false)
 const modalTitle = ref('新增菜单')
 const isEdit = ref(false)
@@ -167,6 +180,7 @@ const formState = reactive({
   sort: 0,
   type: 2,
   permission: '',
+  api_ids: [] as number[],
   statusChecked: true,
   hiddenChecked: false
 })
@@ -206,6 +220,26 @@ const menuTreeOptions = computed(() => {
   return [{ id: 0, name: '顶级菜单', children: tableData.value }]
 })
 
+const apiOptionGroups = computed(() => {
+  const groups = new Map<string, { label: string, value: number }[]>()
+  allApis.value.forEach(api => {
+    const groupName = api.group || '未分组'
+    const options = groups.get(groupName) || []
+    options.push({
+      label: `${api.method} ${api.path} ${api.description ? `· ${api.description}` : ''}`,
+      value: api.id
+    })
+    groups.set(groupName, options)
+  })
+
+  return Array.from(groups.entries())
+    .sort((left, right) => left[0].localeCompare(right[0], 'zh-CN'))
+    .map(([label, options]) => ({
+      label,
+      options: options.sort((left, right) => left.label.localeCompare(right.label, 'zh-CN'))
+    }))
+})
+
 const fetchData = async () => {
   loading.value = true
   try {
@@ -214,6 +248,11 @@ const fetchData = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const fetchAllApis = async () => {
+  const res = await getAllApis()
+  allApis.value = res.data.filter(api => api.need_auth)
 }
 
 const handleAdd = (parentId?: number) => {
@@ -228,6 +267,7 @@ const handleAdd = (parentId?: number) => {
     sort: 0,
     type: 2,
     permission: '',
+    api_ids: [],
     statusChecked: true,
     hiddenChecked: false
   })
@@ -253,6 +293,7 @@ const handleEdit = (record: Menu) => {
     sort: record.sort,
     type: record.type,
     permission: record.permission,
+    api_ids: record.apis?.map(api => api.id) || [],
     statusChecked: record.status === 1,
     hiddenChecked: record.hidden === 1
   })
@@ -265,6 +306,7 @@ const handleModalOk = async () => {
   if (iconValue.startsWith('official-')) {
     iconValue = iconValue.replace('official-', '')
   }
+  const selectedApiIds = formState.type === 1 ? [] : Array.from(new Set(formState.api_ids))
   
   const data = {
     parent_id: formState.parent_id || 0,
@@ -280,9 +322,19 @@ const handleModalOk = async () => {
   }
   if (isEdit.value) {
     await updateMenu(currentId.value, data)
+    if (formState.type !== 1) {
+      await updateMenuApis(currentId.value, selectedApiIds)
+    }
     message.success('更新成功')
   } else {
-    await createMenu(data)
+    const res = await createMenu(data)
+    if (formState.type !== 1) {
+      const createdMenuId = res.data?.id
+      if (!createdMenuId) {
+        throw new Error('创建菜单成功，但未返回菜单ID')
+      }
+      await updateMenuApis(createdMenuId, selectedApiIds)
+    }
     message.success('创建成功')
   }
   drawerVisible.value = false
@@ -298,7 +350,13 @@ const handleDelete = async (record: Menu) => {
 
 
 
+watch(() => formState.type, type => {
+  if (type === 1) {
+    formState.api_ids = []
+  }
+})
+
 onMounted(() => {
-  fetchData()
+  Promise.all([fetchData(), fetchAllApis()])
 })
 </script>

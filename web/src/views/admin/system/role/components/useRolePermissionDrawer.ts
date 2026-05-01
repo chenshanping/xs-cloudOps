@@ -2,9 +2,7 @@ import { computed, ref, watch, type Ref } from 'vue'
 import { message } from 'ant-design-vue'
 import {
   getRole,
-  assignMenus,
-  assignApis,
-  assignDataScopes,
+  saveRolePermissions,
   type RoleFeatureDataScopePayload
 } from '@/api/role'
 import { getMenuTree } from '@/api/menu'
@@ -67,6 +65,42 @@ export function useRolePermissionDrawer(
 
   const permissionViewModel = computed(() =>
     buildPermissionViewModel(menuTree.value, allApis.value)
+  )
+
+  const inheritedApiSourceMap = computed<Record<number, string[]>>(() => {
+    const selectedIds = new Set(assignableSelectedMenuKeys.value)
+    const sources = new Map<number, Set<string>>()
+
+    const walkMenus = (menus: Menu[]) => {
+      menus.forEach(menu => {
+        if (selectedIds.has(menu.id)) {
+          menu.apis?.forEach(api => {
+            const apiSources = sources.get(api.id) || new Set<string>()
+            apiSources.add(menu.name)
+            sources.set(api.id, apiSources)
+          })
+        }
+        if (menu.children?.length) {
+          walkMenus(menu.children)
+        }
+      })
+    }
+
+    walkMenus(menuTree.value)
+
+    const result: Record<number, string[]> = {}
+    sources.forEach((value, key) => {
+      result[key] = Array.from(value).sort((left, right) => left.localeCompare(right, 'zh-CN'))
+    })
+    return result
+  })
+
+  const inheritedApiIds = computed(() =>
+    Object.keys(inheritedApiSourceMap.value).map(id => Number(id))
+  )
+
+  const effectiveApiIds = computed(() =>
+    Array.from(new Set([...checkedApiIds.value, ...inheritedApiIds.value]))
   )
 
   const topMenus = computed(() => permissionViewModel.value.topMenus)
@@ -260,42 +294,16 @@ export function useRolePermissionDrawer(
 
     saveLoading.value = true
     try {
-      const tasks = [
-        {
-          label: '菜单权限',
-          promise: assignMenus(props.roleId, assignableSelectedMenuKeys.value, { silent: true })
-        },
-        {
-          label: 'API 权限',
-          promise: assignApis(props.roleId, checkedApiIds.value, { silent: true })
-        },
-        {
-          label: '数据权限',
-          promise: assignDataScopes(props.roleId, buildFeatureDataScopePayload(), { silent: true })
-        }
-      ]
-
-      const results = await Promise.allSettled(tasks.map(task => task.promise))
-      const failedTasks = results
-        .map((result, index) => ({ result, label: tasks[index].label }))
-        .filter(item => item.result.status === 'rejected')
-
-      if (!failedTasks.length) {
-        message.success('权限分配成功')
-        visible.value = false
-        await userStore.refreshAccessAction()
-        return
-      }
-
-      if (failedTasks.length === 1) {
-        const failedTask = failedTasks[0]
-        if (failedTask.result.status === 'rejected') {
-          message.warning(`${failedTask.label}保存失败：${getErrorMessage(failedTask.result.reason, '请重试')}`)
-        }
-        return
-      }
-
-      message.error(`${failedTasks.map(item => item.label).join('、')}保存失败，请重试`)
+      await saveRolePermissions(props.roleId, {
+        menu_ids: assignableSelectedMenuKeys.value,
+        direct_api_ids: checkedApiIds.value,
+        scopes: buildFeatureDataScopePayload()
+      }, { silent: true })
+      message.success('权限分配成功')
+      visible.value = false
+      await userStore.refreshAccessAction()
+    } catch (error) {
+      message.warning(`权限保存失败：${getErrorMessage(error, '请重试')}`)
     } finally {
       saveLoading.value = false
     }
@@ -317,6 +325,7 @@ export function useRolePermissionDrawer(
     assignableSelectedMenuKeys,
     currentSections,
     defaultDataScope,
+    effectiveApiIds,
     featureDataScopes,
     formatDataScopeLabel,
     filteredSections,
@@ -330,6 +339,8 @@ export function useRolePermissionDrawer(
     handleSectionMenusToggle,
     handleSectionSelectChildPermissions,
     handleUncategorizedToggle,
+    inheritedApiIds,
+    inheritedApiSourceMap,
     isUncategorizedChecked,
     isUncategorizedIndeterminate,
     saveLoading,

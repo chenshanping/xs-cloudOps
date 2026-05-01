@@ -9,6 +9,7 @@ import (
 	"server/model"
 	"server/router/registry"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -18,6 +19,16 @@ import (
 var skipLogPaths = []string{
 	"/api/v1/logs/",
 }
+
+const (
+	maskedLogValue       = "***"
+	operationLogQueueCap = 256
+)
+
+var (
+	operationLogWorkerOnce sync.Once
+	operationLogQueue      chan model.SysOperationLog
+)
 
 // shouldSkipLog 判断是否跳过记录日志
 func shouldSkipLog(path string) bool {
@@ -61,6 +72,94 @@ func (w *responseWriter) Write(b []byte) (int, error) {
 	return w.ResponseWriter.Write(b)
 }
 
+func shouldMaskLogField(key string) bool {
+	normalized := strings.NewReplacer("-", "", "_", "", " ", "").Replace(strings.ToLower(strings.TrimSpace(key)))
+	switch normalized {
+	case "password", "newpassword", "oldpassword", "confirmpassword",
+		"token", "accesstoken", "refreshtoken", "authorization",
+		"secret", "secretkey", "accesskey", "apikey", "appsecret",
+		"captcha", "captchacode", "emailcode", "smscode":
+		return true
+	default:
+		return false
+	}
+}
+
+func sanitizeLogValue(key string, value interface{}) interface{} {
+	if shouldMaskLogField(key) {
+		return maskedLogValue
+	}
+
+	switch typed := value.(type) {
+	case map[string]interface{}:
+		sanitized := make(map[string]interface{}, len(typed))
+		for childKey, childValue := range typed {
+			sanitized[childKey] = sanitizeLogValue(childKey, childValue)
+		}
+		return sanitized
+	case []interface{}:
+		sanitized := make([]interface{}, len(typed))
+		for index, item := range typed {
+			sanitized[index] = sanitizeLogValue(key, item)
+		}
+		return sanitized
+	default:
+		return value
+	}
+}
+
+func sanitizeLogPayload(payload string) string {
+	trimmed := strings.TrimSpace(payload)
+	if trimmed == "" {
+		return payload
+	}
+	if !strings.HasPrefix(trimmed, "{") && !strings.HasPrefix(trimmed, "[") {
+		return payload
+	}
+
+	var value interface{}
+	decoder := json.NewDecoder(strings.NewReader(trimmed))
+	decoder.UseNumber()
+	if err := decoder.Decode(&value); err != nil {
+		return payload
+	}
+
+	sanitized, err := json.Marshal(sanitizeLogValue("", value))
+	if err != nil {
+		return payload
+	}
+	return string(sanitized)
+}
+
+func persistOperationLog(log model.SysOperationLog) {
+	if global.DB == nil {
+		return
+	}
+	if err := global.DB.Create(&log).Error; err != nil {
+		global.Log.Errorf("记录操作日志失败: %v", err)
+	}
+}
+
+func ensureOperationLogWorker() {
+	operationLogWorkerOnce.Do(func() {
+		operationLogQueue = make(chan model.SysOperationLog, operationLogQueueCap)
+		go func() {
+			for log := range operationLogQueue {
+				persistOperationLog(log)
+			}
+		}()
+	})
+}
+
+func enqueueOperationLog(log model.SysOperationLog) {
+	ensureOperationLogWorker()
+	select {
+	case operationLogQueue <- log:
+	default:
+		persistOperationLog(log)
+	}
+}
+
 func OperationLog() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		path := c.Request.URL.Path
@@ -85,7 +184,7 @@ func OperationLog() gin.HandlerFunc {
 						var fileInfos []string
 						for fieldName, files := range c.Request.MultipartForm.File {
 							for _, file := range files {
-								fileInfos = append(fileInfos, 
+								fileInfos = append(fileInfos,
 									fmt.Sprintf("%s: %s (%.2fKB)", fieldName, file.Filename, float64(file.Size)/1024))
 							}
 						}
@@ -95,7 +194,7 @@ func OperationLog() gin.HandlerFunc {
 			} else {
 				// 普通请求，读取请求体
 				bodyBytes, _ := io.ReadAll(c.Request.Body)
-				requestBody = string(bodyBytes)
+				requestBody = sanitizeLogPayload(string(bodyBytes))
 				c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 			}
 		}
@@ -135,7 +234,7 @@ func OperationLog() gin.HandlerFunc {
 			businessCode = parseBusinessCode(fullResponseBody)
 
 			// 限制响应体长度
-			responseBody = fullResponseBody
+			responseBody = sanitizeLogPayload(fullResponseBody)
 			if len(responseBody) > 1000 {
 				responseBody = responseBody[:1000] + "..."
 			}
@@ -161,11 +260,6 @@ func OperationLog() gin.HandlerFunc {
 			UserAgent:    c.Request.UserAgent(),
 		}
 
-		// 异步写入数据库
-		go func() {
-			if err := global.DB.Create(&log).Error; err != nil {
-				global.Log.Errorf("记录操作日志失败: %v", err)
-			}
-		}()
+		enqueueOperationLog(log)
 	}
 }

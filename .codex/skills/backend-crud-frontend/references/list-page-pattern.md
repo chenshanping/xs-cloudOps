@@ -39,6 +39,17 @@ const columns = useTableColumns(
 )
 ```
 
+When row actions include a dropdown, the permission list must include dropdown-only actions too:
+
+```ts
+const rowActionPermissions = [
+  'system:user:edit',
+  'system:user:delete',
+  'system:user:resetPwd',
+  'system:user:forceOffline'
+]
+```
+
 Incorrect pattern:
 
 - using add-only permissions to decide whether the action column exists
@@ -56,6 +67,39 @@ Toolbar buttons stay on their own checks:
 
 Do not couple toolbar-only permissions to action-column rendering.
 
+## Dropdown Action Rule
+
+For Ant Design Vue row-action dropdowns:
+
+- do not put `v-permission` on `a-menu-item`
+- compute the visible menu `items` in JS first
+- only render the dropdown trigger when `items.length > 0`
+- keep the click handler keyed by the filtered menu item `key`
+
+Recommended pattern:
+
+```ts
+const rowActionPermissions = ['system:user:resetPwd', 'system:user:delete', 'system:user:forceOffline']
+
+const moreItems = computed(() => {
+  const items = []
+
+  if (userStore.hasPermission('system:user:resetPwd')) {
+    items.push({ key: 'resetPwd', label: '重置密码' })
+  }
+
+  if (userStore.hasPermission('system:user:delete')) {
+    items.push({ key: 'delete', label: '删除', danger: true })
+  }
+
+  if (userStore.hasPermission('system:user:forceOffline')) {
+    items.push({ key: 'offline', label: '强制下线', danger: true })
+  }
+
+  return items
+})
+```
+
 ## Reuse Targets
 
 Prefer these shared files before writing page-local replacements:
@@ -67,8 +111,8 @@ Prefer these shared files before writing page-local replacements:
 - `web/src/components/FilePreview.vue`
 - `web/src/utils/permission.ts`
 - `web/src/directives/permission.ts`
-- `web/src/views/system/user/index.vue`
-- `web/src/views/system/role/index.vue`
+- `web/src/views/admin/system/user/index.vue`
+- `web/src/views/admin/system/role/index.vue`
 
 ## Closure Rule
 

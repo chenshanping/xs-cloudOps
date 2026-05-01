@@ -142,23 +142,10 @@
                   v-permission="'system:user:edit'"
                 >编辑</a-button>
                 <a-button v-if="showProfileButton" type="link" size="small" @click="handleViewProfiles(record)">身份</a-button>
-                <a-dropdown v-if="canMutateManagedRecord(record)">
+                <a-dropdown v-if="canMutateManagedRecord(record) && hasUserMoreActionPermission">
                   <a-button type="link" size="small">更多 <DownOutlined /></a-button>
                   <template #overlay>
-                    <a-menu>
-                      <a-menu-item key="resetPwd" v-permission="'system:user:resetPwd'" @click="handleResetPwd(record)">重置密码</a-menu-item>
-                      <a-menu-item
-                        v-if="canDeleteRecord(record)"
-                        key="delete"
-                        v-permission="'system:user:delete'"
-                        @click="confirmDelete(record)"
-                      >
-                        <span style="color: #ff4d4f">删除</span>
-                      </a-menu-item>
-                      <a-menu-item key="offline" v-permission="'system:user:forceOffline'" @click="confirmForceOffline(record)">
-                        <span style="color: #ff4d4f">强制下线</span>
-                      </a-menu-item>
-                    </a-menu>
+                    <a-menu :items="getUserMoreMenuItems(record)" @click="handleUserMoreAction(record, $event)" />
                   </template>
                 </a-dropdown>
               </a-space>
@@ -215,7 +202,7 @@ import {
 import { getRoleList } from '@/api/role'
 import { getManageableDeptTree } from '@/api/dept'
 import { formatTime } from '@/utils/format'
-import { useTableColumns } from '@/utils/permission'
+import { usePermission, useTableColumns } from '@/utils/permission'
 import { useConfigStore } from '@/store/config'
 import { useUiStore } from '@/store/ui'
 import { useUserStore } from '@/store/user'
@@ -271,6 +258,12 @@ const showProfileButton = computed(() => {
   return value === 'true' || value === '1'
 })
 
+const { hasAnyPermission } = usePermission()
+
+const hasUserMoreActionPermission = computed(() =>
+  hasAnyPermission(['system:user:resetPwd', 'system:user:delete', 'system:user:forceOffline'])
+)
+
 const selectedUsers = computed(() =>
   tableData.value.filter(item => selectedRowKeys.value.includes(item.id))
 )
@@ -308,7 +301,7 @@ const columns = useTableColumns(
     { title: '创建时间', key: 'created_at' }
   ],
   { title: '操作', key: 'action', width: 200, fixed: 'right' },
-  ['system:user:edit', 'system:user:delete', 'system:user:resetPwd']
+  ['system:user:edit', 'system:user:delete', 'system:user:resetPwd', 'system:user:forceOffline']
 )
 
 const deptTreeNodes = computed<DeptTreeNode[]>(() => {
@@ -591,6 +584,51 @@ const canMutateManagedRecord = (record: User) =>
 
 const canDeleteRecord = (record: User) =>
   canMutateManagedRecord(record)
+
+const getUserMoreMenuItems = (record: User) => {
+  const items: Array<{ key: string, label: string | ReturnType<typeof h>, danger?: boolean }> = []
+
+  if (userStore.hasPermission('system:user:resetPwd')) {
+    items.push({
+      key: 'resetPwd',
+      label: '重置密码'
+    })
+  }
+
+  if (canDeleteRecord(record) && userStore.hasPermission('system:user:delete')) {
+    items.push({
+      key: 'delete',
+      danger: true,
+      label: '删除'
+    })
+  }
+
+  if (userStore.hasPermission('system:user:forceOffline')) {
+    items.push({
+      key: 'offline',
+      danger: true,
+      label: '强制下线'
+    })
+  }
+
+  return items
+}
+
+const handleUserMoreAction = (record: User, event: { key: string }) => {
+  switch (event.key) {
+    case 'resetPwd':
+      handleResetPwd(record)
+      break
+    case 'delete':
+      confirmDelete(record)
+      break
+    case 'offline':
+      confirmForceOffline(record)
+      break
+    default:
+      break
+  }
+}
 
 const getBatchStatusTargetIds = (status: number) => {
   if (selectedRowKeys.value.length === 0) {

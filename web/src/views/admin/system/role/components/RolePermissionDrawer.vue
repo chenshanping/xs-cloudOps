@@ -9,7 +9,9 @@
     <div :class="['permission-shell', { 'permission-shell--dark': uiStore.isDark }]">
       <div class="permission-header">
         <span class="selected-count">已选菜单 {{ assignableSelectedMenuKeys.length }} 个</span>
-        <span class="selected-count">已选 API {{ checkedApiIds.length }} 个</span>
+        <span class="selected-count">直接 API {{ checkedApiIds.length }} 个</span>
+        <span class="selected-count">继承 API {{ inheritedApiIds.length }} 个</span>
+        <span class="selected-count">生效 API {{ effectiveApiIds.length }} 个</span>
         <a-input-search
           v-if="activeTab !== 'dataScopes'"
           v-model:value="searchText"
@@ -54,6 +56,8 @@
                     :exact-checked-menu-keys="assignableSelectedMenuKeys"
                     :checked-menu-keys="checkedMenuKeys"
                     :checked-api-ids="checkedApiIds"
+                    :inherited-api-ids="inheritedApiIds"
+                    :inherited-api-source-map="inheritedApiSourceMap"
                     @toggle-menu="handleMenuToggle"
                     @toggle-section-menus="handleSectionMenusToggle"
                     @keep-page-only="handleSectionKeepPageOnly"
@@ -92,6 +96,8 @@
                     :exact-checked-menu-keys="assignableSelectedMenuKeys"
                     :checked-menu-keys="checkedMenuKeys"
                     :checked-api-ids="checkedApiIds"
+                    :inherited-api-ids="inheritedApiIds"
+                    :inherited-api-source-map="inheritedApiSourceMap"
                     @toggle-menu="handleMenuToggle"
                     @toggle-section-menus="handleSectionMenusToggle"
                     @keep-page-only="handleSectionKeepPageOnly"
@@ -109,6 +115,8 @@
                       :checked="getApiGroupChecked(group.apis)"
                       :indeterminate="getApiGroupIndeterminate(group.apis)"
                       :checked-api-ids="checkedApiIds"
+                      :inherited-api-ids="inheritedApiIds"
+                      :inherited-api-source-map="inheritedApiSourceMap"
                       :visible-apis="group.apis"
                       @toggle-all="handleApiGroupToggle(group.apis, $event)"
                       @toggle-api="handleApiToggle"
@@ -178,6 +186,7 @@ const {
   checkedApiIds,
   checkedMenuKeys,
   defaultDataScope,
+  effectiveApiIds,
   featureDataScopes,
   filteredSections,
   filteredUncategorizedApis,
@@ -190,6 +199,8 @@ const {
   handleSectionApisToggle,
   handleSectionMenusToggle,
   handleSectionSelectChildPermissions,
+  inheritedApiIds,
+  inheritedApiSourceMap,
   saveLoading,
   searchText,
   selectedTopMenuId,

@@ -19,6 +19,12 @@ export interface RoleFeatureDataScopePayload {
   dept_ids: number[]
 }
 
+export interface SaveRolePermissionsPayload {
+  menu_ids: number[]
+  direct_api_ids: number[]
+  scopes: RoleFeatureDataScopePayload[]
+}
+
 // 获取角色列表
 export function getRoleList() {
   return request.get<any, ApiResponse<Role[]>>('/roles')
@@ -60,4 +66,12 @@ export function assignDataScopes(
   config?: AxiosRequestConfig
 ) {
   return request.put<any, ApiResponse>(`/roles/${id}/data-scopes`, { scopes }, config)
+}
+
+export function saveRolePermissions(
+  id: number,
+  data: SaveRolePermissionsPayload,
+  config?: AxiosRequestConfig
+) {
+  return request.put<any, ApiResponse>(`/roles/${id}/permissions`, data, config)
 }

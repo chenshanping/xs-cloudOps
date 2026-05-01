@@ -885,6 +885,56 @@ func TestEnsureBuiltInDataCreatesGenderDictWithoutOverwritingCustomizedData(t *t
 	}
 }
 
+func TestEnsureBuiltInDataAddsRolePermissionSaveApiWithoutOverwritingCustomizedMetadata(t *testing.T) {
+	db := setupInitializeTestDB(t)
+
+	adminRole := model.SysRole{
+		Name:   "超级管理员",
+		Code:   "admin",
+		Status: 1,
+	}
+	if err := db.Create(&adminRole).Error; err != nil {
+		t.Fatalf("create admin role: %v", err)
+	}
+
+	customAPI := model.SysApi{
+		Path:        "/api/v1/roles/:id/permissions",
+		Method:      "PUT",
+		Group:       "自定义角色分组",
+		Description: "保留已有统一权限保存描述",
+		NeedAuth:    false,
+	}
+	if err := db.Create(&customAPI).Error; err != nil {
+		t.Fatalf("create custom role permission api: %v", err)
+	}
+
+	ensureBuiltInData()
+
+	var updated model.SysApi
+	if err := db.First(&updated, customAPI.ID).Error; err != nil {
+		t.Fatalf("reload role permission api: %v", err)
+	}
+	if updated.Group != customAPI.Group {
+		t.Fatalf("role permission api group overwritten = %s, want %s", updated.Group, customAPI.Group)
+	}
+	if updated.Description != customAPI.Description {
+		t.Fatalf("role permission api description overwritten = %s, want %s", updated.Description, customAPI.Description)
+	}
+	if updated.NeedAuth != customAPI.NeedAuth {
+		t.Fatalf("role permission api need_auth overwritten = %t, want %t", updated.NeedAuth, customAPI.NeedAuth)
+	}
+
+	var relationCount int64
+	if err := db.Table("sys_role_api").
+		Where("sys_role_id = ? AND sys_api_id = ?", adminRole.ID, customAPI.ID).
+		Count(&relationCount).Error; err != nil {
+		t.Fatalf("count role permission api relation: %v", err)
+	}
+	if relationCount != 1 {
+		t.Fatalf("role permission api relation count = %d, want 1", relationCount)
+	}
+}
+
 func TestEnsureBuiltInDataCreatesDefaultAIProvidersOnlyWhenBothSourcesMissing(t *testing.T) {
 	db := setupInitializeTestDB(t)
 

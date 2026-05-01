@@ -5,11 +5,14 @@ import (
 	"sort"
 	"strings"
 
+	"gorm.io/gorm"
+
 	"server/global"
 	"server/model"
 	"server/model/request"
 	"server/service/configsvc"
 	"server/service/core"
+	rolesvc "server/service/role"
 )
 
 type MenuService struct{}
@@ -19,7 +22,7 @@ var Default = &MenuService{}
 // 获取菜单列表(树形)
 func (s *MenuService) GetMenuTree() ([]model.SysMenu, error) {
 	var menus []model.SysMenu
-	if err := global.DB.Order("sort ASC").Find(&menus).Error; err != nil {
+	if err := global.DB.Preload("Apis").Order("sort ASC").Find(&menus).Error; err != nil {
 		return nil, err
 	}
 	return s.buildMenuTree(menus, 0), nil
@@ -28,14 +31,25 @@ func (s *MenuService) GetMenuTree() ([]model.SysMenu, error) {
 // 获取菜单详情
 func (s *MenuService) GetMenu(id uint) (*model.SysMenu, error) {
 	var menu model.SysMenu
-	if err := global.DB.First(&menu, id).Error; err != nil {
+	if err := global.DB.Preload("Apis").First(&menu, id).Error; err != nil {
 		return nil, err
 	}
 	return &menu, nil
 }
 
+func (s *MenuService) GetMenuApis(id uint) ([]model.SysApi, error) {
+	var menu model.SysMenu
+	if err := global.DB.Preload("Apis").First(&menu, id).Error; err != nil {
+		return nil, err
+	}
+	if menu.Apis == nil {
+		return []model.SysApi{}, nil
+	}
+	return menu.Apis, nil
+}
+
 // 创建菜单
-func (s *MenuService) CreateMenu(req *request.CreateMenuRequest) error {
+func (s *MenuService) CreateMenu(req *request.CreateMenuRequest) (*model.SysMenu, error) {
 	menu := model.SysMenu{
 		ParentID:   req.ParentID,
 		Name:       req.Name,
@@ -52,7 +66,10 @@ func (s *MenuService) CreateMenu(req *request.CreateMenuRequest) error {
 	if err == nil {
 		core.Default.ClearAllUserInfoCache() // 菜单变更清除所有缓存
 	}
-	return err
+	if err != nil {
+		return nil, err
+	}
+	return &menu, nil
 }
 
 // 更新菜单
@@ -75,7 +92,17 @@ func (s *MenuService) UpdateMenu(id uint, req *request.UpdateMenuRequest) error 
 		"hidden":     req.Hidden,
 	}
 
-	err := global.DB.Model(&menu).Updates(updates).Error
+	err := global.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&menu).Updates(updates).Error; err != nil {
+			return err
+		}
+		if req.Type == 1 {
+			if err := tx.Model(&menu).Association("Apis").Replace([]model.SysApi{}); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 	if err == nil {
 		core.Default.ClearAllUserInfoCache() // 菜单变更清除所有缓存
 	}
@@ -91,11 +118,51 @@ func (s *MenuService) DeleteMenu(id uint) error {
 		return errors.New("存在子菜单，无法删除")
 	}
 
-	err := global.DB.Delete(&model.SysMenu{}, id).Error
+	err := global.DB.Transaction(func(tx *gorm.DB) error {
+		var menu model.SysMenu
+		if err := tx.First(&menu, id).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&menu).Association("Apis").Replace([]model.SysApi{}); err != nil {
+			return err
+		}
+		return tx.Delete(&menu).Error
+	})
 	if err == nil {
 		core.Default.ClearAllUserInfoCache() // 菜单变更清除所有缓存
 	}
 	return err
+}
+
+func (s *MenuService) UpdateMenuApis(id uint, apiIDs []uint) error {
+	var menu model.SysMenu
+	if err := global.DB.First(&menu, id).Error; err != nil {
+		return errors.New("菜单不存在")
+	}
+	if menu.Type == 1 && len(core.NormalizeIDs(apiIDs)) > 0 {
+		return errors.New("目录类型菜单不支持关联API")
+	}
+
+	ids := core.NormalizeIDs(apiIDs)
+	if err := global.DB.Transaction(func(tx *gorm.DB) error {
+		if len(ids) == 0 {
+			return tx.Model(&menu).Association("Apis").Replace([]model.SysApi{})
+		}
+
+		var apis []model.SysApi
+		if err := tx.Where("id IN ?", ids).Find(&apis).Error; err != nil {
+			return err
+		}
+		return tx.Model(&menu).Association("Apis").Replace(apis)
+	}); err != nil {
+		return err
+	}
+
+	if err := rolesvc.Default.SyncRolePoliciesForMenus([]uint{id}); err != nil {
+		return err
+	}
+	core.Default.ClearAllUserInfoCache()
+	return nil
 }
 
 // 构建菜单树

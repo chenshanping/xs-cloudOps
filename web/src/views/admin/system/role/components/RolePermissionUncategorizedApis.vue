@@ -7,7 +7,7 @@
         :indeterminate="indeterminate"
         @change="emit('toggle-all', $event.target.checked)"
       >
-        全选当前分组 API
+        全选当前分组直授 API
       </a-checkbox>
     </div>
     <div class="uncategorized-body">
@@ -26,6 +26,14 @@
               <span class="api-group">{{ api.group || '未分组' }}</span>
               <span class="api-path">{{ api.path }}</span>
               <span class="api-desc">{{ api.description }}</span>
+              <a-tag v-if="checkedApiIds.includes(api.id)" color="blue">直接授权</a-tag>
+              <a-tag v-if="inheritedApiIds.includes(api.id)" color="green">菜单继承</a-tag>
+              <span
+                v-if="inheritedApiIds.includes(api.id) && inheritedApiSourceMap[api.id]?.length"
+                class="api-source"
+              >
+                来源：{{ inheritedApiSourceMap[api.id].join('、') }}
+              </span>
             </div>
           </a-checkbox>
         </div>
@@ -41,6 +49,8 @@ import type { Api } from '@/types'
 interface Props {
   checked: boolean
   checkedApiIds: number[]
+  inheritedApiIds: number[]
+  inheritedApiSourceMap: Record<number, string[]>
   indeterminate: boolean
   title?: string
   visibleApis: Api[]
@@ -128,6 +138,11 @@ const getMethodColor = (method: string) => {
 .api-desc {
   font-size: 13px;
   color: var(--permission-text-strong);
+}
+
+.api-source {
+  font-size: 12px;
+  color: var(--permission-text-muted);
 }
 
 .uncategorized-body :deep(.ant-tag) {

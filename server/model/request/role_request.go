@@ -33,3 +33,9 @@ type RoleFeatureDataScopeAssignment struct {
 type AssignRoleDataScopesRequest struct {
 	Scopes []RoleFeatureDataScopeAssignment `json:"scopes" comment:"角色业务功能数据范围列表"`
 }
+
+type SaveRolePermissionsRequest struct {
+	MenuIds      []uint                           `json:"menu_ids" comment:"菜单ID列表"`
+	DirectApiIds []uint                           `json:"direct_api_ids" comment:"直接API ID列表"`
+	Scopes       []RoleFeatureDataScopeAssignment `json:"scopes" comment:"角色业务功能数据范围列表"`
+}

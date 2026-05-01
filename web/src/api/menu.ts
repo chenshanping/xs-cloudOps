@@ -1,5 +1,5 @@
 import request from '@/utils/request'
-import type { ApiResponse, Menu } from '@/types'
+import type { Api, ApiResponse, Menu } from '@/types'
 
 // 获取菜单列表(树形)
 export function getMenuTree() {
@@ -13,12 +13,20 @@ export function getMenu(id: number) {
 
 // 创建菜单
 export function createMenu(data: any) {
-  return request.post<any, ApiResponse>('/menus', data)
+  return request.post<any, ApiResponse<Menu>>('/menus', data)
 }
 
 // 更新菜单
 export function updateMenu(id: number, data: any) {
   return request.put<any, ApiResponse>(`/menus/${id}`, data)
+}
+
+export function getMenuApis(id: number) {
+  return request.get<any, ApiResponse<Api[]>>(`/menus/${id}/apis`)
+}
+
+export function updateMenuApis(id: number, apiIds: number[]) {
+  return request.put<any, ApiResponse>(`/menus/${id}/apis`, { api_ids: apiIds })
 }
 
 // 删除菜单

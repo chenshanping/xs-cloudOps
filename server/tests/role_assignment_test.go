@@ -1,9 +1,11 @@
 package tests
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/casbin/casbin/v2"
@@ -14,9 +16,11 @@ import (
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 
+	v1 "server/api/v1"
 	"server/global"
 	"server/middleware"
 	"server/model"
+	"server/model/request"
 	"server/model/response"
 	. "server/service"
 )
@@ -35,6 +39,20 @@ func setupRoleAssignmentTestDB(t *testing.T) *gorm.DB {
 
 	if err := db.AutoMigrate(&model.SysUser{}); err != nil {
 		t.Fatalf("auto migrate: %v", err)
+	}
+	if err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS casbin_rule (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			ptype TEXT,
+			v0 TEXT,
+			v1 TEXT,
+			v2 TEXT,
+			v3 TEXT,
+			v4 TEXT,
+			v5 TEXT
+		)
+	`).Error; err != nil {
+		t.Fatalf("create casbin_rule table: %v", err)
 	}
 
 	previousDB := global.DB
@@ -503,6 +521,376 @@ func TestRoleServiceDeleteRoleBlocksLinkedUsers(t *testing.T) {
 	}
 }
 
+func TestMenuServiceUpdateMenuApisPersistsAssociationsAndResyncsRolePolicies(t *testing.T) {
+	db := setupRoleAssignmentTestDB(t)
+	enforcer := setupRoleAssignmentTestEnforcer(t, db)
+
+	rootMenu := model.SysMenu{Name: "系统管理", Path: "/system", Component: "Layout", Type: 1, Status: 1}
+	if err := db.Create(&rootMenu).Error; err != nil {
+		t.Fatalf("create root menu: %v", err)
+	}
+
+	pageMenu := model.SysMenu{
+		ParentID:   rootMenu.ID,
+		Name:       "用户管理",
+		Path:       "/system/user",
+		Component:  "system/user/index",
+		Type:       2,
+		Permission: "system:user:list",
+		Status:     1,
+	}
+	if err := db.Create(&pageMenu).Error; err != nil {
+		t.Fatalf("create page menu: %v", err)
+	}
+
+	api := model.SysApi{Path: "/api/v1/users", Method: "GET", Group: "用户管理", Description: "用户列表", NeedAuth: true}
+	if err := db.Create(&api).Error; err != nil {
+		t.Fatalf("create api: %v", err)
+	}
+
+	role := model.SysRole{Name: "菜单继承角色", Code: "menu-inherit-role", Status: 1}
+	if err := db.Create(&role).Error; err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+	if err := Role.AssignMenus(role.ID, []uint{pageMenu.ID}); err != nil {
+		t.Fatalf("AssignMenus error: %v", err)
+	}
+
+	ok, err := enforcer.Enforce(role.Code, api.Path, api.Method)
+	if err != nil {
+		t.Fatalf("enforce before association: %v", err)
+	}
+	if ok {
+		t.Fatalf("expected api access to be denied before menu api association")
+	}
+
+	if err := Menu.UpdateMenuApis(pageMenu.ID, []uint{api.ID}); err != nil {
+		t.Fatalf("UpdateMenuApis error: %v", err)
+	}
+
+	apis, err := Menu.GetMenuApis(pageMenu.ID)
+	if err != nil {
+		t.Fatalf("GetMenuApis error: %v", err)
+	}
+	if len(apis) != 1 || apis[0].ID != api.ID {
+		t.Fatalf("menu apis = %+v, want [%d]", apis, api.ID)
+	}
+
+	ok, err = enforcer.Enforce(role.Code, api.Path, api.Method)
+	if err != nil {
+		t.Fatalf("enforce after association: %v", err)
+	}
+	if !ok {
+		t.Fatalf("expected api access to be allowed after menu api association")
+	}
+}
+
+func TestRoleServiceSavePermissionsUsesDirectAndInheritedApis(t *testing.T) {
+	db := setupRoleAssignmentTestDB(t)
+	enforcer := setupRoleAssignmentTestEnforcer(t, db)
+
+	rootMenu := model.SysMenu{Name: "系统管理", Path: "/system", Component: "Layout", Type: 1, Status: 1}
+	if err := db.Create(&rootMenu).Error; err != nil {
+		t.Fatalf("create root menu: %v", err)
+	}
+
+	pageMenu := model.SysMenu{
+		ParentID:   rootMenu.ID,
+		Name:       "角色管理",
+		Path:       "/system/role",
+		Component:  "system/role/index",
+		Type:       2,
+		Permission: "system:role:list",
+		Status:     1,
+	}
+	if err := db.Create(&pageMenu).Error; err != nil {
+		t.Fatalf("create page menu: %v", err)
+	}
+
+	inheritedAPI := model.SysApi{Path: "/api/v1/roles", Method: "GET", Group: "角色管理", Description: "角色列表", NeedAuth: true}
+	directAPI := model.SysApi{Path: "/api/v1/roles/:id", Method: "PUT", Group: "角色管理", Description: "更新角色", NeedAuth: true}
+	for _, api := range []*model.SysApi{&inheritedAPI, &directAPI} {
+		if err := db.Create(api).Error; err != nil {
+			t.Fatalf("create api %s %s: %v", api.Method, api.Path, err)
+		}
+	}
+
+	if err := Menu.UpdateMenuApis(pageMenu.ID, []uint{inheritedAPI.ID}); err != nil {
+		t.Fatalf("UpdateMenuApis error: %v", err)
+	}
+
+	role := model.SysRole{Name: "统一保存角色", Code: "save-permissions-role", Status: 1}
+	if err := db.Create(&role).Error; err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+
+	if err := Role.SavePermissions(role.ID, &request.SaveRolePermissionsRequest{
+		MenuIds:      []uint{pageMenu.ID},
+		DirectApiIds: []uint{directAPI.ID},
+	}); err != nil {
+		t.Fatalf("SavePermissions error: %v", err)
+	}
+
+	var detail model.SysRole
+	if err := db.Preload("Menus").Preload("Apis").First(&detail, role.ID).Error; err != nil {
+		t.Fatalf("reload role: %v", err)
+	}
+	if len(detail.Menus) != 2 {
+		t.Fatalf("role menus len = %d, want 2", len(detail.Menus))
+	}
+	if len(detail.Apis) != 1 || detail.Apis[0].ID != directAPI.ID {
+		t.Fatalf("direct role apis = %+v, want [%d]", detail.Apis, directAPI.ID)
+	}
+
+	for _, api := range []model.SysApi{inheritedAPI, directAPI} {
+		ok, err := enforcer.Enforce(role.Code, api.Path, api.Method)
+		if err != nil {
+			t.Fatalf("enforce %s %s: %v", api.Method, api.Path, err)
+		}
+		if !ok {
+			t.Fatalf("expected role to access %s %s", api.Method, api.Path)
+		}
+	}
+}
+
+func TestRoleServiceSavePermissionsRollsBackOnInvalidDataScope(t *testing.T) {
+	db := setupRoleAssignmentTestDB(t)
+	enforcer := setupRoleAssignmentTestEnforcer(t, db)
+
+	rootMenu := model.SysMenu{Name: "系统管理", Path: "/system", Component: "Layout", Type: 1, Status: 1}
+	if err := db.Create(&rootMenu).Error; err != nil {
+		t.Fatalf("create root menu: %v", err)
+	}
+
+	pageMenu := model.SysMenu{
+		ParentID:   rootMenu.ID,
+		Name:       "菜单A",
+		Path:       "/system/a",
+		Component:  "system/a/index",
+		Type:       2,
+		Permission: "system:a:list",
+		Status:     1,
+	}
+	if err := db.Create(&pageMenu).Error; err != nil {
+		t.Fatalf("create page menu: %v", err)
+	}
+
+	api := model.SysApi{Path: "/api/v1/a", Method: "GET", Group: "测试", Description: "A", NeedAuth: true}
+	if err := db.Create(&api).Error; err != nil {
+		t.Fatalf("create api: %v", err)
+	}
+
+	role := model.SysRole{Name: "回滚角色", Code: "rollback-role", Status: 1}
+	if err := db.Create(&role).Error; err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+
+	if err := Role.AssignMenus(role.ID, []uint{pageMenu.ID}); err != nil {
+		t.Fatalf("AssignMenus error: %v", err)
+	}
+	if err := Role.AssignApis(role.ID, []uint{api.ID}); err != nil {
+		t.Fatalf("AssignApis error: %v", err)
+	}
+
+	err := Role.SavePermissions(role.ID, &request.SaveRolePermissionsRequest{
+		MenuIds:      []uint{},
+		DirectApiIds: []uint{},
+		Scopes: []request.RoleFeatureDataScopeAssignment{
+			{ResourceCode: "not-supported", DataScope: model.DataScopeAll},
+		},
+	})
+	if err == nil {
+		t.Fatalf("expected SavePermissions to fail for unsupported data scope resource")
+	}
+
+	var roleMenuCount int64
+	if err := db.Table("sys_role_menu").Where("sys_role_id = ?", role.ID).Count(&roleMenuCount).Error; err != nil {
+		t.Fatalf("count sys_role_menu: %v", err)
+	}
+	if roleMenuCount == 0 {
+		t.Fatalf("expected role menus to remain after failed save")
+	}
+
+	var roleApiCount int64
+	if err := db.Table("sys_role_api").Where("sys_role_id = ?", role.ID).Count(&roleApiCount).Error; err != nil {
+		t.Fatalf("count sys_role_api: %v", err)
+	}
+	if roleApiCount == 0 {
+		t.Fatalf("expected direct role apis to remain after failed save")
+	}
+
+	ok, err := enforcer.Enforce(role.Code, api.Path, api.Method)
+	if err != nil {
+		t.Fatalf("enforce after failed save: %v", err)
+	}
+	if !ok {
+		t.Fatalf("expected previous casbin policy to remain after failed save")
+	}
+}
+
+func TestCasbinAuthDoesNotAllowSuffixOnlyWhitelistBypass(t *testing.T) {
+	db := setupRoleAssignmentTestDB(t)
+	ensureRoleAssignmentSuperAdminColumn(t, db)
+	setupRoleAssignmentTestEnforcer(t, db)
+
+	role := model.SysRole{Name: "普通角色", Code: "normal-role", Status: 1}
+	if err := db.Create(&role).Error; err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+
+	user := model.SysUser{Username: "normal-user", Password: "pwd", Nickname: "普通用户", Status: 1}
+	if err := db.Create(&user).Error; err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set(middleware.ContextUserIDKey, user.ID)
+		c.Set(middleware.ContextRoleIDsKey, []uint{role.ID})
+		c.Set(middleware.ContextRoleCodesKey, []string{role.Code})
+		c.Next()
+	})
+	router.Use(middleware.CasbinAuth())
+	router.GET("/api/v1/protected/my", func(c *gin.Context) {
+		response.Ok(c)
+	})
+
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/protected/my", nil))
+
+	resp := decodeTestResponse(t, recorder)
+	if resp.Code != response.FORBIDDEN {
+		t.Fatalf("response code = %d, want %d, body=%s", resp.Code, response.FORBIDDEN, recorder.Body.String())
+	}
+}
+
+func TestMenuApiUpdateMenuApisEndpointPersistsAssociations(t *testing.T) {
+	db := setupRoleAssignmentTestDB(t)
+
+	pageMenu := model.SysMenu{
+		Name:       "菜单接口绑定",
+		Path:       "/system/menu-api",
+		Component:  "system/menu-api/index",
+		Type:       2,
+		Permission: "system:menu:bind",
+		Status:     1,
+	}
+	if err := db.Create(&pageMenu).Error; err != nil {
+		t.Fatalf("create page menu: %v", err)
+	}
+
+	api := model.SysApi{Path: "/api/v1/menu-bind", Method: "GET", Group: "菜单管理", Description: "菜单绑定接口", NeedAuth: true}
+	if err := db.Create(&api).Error; err != nil {
+		t.Fatalf("create api: %v", err)
+	}
+
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.PUT("/api/v1/menus/:id/apis", v1.Menu.UpdateMenuApis)
+	router.GET("/api/v1/menus/:id/apis", v1.Menu.GetMenuApis)
+
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(
+		http.MethodPut,
+		"/api/v1/menus/"+toUintString(pageMenu.ID)+"/apis",
+		bytes.NewBufferString(`{"api_ids":[`+toUintString(api.ID)+`]}`),
+	)
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(recorder, req)
+
+	resp := decodeTestResponse(t, recorder)
+	if resp.Code != response.SUCCESS {
+		t.Fatalf("update menu apis response code = %d, want %d, body=%s", resp.Code, response.SUCCESS, recorder.Body.String())
+	}
+
+	recorder = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/menus/"+toUintString(pageMenu.ID)+"/apis", nil)
+	router.ServeHTTP(recorder, req)
+
+	resp = decodeTestResponse(t, recorder)
+	if resp.Code != response.SUCCESS {
+		t.Fatalf("get menu apis response code = %d, want %d, body=%s", resp.Code, response.SUCCESS, recorder.Body.String())
+	}
+
+	apis, err := Menu.GetMenuApis(pageMenu.ID)
+	if err != nil {
+		t.Fatalf("GetMenuApis error: %v", err)
+	}
+	if len(apis) != 1 || apis[0].ID != api.ID {
+		t.Fatalf("menu apis = %+v, want [%d]", apis, api.ID)
+	}
+}
+
+func TestRoleApiSavePermissionsEndpointUsesUnifiedPayload(t *testing.T) {
+	db := setupRoleAssignmentTestDB(t)
+	enforcer := setupRoleAssignmentTestEnforcer(t, db)
+
+	rootMenu := model.SysMenu{Name: "系统管理", Path: "/system", Component: "Layout", Type: 1, Status: 1}
+	if err := db.Create(&rootMenu).Error; err != nil {
+		t.Fatalf("create root menu: %v", err)
+	}
+
+	pageMenu := model.SysMenu{
+		ParentID:   rootMenu.ID,
+		Name:       "统一权限保存",
+		Path:       "/system/permission-save",
+		Component:  "system/permission-save/index",
+		Type:       2,
+		Permission: "system:permission:save",
+		Status:     1,
+	}
+	if err := db.Create(&pageMenu).Error; err != nil {
+		t.Fatalf("create page menu: %v", err)
+	}
+
+	inheritedAPI := model.SysApi{Path: "/api/v1/permission-save", Method: "GET", Group: "角色管理", Description: "统一保存读取", NeedAuth: true}
+	directAPI := model.SysApi{Path: "/api/v1/permission-save", Method: "PUT", Group: "角色管理", Description: "统一保存更新", NeedAuth: true}
+	for _, api := range []*model.SysApi{&inheritedAPI, &directAPI} {
+		if err := db.Create(api).Error; err != nil {
+			t.Fatalf("create api %s %s: %v", api.Method, api.Path, err)
+		}
+	}
+
+	if err := Menu.UpdateMenuApis(pageMenu.ID, []uint{inheritedAPI.ID}); err != nil {
+		t.Fatalf("UpdateMenuApis error: %v", err)
+	}
+
+	role := model.SysRole{Name: "统一权限保存角色", Code: "role-api-save-permissions", Status: 1}
+	if err := db.Create(&role).Error; err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.PUT("/api/v1/roles/:id/permissions", v1.Role.SavePermissions)
+
+	body := `{"menu_ids":[` + toUintString(pageMenu.ID) + `],"direct_api_ids":[` + toUintString(directAPI.ID) + `],"scopes":[]}`
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(
+		http.MethodPut,
+		"/api/v1/roles/"+toUintString(role.ID)+"/permissions",
+		bytes.NewBufferString(body),
+	)
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(recorder, req)
+
+	resp := decodeTestResponse(t, recorder)
+	if resp.Code != response.SUCCESS {
+		t.Fatalf("save permissions response code = %d, want %d, body=%s", resp.Code, response.SUCCESS, recorder.Body.String())
+	}
+
+	for _, api := range []model.SysApi{inheritedAPI, directAPI} {
+		ok, err := enforcer.Enforce(role.Code, api.Path, api.Method)
+		if err != nil {
+			t.Fatalf("enforce %s %s: %v", api.Method, api.Path, err)
+		}
+		if !ok {
+			t.Fatalf("expected role to access %s %s", api.Method, api.Path)
+		}
+	}
+}
+
 func buildCasbinAuthTestEngine(userID uint, roleIDs []uint, roleCodes []string) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
@@ -527,4 +915,8 @@ func decodeTestResponse(t *testing.T, recorder *httptest.ResponseRecorder) respo
 		t.Fatalf("decode response body: %v, body=%s", err, recorder.Body.String())
 	}
 	return resp
+}
+
+func toUintString(value uint) string {
+	return strconv.FormatUint(uint64(value), 10)
 }

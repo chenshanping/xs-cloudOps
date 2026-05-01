@@ -34,6 +34,8 @@
         :section="section"
         :visible-apis="visibleApis"
         :checked-api-ids="checkedApiIds"
+        :inherited-api-ids="inheritedApiIds"
+        :inherited-api-source-map="inheritedApiSourceMap"
         :checked="isSectionApiChecked"
         :indeterminate="isSectionApiIndeterminate"
         @toggle-api="(apiId, checked) => emit('toggle-api', apiId, checked)"
@@ -57,6 +59,8 @@ interface Props {
   exactCheckedMenuKeys: number[]
   checkedMenuKeys: number[]
   checkedApiIds: number[]
+  inheritedApiIds: number[]
+  inheritedApiSourceMap: Record<number, string[]>
   mode?: 'split' | 'menu' | 'api'
 }
 

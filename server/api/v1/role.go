@@ -160,3 +160,25 @@ func (a *RoleApi) AssignDataScopes(c *gin.Context) {
 
 	response.OkWithMessage(c, "分配成功")
 }
+
+// 统一保存角色权限
+func (a *RoleApi) SavePermissions(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	var req request.SaveRolePermissionsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	if err := service.Role.SavePermissions(uint(id), &req); err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+
+	response.OkWithMessage(c, "保存成功")
+}

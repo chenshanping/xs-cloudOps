@@ -8,7 +8,7 @@
         :indeterminate="indeterminate"
         @change="emit('toggle-all', section, $event.target.checked)"
       >
-        全选当前页面 API
+        全选当前页面直授 API
       </a-checkbox>
     </div>
     <div class="panel-body">
@@ -27,6 +27,14 @@
               <span class="api-group">{{ api.group || '未分组' }}</span>
               <span class="api-path">{{ api.path }}</span>
               <span class="api-desc">{{ api.description }}</span>
+              <a-tag v-if="checkedApiIds.includes(api.id)" color="blue">直接授权</a-tag>
+              <a-tag v-if="inheritedApiIds.includes(api.id)" color="green">菜单继承</a-tag>
+              <span
+                v-if="inheritedApiIds.includes(api.id) && inheritedApiSourceMap[api.id]?.length"
+                class="api-source"
+              >
+                来源：{{ inheritedApiSourceMap[api.id].join('、') }}
+              </span>
             </div>
           </a-checkbox>
         </div>
@@ -44,6 +52,8 @@ interface Props {
   section: PermissionPageSection
   visibleApis: Api[]
   checkedApiIds: number[]
+  inheritedApiIds: number[]
+  inheritedApiSourceMap: Record<number, string[]>
   checked: boolean
   indeterminate: boolean
 }
@@ -126,6 +136,11 @@ const getMethodColor = (method: string) => {
 .api-desc {
   font-size: 13px;
   color: var(--permission-text-strong);
+}
+
+.api-source {
+  font-size: 12px;
+  color: var(--permission-text-muted);
 }
 
 .panel-body :deep(.ant-tag) {

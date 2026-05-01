@@ -38,9 +38,9 @@ Inspect these anchors before editing:
 - `web/src/api/user.ts`
 - `web/src/api/role.ts`
 - `web/src/api/menu.ts`
-- `web/src/views/system/user/index.vue`
-- `web/src/views/system/role/index.vue`
-- `web/src/views/system/menu/index.vue`
+- `web/src/views/admin/system/user/index.vue`
+- `web/src/views/admin/system/role/index.vue`
+- `web/src/views/admin/system/menu/index.vue`
 - `web/src/components/ProTable.vue`
 - `web/src/components/AvatarUpload.vue`
 - `web/src/components/ImageUpload.vue`
@@ -62,7 +62,7 @@ When a target file does not exist, search the nearest real module and follow tha
 - For standard admin CRUD, inspect `user`, `role`, `menu`, `dict`, and `storage` first.
 - Keep backend modules flat unless the current repo already uses a subdirectory for that module.
 - Keep frontend APIs flat under `web/src/api/*.ts` unless the neighboring module already uses another pattern.
-- For frontend pages, default to `web/src/views/system/<module>/`.
+- For frontend pages, default to `web/src/views/admin/system/<module>/`.
 - For frontend types, choose between `web/src/types/index.ts` and `web/src/types/<module>.ts` by following the nearest live example.
 - For incremental SQL work, inspect `go-base.sql` first and then the nearest file under `server/sql/`.
 
@@ -154,7 +154,7 @@ Current backend patterns:
 The frontend is a single Vite Vue 3 application under `web`.
 
 - Admin APIs live in `web/src/api/*.ts`
-- Admin pages live in `web/src/views/system/*`
+- Admin pages live in `web/src/views/admin/system/*`
 - Shared components live in `web/src/components/*`
 - Permission helpers live in `web/src/utils/permission.ts`
 - Permission directive lives in `web/src/directives/permission.ts`
@@ -165,7 +165,9 @@ Current frontend patterns:
 
 - Use `ProTable` for standard search + toolbar + table pages
 - Use `useTableColumns(...)` to hide the action column when the user has no row-action permission
-- Use `v-permission` on buttons and row actions
+- Use `v-permission` on plain buttons and direct row-action buttons
+- For row-action dropdown menus, build menu `items` in JS after permission filtering instead of placing `v-permission` on `a-menu-item`
+- If a row-action dropdown has zero visible actions, do not render the dropdown trigger
 - Keep CRUD pages compact; do not add decorative hero headers by default
 - For create, edit, and similar action surfaces, default to a drawer-based flow unless the user explicitly asks for a modal or another pattern
 - Reuse `AvatarUpload`, `ImageUpload`, `FileUpload`, and `FilePreview` when the module needs them
@@ -252,7 +254,9 @@ For a standard admin page:
 - Define base columns first
 - Use `useTableColumns(baseColumns, actionColumn, rowActionPermissions)`
 - Put toolbar permissions on toolbar buttons with `v-permission`
-- Put row-action permissions on the row buttons themselves with `v-permission`
+- Put row-action permissions on direct row buttons themselves with `v-permission`
+- Include every row-level permission in `rowActionPermissions`, including actions that only appear inside dropdown menus
+- For dropdown-based row actions, filter `items` in JS before render and only mount the dropdown when the filtered list is non-empty
 - Do not let add-only permissions create an empty action column
 
 See `references/list-page-pattern.md` for the concrete pattern.
@@ -315,8 +319,9 @@ Run narrower commands when the workspace has known unrelated failures and the ch
 - Follow current workspace files instead of `XTMS` or Spring Boot conventions.
 - Prefer live files over remembered patterns.
 - Do not create new nested backend package trees by habit.
-- Do not move admin CRUD pages out of `web/src/views/system` unless the user explicitly asks for a different product structure.
+- Do not move admin CRUD pages out of `web/src/views/admin/system` unless the user explicitly asks for a different product structure.
 - Do not bypass `ProTable`, `useTableColumns`, `v-permission`, or shared upload/preview components without a concrete gap.
+- Do not attach `v-permission` to Ant Design Vue dropdown menu component nodes such as `a-menu-item` for row actions; filter the menu data first and then render.
 - Do not leave an empty action column.
 - Do not leave clickable frontend affordances without a real handler.
 - Do not default to modal-based create or edit flows unless the user explicitly asks for a modal.

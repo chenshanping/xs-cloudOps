@@ -24,6 +24,11 @@ func (a *MenuApi) GetMenuTree(c *gin.Context) {
 	response.OkWithData(c, menus)
 }
 
+// 获取菜单列表(树形，带API关联)
+func (a *MenuApi) GetMenuTreeWithApis(c *gin.Context) {
+	a.GetMenuTree(c)
+}
+
 // 获取菜单详情
 func (a *MenuApi) GetMenu(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
@@ -49,12 +54,13 @@ func (a *MenuApi) CreateMenu(c *gin.Context) {
 		return
 	}
 
-	if err := service.Menu.CreateMenu(&req); err != nil {
+	menu, err := service.Menu.CreateMenu(&req)
+	if err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
 
-	response.OkWithMessage(c, "创建成功")
+	response.OkWithData(c, menu)
 }
 
 // 更新菜单
@@ -72,6 +78,45 @@ func (a *MenuApi) UpdateMenu(c *gin.Context) {
 	}
 
 	if err := service.Menu.UpdateMenu(uint(id), &req); err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+
+	response.OkWithMessage(c, "更新成功")
+}
+
+// 获取菜单关联API
+func (a *MenuApi) GetMenuApis(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	apis, err := service.Menu.GetMenuApis(uint(id))
+	if err != nil {
+		response.Fail(c, "获取菜单关联API失败")
+		return
+	}
+
+	response.OkWithData(c, apis)
+}
+
+// 更新菜单关联API
+func (a *MenuApi) UpdateMenuApis(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	var req request.UpdateMenuApisRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	if err := service.Menu.UpdateMenuApis(uint(id), req.ApiIds); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}

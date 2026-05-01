@@ -10,6 +10,10 @@ type AssignApisRequest struct {
 	ApiIds []uint `json:"api_ids" comment:"API ID列表"`
 }
 
+type UpdateMenuApisRequest struct {
+	ApiIds []uint `json:"api_ids" comment:"菜单关联API ID列表"`
+}
+
 // 创建菜单请求
 type CreateMenuRequest struct {
 	ParentID   uint   `json:"parent_id" comment:"父菜单ID"`

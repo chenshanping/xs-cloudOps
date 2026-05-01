@@ -135,6 +135,7 @@ func initDefaultData() {
 		{Path: "/api/v1/roles/:id/menus", Method: "PUT", Group: "角色管理", Description: "分配菜单"},
 		{Path: "/api/v1/roles/:id/apis", Method: "PUT", Group: "角色管理", Description: "分配API"},
 		{Path: "/api/v1/roles/:id/data-scopes", Method: "PUT", Group: "角色管理", Description: "分配数据权限"},
+		{Path: "/api/v1/roles/:id/permissions", Method: "PUT", Group: "角色管理", Description: "统一保存角色权限"},
 		// 部门管理
 		{Path: "/api/v1/depts/tree", Method: "GET", Group: "部门管理", Description: "部门树"},
 		{Path: "/api/v1/depts/:id", Method: "GET", Group: "部门管理", Description: "部门详情"},
@@ -300,6 +301,13 @@ func ensureBuiltInData() {
 		Method:      "PUT",
 		Group:       "角色管理",
 		Description: "分配数据权限",
+		NeedAuth:    true,
+	}, "/api/v1/roles/:id/apis", "PUT")
+	ensureApiAccessInheritedFrom(model.SysApi{
+		Path:        "/api/v1/roles/:id/permissions",
+		Method:      "PUT",
+		Group:       "角色管理",
+		Description: "统一保存角色权限",
 		NeedAuth:    true,
 	}, "/api/v1/roles/:id/apis", "PUT")
 	ensureUserOperationMenus()

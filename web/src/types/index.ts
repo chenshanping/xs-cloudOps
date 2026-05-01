@@ -105,6 +105,7 @@ export interface Menu {
   permission: string
   status: number
   hidden: number
+  apis?: Api[]
   children?: Menu[]
   created_at: string
   updated_at: string

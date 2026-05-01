@@ -147,12 +147,11 @@ func (s *RoleService) AssignMenus(roleID uint, menuIDs []uint) error {
 		return err
 	}
 	ids := core.NormalizeIDs(menuIDs)
-	return global.DB.Transaction(func(tx *gorm.DB) error {
+	if err := global.DB.Transaction(func(tx *gorm.DB) error {
 		if len(ids) == 0 {
 			if err := tx.Model(&role).Association("Menus").Replace([]model.SysMenu{}); err != nil {
 				return err
 			}
-			core.Default.ClearUserCacheByRoleID(roleID)
 			return nil
 		}
 
@@ -163,9 +162,11 @@ func (s *RoleService) AssignMenus(roleID uint, menuIDs []uint) error {
 		if err := tx.Model(&role).Association("Menus").Replace(menus); err != nil {
 			return err
 		}
-		core.Default.ClearUserCacheByRoleID(roleID)
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+	return s.syncRolePoliciesByRoleID(roleID)
 }
 
 func loadRoleMenusWithAncestors(tx *gorm.DB, ids []uint) ([]model.SysMenu, error) {
@@ -227,7 +228,6 @@ func (s *RoleService) AssignApis(roleID uint, apiIDs []uint) error {
 		return err
 	}
 	ids := core.NormalizeIDs(apiIDs)
-	var assignedApis []model.SysApi
 	if err := global.DB.Transaction(func(tx *gorm.DB) error {
 		if len(ids) == 0 {
 			if err := tx.Model(&role).Association("Apis").Replace([]model.SysApi{}); err != nil {
@@ -243,17 +243,12 @@ func (s *RoleService) AssignApis(roleID uint, apiIDs []uint) error {
 		if err := tx.Model(&role).Association("Apis").Replace(apis); err != nil {
 			return err
 		}
-		assignedApis = apis
 		return nil
 	}); err != nil {
 		return err
 	}
 
-	if err := syncRoleApiPolicies(&role, assignedApis); err != nil {
-		return err
-	}
-	core.Default.ClearUserCacheByRoleID(roleID)
-	return nil
+	return s.syncRolePoliciesByRoleID(roleID)
 }
 
 func (s *RoleService) AssignDataScopes(
@@ -270,7 +265,7 @@ func (s *RoleService) AssignDataScopes(
 		return err
 	}
 
-	return global.DB.Transaction(func(tx *gorm.DB) error {
+	if err := global.DB.Transaction(func(tx *gorm.DB) error {
 		var existingScopes []model.SysRoleDataScope
 		if err := tx.Preload("Depts").Where("role_id = ?", roleID).Find(&existingScopes).Error; err != nil {
 			return err
@@ -297,32 +292,223 @@ func (s *RoleService) AssignDataScopes(
 				return err
 			}
 		}
-
-		core.Default.ClearUserCacheByRoleID(roleID)
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+	core.Default.ClearUserCacheByRoleID(roleID)
+	return nil
 }
 
-func syncRoleApiPolicies(role *model.SysRole, apis []model.SysApi) error {
-	if global.Enforcer == nil {
-		return nil
-	}
-
-	if _, err := global.Enforcer.RemoveFilteredPolicy(0, role.Code); err != nil {
+func (s *RoleService) SavePermissions(roleID uint, req *request.SaveRolePermissionsRequest) error {
+	var role model.SysRole
+	if err := global.DB.First(&role, roleID).Error; err != nil {
 		return err
 	}
 
-	if len(apis) > 0 {
-		policies := make([][]string, 0, len(apis))
-		for _, api := range apis {
-			policies = append(policies, []string{role.Code, api.Path, api.Method})
+	normalizedAssignments, err := normalizeRoleFeatureDataScopeAssignments(req.Scopes)
+	if err != nil {
+		return err
+	}
+
+	if err := global.DB.Transaction(func(tx *gorm.DB) error {
+		menus, err := loadRoleMenusWithAncestors(tx, core.NormalizeIDs(req.MenuIds))
+		if err != nil {
+			return err
 		}
-		if _, err := global.Enforcer.AddPolicies(policies); err != nil {
+		if err := tx.Model(&role).Association("Menus").Replace(menus); err != nil {
+			return err
+		}
+
+		directApis, err := loadApisByIDs(tx, core.NormalizeIDs(req.DirectApiIds))
+		if err != nil {
+			return err
+		}
+		if err := tx.Model(&role).Association("Apis").Replace(directApis); err != nil {
+			return err
+		}
+
+		if err := replaceRoleFeatureDataScopes(tx, roleID, normalizedAssignments); err != nil {
+			return err
+		}
+
+		effectiveApis, err := s.loadEffectiveRoleApisTx(tx, role.ID)
+		if err != nil {
+			return err
+		}
+		return syncRoleApiPoliciesTx(tx, role.Code, effectiveApis)
+	}); err != nil {
+		return err
+	}
+
+	if err := reloadRuntimePolicies(); err != nil {
+		return err
+	}
+	core.Default.ClearUserCacheByRoleID(roleID)
+	return nil
+}
+
+func (s *RoleService) SyncRolePoliciesForMenus(menuIDs []uint) error {
+	ids := core.NormalizeIDs(menuIDs)
+	if len(ids) == 0 {
+		return nil
+	}
+
+	var roleIDs []uint
+	if err := global.DB.Table("sys_role_menu").Distinct("sys_role_id").Where("sys_menu_id IN ?", ids).Pluck("sys_role_id", &roleIDs).Error; err != nil {
+		return err
+	}
+	roleIDs = core.NormalizeIDs(roleIDs)
+	for _, roleID := range roleIDs {
+		if err := s.syncRolePoliciesByRoleID(roleID); err != nil {
 			return err
 		}
 	}
+	return nil
+}
 
-	return global.Enforcer.SavePolicy()
+func (s *RoleService) syncRolePoliciesByRoleID(roleID uint) error {
+	var role model.SysRole
+	if err := global.DB.First(&role, roleID).Error; err != nil {
+		return err
+	}
+
+	if err := global.DB.Transaction(func(tx *gorm.DB) error {
+		effectiveApis, err := s.loadEffectiveRoleApisTx(tx, role.ID)
+		if err != nil {
+			return err
+		}
+		return syncRoleApiPoliciesTx(tx, role.Code, effectiveApis)
+	}); err != nil {
+		return err
+	}
+
+	if err := reloadRuntimePolicies(); err != nil {
+		return err
+	}
+	core.Default.ClearUserCacheByRoleID(roleID)
+	return nil
+}
+
+func (s *RoleService) loadEffectiveRoleApisTx(tx *gorm.DB, roleID uint) ([]model.SysApi, error) {
+	var role model.SysRole
+	if err := tx.Preload("Apis").Preload("Menus.Apis").First(&role, roleID).Error; err != nil {
+		return nil, err
+	}
+
+	apiMap := make(map[uint]model.SysApi)
+	for _, api := range role.Apis {
+		apiMap[api.ID] = api
+	}
+	for _, menu := range role.Menus {
+		for _, api := range menu.Apis {
+			apiMap[api.ID] = api
+		}
+	}
+
+	apiIDs := make([]uint, 0, len(apiMap))
+	for id := range apiMap {
+		apiIDs = append(apiIDs, id)
+	}
+	sort.Slice(apiIDs, func(i, j int) bool { return apiIDs[i] < apiIDs[j] })
+
+	apis := make([]model.SysApi, 0, len(apiIDs))
+	for _, id := range apiIDs {
+		apis = append(apis, apiMap[id])
+	}
+	return apis, nil
+}
+
+func loadApisByIDs(tx *gorm.DB, ids []uint) ([]model.SysApi, error) {
+	if len(ids) == 0 {
+		return []model.SysApi{}, nil
+	}
+
+	var apis []model.SysApi
+	if err := tx.Where("id IN ?", ids).Find(&apis).Error; err != nil {
+		return nil, err
+	}
+	return apis, nil
+}
+
+func replaceRoleFeatureDataScopes(
+	tx *gorm.DB,
+	roleID uint,
+	assignments []request.RoleFeatureDataScopeAssignment,
+) error {
+	var existingScopes []model.SysRoleDataScope
+	if err := tx.Preload("Depts").Where("role_id = ?", roleID).Find(&existingScopes).Error; err != nil {
+		return err
+	}
+	for i := range existingScopes {
+		if err := tx.Model(&existingScopes[i]).Association("Depts").Replace([]model.SysDept{}); err != nil {
+			return err
+		}
+	}
+	if err := tx.Unscoped().Where("role_id = ?", roleID).Delete(&model.SysRoleDataScope{}).Error; err != nil {
+		return err
+	}
+
+	for _, assignment := range assignments {
+		scope := model.SysRoleDataScope{
+			RoleID:       roleID,
+			ResourceCode: assignment.ResourceCode,
+			DataScope:    assignment.DataScope,
+		}
+		if err := tx.Create(&scope).Error; err != nil {
+			return err
+		}
+		if err := replaceRoleFeatureScopeCustomDepts(tx, &scope, assignment.DataScope, assignment.DeptIds); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type casbinRuleRow struct {
+	ID    uint   `gorm:"column:id;primaryKey"`
+	PType string `gorm:"column:ptype"`
+	V0    string `gorm:"column:v0"`
+	V1    string `gorm:"column:v1"`
+	V2    string `gorm:"column:v2"`
+	V3    string `gorm:"column:v3"`
+	V4    string `gorm:"column:v4"`
+	V5    string `gorm:"column:v5"`
+}
+
+func (casbinRuleRow) TableName() string {
+	return "casbin_rule"
+}
+
+func syncRoleApiPoliciesTx(tx *gorm.DB, roleCode string, apis []model.SysApi) error {
+	if err := tx.Where("ptype = ? AND v0 = ?", "p", roleCode).Delete(&casbinRuleRow{}).Error; err != nil {
+		return err
+	}
+
+	if len(apis) == 0 {
+		return nil
+	}
+
+	rules := make([]casbinRuleRow, 0, len(apis))
+	for _, api := range apis {
+		rules = append(rules, casbinRuleRow{
+			PType: "p",
+			V0:    roleCode,
+			V1:    api.Path,
+			V2:    api.Method,
+		})
+	}
+	return tx.Create(&rules).Error
+}
+
+func reloadRuntimePolicies() error {
+	if global.Enforcer == nil {
+		return nil
+	}
+	if err := global.Enforcer.LoadPolicy(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *RoleService) HasSuperAdminRoleIDs(roleIDs []uint) (bool, error) {

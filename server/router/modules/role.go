@@ -36,4 +36,6 @@ func (m *RoleModule) RegisterPrivateRoutes(rg *gin.RouterGroup) {
 		registry.WithAuth(), registry.WithRequest(request.AssignApisRequest{}))
 	R(rg, "PUT", "/roles/:id/data-scopes", m.Name(), "分配数据权限", v1.Role.AssignDataScopes,
 		registry.WithAuth(), registry.WithRequest(request.AssignRoleDataScopesRequest{}))
+	R(rg, "PUT", "/roles/:id/permissions", m.Name(), "统一保存角色权限", v1.Role.SavePermissions,
+		registry.WithAuth(), registry.WithRequest(request.SaveRolePermissionsRequest{}))
 }

@@ -1,8 +1,6 @@
 package middleware
 
 import (
-	"strings"
-
 	"server/global"
 	"server/model/response"
 	rolesvc "server/service/role"
@@ -17,11 +15,6 @@ var casbinWhiteList = map[string]bool{
 	"/api/v1/auth/refresh":  true,
 	"/api/v1/user/password": true,
 	"/api/v1/user/profile":  true,
-}
-
-// 白名单路径后缀，匹配以这些后缀结尾的路径
-var casbinWhiteSuffixes = []string{
-	"/my", // 用户身份相关的 /my 接口，允许登录用户填写自己的信息
 }
 
 // 基于用户角色进行Casbin校验：遍历用户的所有角色，用角色编码作为sub进行Enforce
@@ -41,14 +34,6 @@ func CasbinAuth() gin.HandlerFunc {
 		if casbinWhiteList[path] {
 			c.Next()
 			return
-		}
-
-		// 后缀白名单检查（支持 /xxx/my 类型的接口）
-		for _, suffix := range casbinWhiteSuffixes {
-			if strings.HasSuffix(path, suffix) {
-				c.Next()
-				return
-			}
 		}
 
 		roleIDs := GetUserRoleIDs(c)
