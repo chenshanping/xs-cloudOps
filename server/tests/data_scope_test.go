@@ -26,6 +26,26 @@ func (scopeTestRecord) TableName() string {
 	return "scope_test_record"
 }
 
+type scopeCreatedByOnlyRecord struct {
+	ID        uint   `gorm:"primarykey"`
+	Name      string `gorm:"size:64"`
+	CreatedBy uint   `gorm:"column:created_by"`
+}
+
+func (scopeCreatedByOnlyRecord) TableName() string {
+	return "scope_created_by_only_record"
+}
+
+type scopeDeptOnlyRecord struct {
+	ID     uint   `gorm:"primarykey"`
+	Name   string `gorm:"size:64"`
+	DeptID uint   `gorm:"column:dept_id"`
+}
+
+func (scopeDeptOnlyRecord) TableName() string {
+	return "scope_dept_only_record"
+}
+
 func setupDataScopeTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
@@ -457,6 +477,120 @@ func TestApplyRecordDataScopeUsesDeptAndCreatorOwnership(t *testing.T) {
 			t.Fatalf("all scope count = %d, want %d", count, len(records))
 		}
 	})
+}
+
+func TestApplyRecordDataScopeSupportsCreatedByOnlyBinding(t *testing.T) {
+	db := setupDataScopeTestDB(t)
+
+	if err := db.AutoMigrate(&scopeCreatedByOnlyRecord{}); err != nil {
+		t.Fatalf("auto migrate created_by-only record: %v", err)
+	}
+
+	records := []scopeCreatedByOnlyRecord{
+		{Name: "self-visible", CreatedBy: 7},
+		{Name: "creator-visible", CreatedBy: 11},
+		{Name: "out-of-scope", CreatedBy: 99},
+	}
+	if err := db.Create(&records).Error; err != nil {
+		t.Fatalf("create created_by-only records: %v", err)
+	}
+
+	scope := &core.UserDataScope{
+		OperatorID: 7,
+		AllowSelf:  true,
+		CreatorIDs: []uint{11},
+	}
+	binding := core.RecordDataScopeBinding{
+		TableAlias:      "scope_created_by_only_record",
+		CreatedByColumn: "created_by",
+	}
+
+	var visible []scopeCreatedByOnlyRecord
+	query := core.ApplyRecordDataScope(db.Model(&scopeCreatedByOnlyRecord{}).Order("id asc"), scope, binding)
+	if err := query.Find(&visible).Error; err != nil {
+		t.Fatalf("ApplyRecordDataScope created_by-only query error: %v", err)
+	}
+
+	if len(visible) != 2 {
+		t.Fatalf("created_by-only visible len = %d, want 2; records = %+v", len(visible), visible)
+	}
+	if visible[0].Name != "self-visible" || visible[1].Name != "creator-visible" {
+		t.Fatalf("unexpected created_by-only visible records: %+v", visible)
+	}
+}
+
+func TestApplyRecordDataScopeSupportsDeptOnlyBinding(t *testing.T) {
+	db := setupDataScopeTestDB(t)
+
+	if err := db.AutoMigrate(&scopeDeptOnlyRecord{}); err != nil {
+		t.Fatalf("auto migrate dept-only record: %v", err)
+	}
+
+	records := []scopeDeptOnlyRecord{
+		{Name: "dept-a-1", DeptID: 21},
+		{Name: "dept-a-2", DeptID: 22},
+		{Name: "out-of-scope", DeptID: 99},
+	}
+	if err := db.Create(&records).Error; err != nil {
+		t.Fatalf("create dept-only records: %v", err)
+	}
+
+	scope := &core.UserDataScope{
+		OperatorID: 7,
+		DeptIDs:    []uint{21, 22},
+	}
+	binding := core.RecordDataScopeBinding{
+		TableAlias: "scope_dept_only_record",
+		DeptColumn: "dept_id",
+	}
+
+	var visible []scopeDeptOnlyRecord
+	query := core.ApplyRecordDataScope(db.Model(&scopeDeptOnlyRecord{}).Order("id asc"), scope, binding)
+	if err := query.Find(&visible).Error; err != nil {
+		t.Fatalf("ApplyRecordDataScope dept-only query error: %v", err)
+	}
+
+	if len(visible) != 2 {
+		t.Fatalf("dept-only visible len = %d, want 2; records = %+v", len(visible), visible)
+	}
+	if visible[0].Name != "dept-a-1" || visible[1].Name != "dept-a-2" {
+		t.Fatalf("unexpected dept-only visible records: %+v", visible)
+	}
+}
+
+func TestApplyRecordDataScopeDeptOnlyBindingSelfScopeFailsClosedWithoutSelfColumn(t *testing.T) {
+	db := setupDataScopeTestDB(t)
+
+	if err := db.AutoMigrate(&scopeDeptOnlyRecord{}); err != nil {
+		t.Fatalf("auto migrate dept-only record: %v", err)
+	}
+
+	records := []scopeDeptOnlyRecord{
+		{Name: "dept-a-1", DeptID: 21},
+		{Name: "dept-a-2", DeptID: 22},
+	}
+	if err := db.Create(&records).Error; err != nil {
+		t.Fatalf("create dept-only records: %v", err)
+	}
+
+	scope := &core.UserDataScope{
+		OperatorID: 7,
+		AllowSelf:  true,
+	}
+	binding := core.RecordDataScopeBinding{
+		TableAlias: "scope_dept_only_record",
+		DeptColumn: "dept_id",
+	}
+
+	var visible []scopeDeptOnlyRecord
+	query := core.ApplyRecordDataScope(db.Model(&scopeDeptOnlyRecord{}).Order("id asc"), scope, binding)
+	if err := query.Find(&visible).Error; err != nil {
+		t.Fatalf("ApplyRecordDataScope dept-only self query error: %v", err)
+	}
+
+	if len(visible) != 0 {
+		t.Fatalf("dept-only self scope should fail closed without self column, got records = %+v", visible)
+	}
 }
 
 func TestUserServiceGetManagedUserInfoUsesCreatorForSelfScopeInUserManagement(t *testing.T) {
