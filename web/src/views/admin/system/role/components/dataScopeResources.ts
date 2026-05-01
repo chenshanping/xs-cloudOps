@@ -1,3 +1,5 @@
+import type { DataScopeResource } from '@/api/role'
+import type { RoleFeatureDataScopePayload } from '@/api/role'
 import type { RoleFeatureDataScope } from '@/types'
 
 export interface RolePermissionDeptOption {
@@ -8,11 +10,7 @@ export interface RolePermissionDeptOption {
   children?: RolePermissionDeptOption[]
 }
 
-export interface DataScopeResourceDefinition {
-  code: string
-  label: string
-  description: string
-}
+export type DataScopeResourceDefinition = DataScopeResource
 
 export interface RoleFeatureDataScopeFormItem {
   resource_code: string
@@ -29,28 +27,23 @@ export const FEATURE_SCOPE_OPTIONS = [
   { value: 5, label: '仅本人' }
 ]
 
-export const ROLE_FEATURE_SCOPE_RESOURCES: DataScopeResourceDefinition[] = [
-  {
-    code: 'system:user-management',
-    label: '用户管理',
-    description: '控制用户列表及关联用户操作可见的数据范围。'
-  },
-  {
-    code: 'system:dept-management',
-    label: '部门管理',
-    description: '控制部门树、可管理部门及部门统计可见的数据范围。'
-  }
-]
-
 export function formatDataScopeLabel(value: number): string {
   return FEATURE_SCOPE_OPTIONS.find(option => option.value === value)?.label || '-'
 }
 
+export function findDataScopeResourceDefinition(
+  resources: DataScopeResourceDefinition[],
+  resourceCode: string
+) {
+  return resources.find(resource => resource.code === resourceCode)
+}
+
 export function buildRoleFeatureDataScopeForm(
+  resources: DataScopeResourceDefinition[] = [],
   scopes?: RoleFeatureDataScope[]
 ): RoleFeatureDataScopeFormItem[] {
   const scopeMap = new Map((scopes || []).map(scope => [scope.resource_code, scope]))
-  return ROLE_FEATURE_SCOPE_RESOURCES.map(resource => {
+  return resources.map(resource => {
     const current = scopeMap.get(resource.code)
     return {
       resource_code: resource.code,
@@ -58,4 +51,52 @@ export function buildRoleFeatureDataScopeForm(
       dept_ids: current?.depts?.map(item => item.id) || []
     }
   })
+}
+
+export function splitKnownAndUnknownFeatureDataScopes(
+  resources: DataScopeResourceDefinition[] = [],
+  scopes: RoleFeatureDataScope[] = []
+) {
+  const resourceCodes = new Set(resources.map(resource => resource.code))
+
+  return scopes.reduce<{
+    knownScopes: RoleFeatureDataScope[]
+    unknownScopes: RoleFeatureDataScopePayload[]
+  }>((result, scope) => {
+    if (resourceCodes.has(scope.resource_code)) {
+      result.knownScopes.push(scope)
+      return result
+    }
+
+    result.unknownScopes.push({
+      resource_code: scope.resource_code,
+      data_scope: scope.data_scope,
+      dept_ids: scope.depts?.map(item => item.id) || []
+    })
+    return result
+  }, {
+    knownScopes: [],
+    unknownScopes: []
+  })
+}
+
+export function buildRoleFeatureDataScopePayload(
+  knownItems: RoleFeatureDataScopeFormItem[] = [],
+  unknownItems: RoleFeatureDataScopePayload[] = []
+): RoleFeatureDataScopePayload[] {
+  const knownScopePayloads = knownItems
+    .filter(item => item.data_scope > 0)
+    .map(item => ({
+      resource_code: item.resource_code,
+      data_scope: item.data_scope,
+      dept_ids: item.data_scope === 2 ? [...item.dept_ids] : []
+    }))
+
+  const unknownScopePayloads = unknownItems.map(item => ({
+    resource_code: item.resource_code,
+    data_scope: item.data_scope,
+    dept_ids: [...item.dept_ids]
+  }))
+
+  return [...knownScopePayloads, ...unknownScopePayloads]
 }

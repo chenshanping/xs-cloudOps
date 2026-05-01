@@ -16,12 +16,12 @@
       >
         <template #title>
           <div class="card-title">
-            <span>{{ getResourceLabel(item.resource_code) }}</span>
+            <span>{{ getResourceDefinition(item.resource_code)?.label || item.resource_code }}</span>
             <a-tag v-if="item.data_scope === 0">继承默认</a-tag>
           </div>
         </template>
 
-        <p class="card-description">{{ getResourceDescription(item.resource_code) }}</p>
+        <p class="card-description">{{ getResourceDefinition(item.resource_code)?.description || '' }}</p>
 
         <a-form layout="vertical">
           <a-form-item label="数据范围">
@@ -36,7 +36,7 @@
             v-if="item.data_scope === 2"
             label="自定义部门"
             :validate-status="item.dept_ids.length === 0 ? 'error' : undefined"
-            :help="item.dept_ids.length === 0 ? '请选择至少一个部门' : undefined"
+            :help="item.dept_ids.length === 0 ? getDeptValidationMessage(item.resource_code) : undefined"
           >
             <a-tree-select
               :value="item.dept_ids"
@@ -57,13 +57,15 @@
 <script setup lang="ts">
 import {
   FEATURE_SCOPE_OPTIONS,
-  ROLE_FEATURE_SCOPE_RESOURCES,
+  findDataScopeResourceDefinition,
+  type DataScopeResourceDefinition,
   type RoleFeatureDataScopeFormItem,
   type RolePermissionDeptOption
 } from './dataScopeResources'
 
 const props = defineProps<{
   modelValue: RoleFeatureDataScopeFormItem[]
+  resourceDefinitions: DataScopeResourceDefinition[]
   deptOptions: RolePermissionDeptOption[]
   defaultDataScopeLabel: string
 }>()
@@ -74,11 +76,13 @@ const emit = defineEmits<{
 
 const scopeOptions = FEATURE_SCOPE_OPTIONS
 
-const getResourceLabel = (resourceCode: string) =>
-  ROLE_FEATURE_SCOPE_RESOURCES.find(item => item.code === resourceCode)?.label || resourceCode
+const getResourceDefinition = (resourceCode: string) =>
+  findDataScopeResourceDefinition(props.resourceDefinitions, resourceCode)
 
-const getResourceDescription = (resourceCode: string) =>
-  ROLE_FEATURE_SCOPE_RESOURCES.find(item => item.code === resourceCode)?.description || ''
+const getDeptValidationMessage = (resourceCode: string) => {
+  const resourceLabel = getResourceDefinition(resourceCode)?.label || resourceCode
+  return `请选择「${resourceLabel}」的自定义部门`
+}
 
 const updateItems = (
   resourceCode: string,

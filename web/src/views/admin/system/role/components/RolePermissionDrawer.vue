@@ -16,26 +16,28 @@
           v-if="activeTab !== 'dataScopes'"
           v-model:value="searchText"
           :placeholder="searchPlaceholder"
+          :disabled="permissionLoading"
           style="width: 280px; margin-left: auto"
           allow-clear
         />
       </div>
 
-      <div
-        class="permission-layout"
-        :class="{ 'permission-layout--full': activeTab === 'dataScopes' }"
-      >
-        <div v-if="activeTab !== 'dataScopes'" class="permission-sidebar">
-          <RolePermissionDrawerSidebar
-            :top-menus="topMenus"
-            :selected-top-menu-id="selectedTopMenuId"
-            :checked-menu-keys="assignableSelectedMenuKeys"
-            @select="selectedTopMenuId = $event"
-          />
-        </div>
+      <a-spin :spinning="permissionLoading">
+        <div
+          class="permission-layout"
+          :class="{ 'permission-layout--full': activeTab === 'dataScopes' }"
+        >
+          <div v-if="activeTab !== 'dataScopes'" class="permission-sidebar">
+            <RolePermissionDrawerSidebar
+              :top-menus="topMenus"
+              :selected-top-menu-id="selectedTopMenuId"
+              :checked-menu-keys="assignableSelectedMenuKeys"
+              @select="selectedTopMenuId = $event"
+            />
+          </div>
 
-        <div class="permission-content">
-          <a-tabs v-model:activeKey="activeTab" class="permission-tabs">
+          <div class="permission-content">
+            <a-tabs v-model:activeKey="activeTab" class="permission-tabs">
             <a-tab-pane key="menus" tab="菜单权限">
               <a-tabs
                 v-if="menuTabSections.length"
@@ -134,19 +136,21 @@
             <a-tab-pane key="dataScopes" tab="数据权限">
               <RolePermissionDataScopePanel
                 v-model:model-value="featureDataScopes"
+                :resource-definitions="resourceDefinitions"
                 :dept-options="deptOptions"
                 :default-data-scope-label="formatDataScopeLabel(defaultDataScope)"
               />
             </a-tab-pane>
-          </a-tabs>
+            </a-tabs>
+          </div>
         </div>
-      </div>
+      </a-spin>
     </div>
 
     <template #footer>
       <div style="display: flex; justify-content: flex-end; gap: 8px">
         <a-button @click="visible = false">取消</a-button>
-        <a-button type="primary" :loading="saveLoading" @click="handleSavePermissions">保存</a-button>
+        <a-button type="primary" :loading="saveLoading" :disabled="permissionLoading" @click="handleSavePermissions">保存</a-button>
       </div>
     </template>
   </a-drawer>
@@ -201,6 +205,8 @@ const {
   handleSectionSelectChildPermissions,
   inheritedApiIds,
   inheritedApiSourceMap,
+  permissionLoading,
+  resourceDefinitions,
   saveLoading,
   searchText,
   selectedTopMenuId,

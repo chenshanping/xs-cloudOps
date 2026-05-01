@@ -1,8 +1,10 @@
 import { computed, ref, watch, type Ref } from 'vue'
 import { message } from 'ant-design-vue'
 import {
+  getDataScopeResources,
   getRole,
   saveRolePermissions,
+  type DataScopeResource,
   type RoleFeatureDataScopePayload
 } from '@/api/role'
 import { getMenuTree } from '@/api/menu'
@@ -20,9 +22,11 @@ import {
   type PermissionPageSection
 } from './permissionDrawer'
 import {
+  buildRoleFeatureDataScopePayload,
   buildRoleFeatureDataScopeForm,
+  findDataScopeResourceDefinition,
   formatDataScopeLabel,
-  ROLE_FEATURE_SCOPE_RESOURCES,
+  splitKnownAndUnknownFeatureDataScopes,
   type RoleFeatureDataScopeFormItem,
   type RolePermissionDeptOption
 } from './dataScopeResources'
@@ -46,12 +50,16 @@ export function useRolePermissionDrawer(
   const userStore = useUserStore()
 
   const saveLoading = ref(false)
+  const permissionLoading = ref(false)
+  const permissionRequestToken = ref(0)
   const menuTree = ref<Menu[]>([])
   const allApis = ref<Api[]>([])
+  const resourceDefinitions = ref<DataScopeResource[]>([])
   const selectedMenuKeys = ref<number[]>([])
   const checkedApiIds = ref<number[]>([])
   const defaultDataScope = ref(1)
-  const featureDataScopes = ref<RoleFeatureDataScopeFormItem[]>(buildRoleFeatureDataScopeForm())
+  const featureDataScopes = ref<RoleFeatureDataScopeFormItem[]>([])
+  const unknownFeatureDataScopes = ref<RoleFeatureDataScopePayload[]>([])
   const searchText = ref('')
   const selectedTopMenuId = ref<number | null>(null)
 
@@ -234,26 +242,65 @@ export function useRolePermissionDrawer(
       : removeIds(checkedApiIds.value, ids)
   }
 
-  const fetchMenuTree = async () => {
+  const resetPermissionState = () => {
+    menuTree.value = []
+    allApis.value = []
+    resourceDefinitions.value = []
+    selectedMenuKeys.value = []
+    checkedApiIds.value = []
+    defaultDataScope.value = 1
+    featureDataScopes.value = []
+    unknownFeatureDataScopes.value = []
+    selectedTopMenuId.value = null
+  }
+
+  const fetchMenuTree = async (requestToken: number) => {
     const res = await getMenuTree()
+    if (requestToken !== permissionRequestToken.value) {
+      return
+    }
     menuTree.value = res.data
     if (!selectedTopMenuId.value || !menuTree.value.some(item => item.id === selectedTopMenuId.value)) {
       selectedTopMenuId.value = menuTree.value[0]?.id ?? null
     }
   }
 
-  const fetchAllApis = async () => {
+  const fetchAllApis = async (requestToken: number) => {
     const res = await getAllApis()
+    if (requestToken !== permissionRequestToken.value) {
+      return
+    }
     allApis.value = res.data.filter(api => api.need_auth)
   }
 
-  const loadRolePermissions = async () => {
+  const fetchDataScopeResources = async (requestToken: number) => {
+    const res = await getDataScopeResources()
+    if (requestToken !== permissionRequestToken.value) {
+      return
+    }
+    resourceDefinitions.value = res.data || []
+  }
+
+  const loadRolePermissions = async (requestToken: number) => {
     if (!props.roleId) {
       return
     }
     const res = await getRole(props.roleId)
+    if (requestToken !== permissionRequestToken.value) {
+      return
+    }
+    const scopeResources = resourceDefinitions.value
+    const {
+      knownScopes,
+      unknownScopes
+    } = splitKnownAndUnknownFeatureDataScopes(scopeResources, res.data.feature_data_scopes || [])
+
     defaultDataScope.value = res.data.data_scope || 1
-    featureDataScopes.value = buildRoleFeatureDataScopeForm(res.data.feature_data_scopes)
+    featureDataScopes.value = buildRoleFeatureDataScopeForm(
+      scopeResources,
+      knownScopes
+    )
+    unknownFeatureDataScopes.value = unknownScopes
     selectedMenuKeys.value = filterAssignableMenuIds(
       res.data.menus?.map((menu: Menu) => menu.id) || [],
       menuTree.value
@@ -264,21 +311,15 @@ export function useRolePermissionDrawer(
   const validateFeatureDataScopes = () => {
     const invalidScope = featureDataScopes.value.find(item => item.data_scope === 2 && item.dept_ids.length === 0)
     if (invalidScope) {
-      const resourceLabel = ROLE_FEATURE_SCOPE_RESOURCES.find(item => item.code === invalidScope.resource_code)?.label || invalidScope.resource_code
+      const resourceLabel = findDataScopeResourceDefinition(
+        resourceDefinitions.value,
+        invalidScope.resource_code
+      )?.label || invalidScope.resource_code
       message.warning(`请为「${resourceLabel}」选择自定义部门`)
       return false
     }
     return true
   }
-
-  const buildFeatureDataScopePayload = (): RoleFeatureDataScopePayload[] =>
-    featureDataScopes.value
-      .filter(item => item.data_scope > 0)
-      .map(item => ({
-        resource_code: item.resource_code,
-        data_scope: item.data_scope,
-        dept_ids: item.data_scope === 2 ? [...item.dept_ids] : []
-      }))
 
   const getErrorMessage = (reason: unknown, fallback: string) => {
     if (reason instanceof Error && reason.message) {
@@ -288,6 +329,9 @@ export function useRolePermissionDrawer(
   }
 
   const handleSavePermissions = async () => {
+    if (permissionLoading.value) {
+      return
+    }
     if (!validateFeatureDataScopes()) {
       return
     }
@@ -297,7 +341,10 @@ export function useRolePermissionDrawer(
       await saveRolePermissions(props.roleId, {
         menu_ids: assignableSelectedMenuKeys.value,
         direct_api_ids: checkedApiIds.value,
-        scopes: buildFeatureDataScopePayload()
+        scopes: buildRoleFeatureDataScopePayload(
+          featureDataScopes.value,
+          unknownFeatureDataScopes.value
+        )
       }, { silent: true })
       message.success('权限分配成功')
       visible.value = false
@@ -309,14 +356,35 @@ export function useRolePermissionDrawer(
     }
   }
 
-  watch(visible, async val => {
-    if (!val) {
-      featureDataScopes.value = buildRoleFeatureDataScopeForm()
+  watch([visible, () => props.roleId], async ([isVisible]) => {
+    if (!isVisible) {
+      permissionRequestToken.value += 1
+      permissionLoading.value = false
+      resetPermissionState()
       return
     }
+
+    const requestToken = ++permissionRequestToken.value
+    permissionLoading.value = true
     searchText.value = ''
-    await Promise.all([fetchMenuTree(), fetchAllApis()])
-    await loadRolePermissions()
+    resetPermissionState()
+
+    try {
+      await Promise.all([
+        fetchMenuTree(requestToken),
+        fetchAllApis(requestToken),
+        fetchDataScopeResources(requestToken)
+      ])
+      if (requestToken !== permissionRequestToken.value) {
+        return
+      }
+      await loadRolePermissions(requestToken)
+    } finally {
+      if (requestToken !== permissionRequestToken.value) {
+        return
+      }
+      permissionLoading.value = false
+    }
   })
 
   return {
@@ -343,6 +411,8 @@ export function useRolePermissionDrawer(
     inheritedApiSourceMap,
     isUncategorizedChecked,
     isUncategorizedIndeterminate,
+    permissionLoading,
+    resourceDefinitions,
     saveLoading,
     searchText,
     selectedTopMenuId,

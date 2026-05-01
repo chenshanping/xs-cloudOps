@@ -19,6 +19,13 @@ export interface RoleFeatureDataScopePayload {
   dept_ids: number[]
 }
 
+export interface DataScopeResource {
+  code: string
+  label: string
+  description: string
+  owner_fields: string[]
+}
+
 export interface SaveRolePermissionsPayload {
   menu_ids: number[]
   direct_api_ids: number[]
@@ -33,6 +40,10 @@ export function getRoleList() {
 // 获取角色详情
 export function getRole(id: number) {
   return request.get<any, ApiResponse<Role>>(`/roles/${id}`)
+}
+
+export function getDataScopeResources() {
+  return request.get<any, ApiResponse<DataScopeResource[]>>('/roles/data-scope-resources')
 }
 
 // 创建角色

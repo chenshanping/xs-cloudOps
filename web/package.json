@@ -8,6 +8,7 @@
     "build": "npm run icons && vite build",
     "build:dev": "npm run icons && vite build --mode development",
     "build:test": "npm run icons && vite build --mode test",
+    "test:role-data-scope-resources": "node scripts/test-role-data-scope-resources.mjs",
     "test:config-component-imports": "node scripts/test-config-component-imports.mjs",
     "test:config-tab-guard": "node scripts/test-config-tab-guard.mjs",
     "test:tabs-state": "node scripts/test-tabs-state.mjs",
