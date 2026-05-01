@@ -70,9 +70,19 @@ type AIProvider struct {
 }
 
 type AIModel struct {
-	ID          string `mapstructure:"id" yaml:"id" json:"id"`
-	Name        string `mapstructure:"name" yaml:"name" json:"name"`
-	Description string `mapstructure:"description" yaml:"description" json:"description"`
+	ID               string   `mapstructure:"id" yaml:"id" json:"id"`
+	Name             string   `mapstructure:"name" yaml:"name" json:"name"`
+	Description      string   `mapstructure:"description" yaml:"description" json:"description"`
+	IsThinking       bool     `mapstructure:"is_thinking" yaml:"is_thinking" json:"is_thinking"`
+	SupportVision    bool     `mapstructure:"support_vision" yaml:"support_vision" json:"support_vision"`
+	SupportTools     bool     `mapstructure:"support_tools" yaml:"support_tools" json:"support_tools"`
+	SearchStrategy   string   `mapstructure:"search_strategy" yaml:"search_strategy" json:"search_strategy"`
+	SupportEmbedding bool     `mapstructure:"support_embedding" yaml:"support_embedding" json:"support_embedding"`
+	SupportRerank    bool     `mapstructure:"support_rerank" yaml:"support_rerank" json:"support_rerank"`
+	IsFree           bool     `mapstructure:"is_free" yaml:"is_free" json:"is_free"`
+	Temperature      *float64 `mapstructure:"temperature" yaml:"temperature" json:"temperature,omitempty"`
+	ContextWindow    *int     `mapstructure:"context_window" yaml:"context_window" json:"context_window,omitempty"`
+	Tags             []string `mapstructure:"tags" yaml:"tags" json:"tags,omitempty"`
 }
 
 // GetProvider 根据名称获取平台配置

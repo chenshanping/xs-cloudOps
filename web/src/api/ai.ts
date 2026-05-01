@@ -40,6 +40,16 @@ export interface AIModelConfig {
   id: string
   name: string
   description: string
+  is_thinking?: boolean
+  support_vision?: boolean
+  support_tools?: boolean
+  search_strategy?: 'none' | 'builtin' | 'tool'
+  support_embedding?: boolean
+  support_rerank?: boolean
+  is_free?: boolean
+  tags?: string[]
+  temperature?: number | null
+  context_window?: number | null
 }
 
 export interface AIProviderConfig {
@@ -62,14 +72,27 @@ export interface AITestRequest {
 
 export interface AIProviderRemoteModel {
   id: string
+  name?: string
+  description?: string
   object?: string
   created?: number
   owned_by?: string
+  is_thinking?: boolean
+  support_vision?: boolean
+  support_tools?: boolean
+  search_strategy?: 'none' | 'builtin' | 'tool'
+  support_embedding?: boolean
+  support_rerank?: boolean
+  is_free?: boolean
+  temperature?: number | null
+  context_window?: number | null
+  tags?: string[]
 }
 
 export interface AIProviderModelsFetchRequest {
   api_key: string
   base_url: string
+  provider_name?: string
 }
 
 export interface AIProviderModelsFetchResponse {

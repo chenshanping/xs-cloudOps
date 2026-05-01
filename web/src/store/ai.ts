@@ -58,7 +58,7 @@ export const useAIStore = defineStore('ai', () => {
     try {
       const res = await getModels()
       models.value = res.data
-      currentModel.value=res.data[0]["id"]
+      currentModel.value = res.data[0]?.id ?? ''
     } catch (error) {
       console.error('获取模型列表失败:', error)
     }

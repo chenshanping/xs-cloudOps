@@ -16,11 +16,11 @@ func TestFetchProviderModelsUsesDirectModelsWhenBaseURLAlreadyContainsV1(t *test
 			t.Fatalf("authorization header = %s, want %s", got, "Bearer sk-test")
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"object":"list","data":[{"id":"gpt-4o","object":"model","created":1712345678,"owned_by":"openai"},{"id":""}]}`))
+		_, _ = w.Write([]byte(`{"object":"list","data":[{"id":"gpt-4o","name":"GPT-4o","description":"旗舰模型","object":"model","created":1712345678,"owned_by":"openai","tags":["reasoning","vision","search","tool","free","reasoning",""],"context_window":128000},{"id":""}]}`))
 	}))
 	defer server.Close()
 
-	models, err := Default.fetchProviderModelsWithClient(server.Client(), "sk-test", server.URL+"/compatible-mode/v1")
+	models, err := Default.fetchProviderModelsWithClient(server.Client(), "sk-test", server.URL+"/compatible-mode/v1", "OpenAI")
 	if err != nil {
 		t.Fatalf("fetch provider models: %v", err)
 	}
@@ -42,6 +42,24 @@ func TestFetchProviderModelsUsesDirectModelsWhenBaseURLAlreadyContainsV1(t *test
 	if models[0].OwnedBy != "openai" {
 		t.Fatalf("model owned_by = %s, want %s", models[0].OwnedBy, "openai")
 	}
+	if models[0].Name != "GPT-4o" {
+		t.Fatalf("model name = %s, want %s", models[0].Name, "GPT-4o")
+	}
+	if models[0].Description != "旗舰模型" {
+		t.Fatalf("model description = %s, want %s", models[0].Description, "旗舰模型")
+	}
+	if !models[0].IsThinking || !models[0].SupportVision || !models[0].SupportTools || !models[0].IsFree {
+		t.Fatalf("model capability flags = %#v, want true flags from tags", models[0])
+	}
+	if models[0].SearchStrategy == "" || models[0].SearchStrategy == "none" {
+		t.Fatalf("model search_strategy = %q, want searchable model", models[0].SearchStrategy)
+	}
+	if models[0].ContextWindow == nil || *models[0].ContextWindow != 128000 {
+		t.Fatalf("model context_window = %#v, want 128000", models[0].ContextWindow)
+	}
+	if len(models[0].Tags) < 5 {
+		t.Fatalf("model tags = %#v, want normalized tags retained", models[0].Tags)
+	}
 }
 
 func TestFetchProviderModelsFallsBackWhenV1ModelsEndpointMissing(t *testing.T) {
@@ -62,7 +80,7 @@ func TestFetchProviderModelsFallsBackWhenV1ModelsEndpointMissing(t *testing.T) {
 	}))
 	defer server.Close()
 
-	models, err := Default.fetchProviderModelsWithClient(server.Client(), "sk-test", server.URL+"/proxy")
+	models, err := Default.fetchProviderModelsWithClient(server.Client(), "sk-test", server.URL+"/proxy", "OpenAI Compatible")
 	if err != nil {
 		t.Fatalf("fetch provider models with fallback: %v", err)
 	}
@@ -83,7 +101,7 @@ func TestFetchProviderModelsSanitizesUpstreamErrors(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := Default.fetchProviderModelsWithClient(server.Client(), "sk-secret-123456", server.URL+"/v1")
+	_, err := Default.fetchProviderModelsWithClient(server.Client(), "sk-secret-123456", server.URL+"/v1", "OpenAI")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -92,5 +110,245 @@ func TestFetchProviderModelsSanitizesUpstreamErrors(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "API Key") {
 		t.Fatalf("error = %v, want sanitized API Key guidance", err)
+	}
+}
+
+func TestFetchProviderModelsInfersCapabilitiesFromModelName(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"bge-reranker-v2-m3","name":"BGE Reranker V2 M3"},{"id":"qwen2.5-vl-72b-instruct","name":"Qwen2.5 VL 72B Instruct"},{"id":"deepseek-r1","name":"DeepSeek R1"},{"id":"deepseek-chat","name":"DeepSeek Chat"}]}`))
+	}))
+	defer server.Close()
+
+	models, err := Default.fetchProviderModelsWithClient(server.Client(), "sk-test", server.URL+"/v1", "OpenAI Compatible")
+	if err != nil {
+		t.Fatalf("fetch provider models: %v", err)
+	}
+	if len(models) != 4 {
+		t.Fatalf("models len = %d, want 4", len(models))
+	}
+	if !models[0].SupportEmbedding || !models[0].SupportRerank {
+		t.Fatalf("reranker model capabilities = %#v, want embedding and rerank", models[0])
+	}
+	if !models[1].SupportVision {
+		t.Fatalf("vision model capabilities = %#v, want support_vision", models[1])
+	}
+	if !models[2].IsThinking {
+		t.Fatalf("reasoning model capabilities = %#v, want is_thinking", models[2])
+	}
+	if !models[3].SupportTools {
+		t.Fatalf("tool capable model capabilities = %#v, want support_tools", models[3])
+	}
+	if models[3].SearchStrategy != searchStrategyNone {
+		t.Fatalf("tool capable model search_strategy = %q, want %q", models[3].SearchStrategy, searchStrategyNone)
+	}
+}
+
+func TestFetchProviderModelsPreservesExplicitToolSearchStrategy(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"custom-agent","name":"Custom Agent","search_strategy":"tool"}]}`))
+	}))
+	defer server.Close()
+
+	models, err := Default.fetchProviderModelsWithClient(server.Client(), "sk-test", server.URL+"/v1", "OpenAI Compatible")
+	if err != nil {
+		t.Fatalf("fetch provider models: %v", err)
+	}
+	if len(models) != 1 {
+		t.Fatalf("models len = %d, want 1", len(models))
+	}
+	if models[0].SearchStrategy != searchStrategyTool {
+		t.Fatalf("explicit tool search_strategy = %q, want %q", models[0].SearchStrategy, searchStrategyTool)
+	}
+	if !models[0].SupportTools {
+		t.Fatalf("explicit tool search model should imply support_tools: %#v", models[0])
+	}
+}
+
+func TestFetchProviderModelsInfersProviderAwareBuiltinSearch(t *testing.T) {
+	tests := []struct {
+		name         string
+		providerName string
+		modelID      string
+		wantSearch   string
+	}{
+		{
+			name:         "dashscope qwen max",
+			providerName: "阿里云百炼",
+			modelID:      "qwen-max",
+			wantSearch:   searchStrategyBuiltin,
+		},
+		{
+			name:         "perplexity sonar pro",
+			providerName: "Perplexity",
+			modelID:      "sonar-pro",
+			wantSearch:   searchStrategyBuiltin,
+		},
+		{
+			name:         "openai gpt 4o mini",
+			providerName: "OpenAI",
+			modelID:      "gpt-4o-mini",
+			wantSearch:   searchStrategyBuiltin,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"data":[{"id":"` + tt.modelID + `","name":"` + tt.modelID + `"}]}`))
+			}))
+			defer server.Close()
+
+			models, err := Default.fetchProviderModelsWithClient(server.Client(), "sk-test", server.URL+"/v1", tt.providerName)
+			if err != nil {
+				t.Fatalf("fetch provider models: %v", err)
+			}
+			if len(models) != 1 {
+				t.Fatalf("models len = %d, want 1", len(models))
+			}
+			if models[0].SearchStrategy != tt.wantSearch {
+				t.Fatalf("search_strategy = %q, want %q for provider %s model %s", models[0].SearchStrategy, tt.wantSearch, tt.providerName, tt.modelID)
+			}
+		})
+	}
+}
+
+func TestFetchProviderModelsDoesNotMarkDashScopeKimiK26AsVision(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"kimi-k2.6","name":"Kimi K2.6"}]}`))
+	}))
+	defer server.Close()
+
+	models, err := Default.fetchProviderModelsWithClient(server.Client(), "sk-test", server.URL+"/v1", "阿里云百炼")
+	if err != nil {
+		t.Fatalf("fetch provider models: %v", err)
+	}
+	if len(models) != 1 {
+		t.Fatalf("models len = %d, want 1", len(models))
+	}
+	if models[0].SupportVision {
+		t.Fatalf("dashscope kimi-k2.6 support_vision = %v, want false", models[0].SupportVision)
+	}
+	if !models[0].IsThinking {
+		t.Fatalf("dashscope kimi-k2.6 is_thinking = %v, want true", models[0].IsThinking)
+	}
+	if !models[0].SupportTools {
+		t.Fatalf("dashscope kimi-k2.6 support_tools = %v, want true", models[0].SupportTools)
+	}
+}
+
+func TestFetchProviderModelsMarksDashScopeQwen35PlusAsReasoning(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"qwen3.5-plus-2026-04-20","name":"Qwen3.5 Plus 2026-04-20"}]}`))
+	}))
+	defer server.Close()
+
+	models, err := Default.fetchProviderModelsWithClient(server.Client(), "sk-test", server.URL+"/v1", "阿里云百炼")
+	if err != nil {
+		t.Fatalf("fetch provider models: %v", err)
+	}
+	if len(models) != 1 {
+		t.Fatalf("models len = %d, want 1", len(models))
+	}
+	if !models[0].IsThinking {
+		t.Fatalf("dashscope qwen3.5-plus-2026-04-20 is_thinking = %v, want true", models[0].IsThinking)
+	}
+}
+
+func TestFetchProviderModelsDoesNotMarkLegacyQwen3MaxSnapshotAsReasoning(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"qwen3-max-2025-09-23","name":"Qwen3 Max 2025-09-23"}]}`))
+	}))
+	defer server.Close()
+
+	models, err := Default.fetchProviderModelsWithClient(server.Client(), "sk-test", server.URL+"/v1", "阿里云百炼")
+	if err != nil {
+		t.Fatalf("fetch provider models: %v", err)
+	}
+	if len(models) != 1 {
+		t.Fatalf("models len = %d, want 1", len(models))
+	}
+	if models[0].IsThinking {
+		t.Fatalf("dashscope qwen3-max-2025-09-23 is_thinking = %v, want false", models[0].IsThinking)
+	}
+}
+
+func TestFetchProviderModelsAppliesXiaomiMimoPricingPageCapabilities(t *testing.T) {
+	tests := []struct {
+		name         string
+		modelID      string
+		wantThinking bool
+		wantVision   bool
+		wantTools    bool
+		wantSearch   string
+		wantFree     bool
+	}{
+		{
+			name:         "mimo v2.5 pro reasoning",
+			modelID:      "mimo-v2.5-pro",
+			wantThinking: true,
+			wantVision:   false,
+			wantTools:    true,
+			wantSearch:   searchStrategyNone,
+			wantFree:     false,
+		},
+		{
+			name:         "mimo v2.5 multimodal",
+			modelID:      "mimo-v2.5",
+			wantThinking: false,
+			wantVision:   true,
+			wantTools:    true,
+			wantSearch:   searchStrategyNone,
+			wantFree:     false,
+		},
+		{
+			name:         "mimo v2.5 tts free and not tool",
+			modelID:      "mimo-v2.5-tts",
+			wantThinking: false,
+			wantVision:   false,
+			wantTools:    false,
+			wantSearch:   searchStrategyNone,
+			wantFree:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"data":[{"id":"` + tt.modelID + `","name":"` + tt.modelID + `"}]}`))
+			}))
+			defer server.Close()
+
+			models, err := Default.fetchProviderModelsWithClient(server.Client(), "sk-test", server.URL+"/v1", "Xiaomi MiMo")
+			if err != nil {
+				t.Fatalf("fetch provider models: %v", err)
+			}
+			if len(models) != 1 {
+				t.Fatalf("models len = %d, want 1", len(models))
+			}
+
+			got := models[0]
+			if got.IsThinking != tt.wantThinking {
+				t.Fatalf("is_thinking = %v, want %v for %s", got.IsThinking, tt.wantThinking, tt.modelID)
+			}
+			if got.SupportVision != tt.wantVision {
+				t.Fatalf("support_vision = %v, want %v for %s", got.SupportVision, tt.wantVision, tt.modelID)
+			}
+			if got.SupportTools != tt.wantTools {
+				t.Fatalf("support_tools = %v, want %v for %s", got.SupportTools, tt.wantTools, tt.modelID)
+			}
+			if got.SearchStrategy != tt.wantSearch {
+				t.Fatalf("search_strategy = %q, want %q for %s", got.SearchStrategy, tt.wantSearch, tt.modelID)
+			}
+			if got.IsFree != tt.wantFree {
+				t.Fatalf("is_free = %v, want %v for %s", got.IsFree, tt.wantFree, tt.modelID)
+			}
+		})
 	}
 }

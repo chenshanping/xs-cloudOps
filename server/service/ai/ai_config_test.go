@@ -4,11 +4,22 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/glebarez/sqlite"
+	"gorm.io/gorm"
+
 	appconfig "server/config"
 	"server/global"
 	"server/model"
 	"server/testutil"
 )
+
+func float64Ptr(value float64) *float64 {
+	return &value
+}
+
+func intPtr(value int) *int {
+	return &value
+}
 
 func TestAIServiceGetAdminConfigReadsPersistedAIConfig(t *testing.T) {
 	db := testutil.SetupStorageServiceTestDB(t)
@@ -121,6 +132,71 @@ func TestAIServiceGetAdminConfigFallsBackToLegacySysConfigAndMigrates(t *testing
 	}
 }
 
+func TestAIServiceGetAdminConfigNormalizesLegacyFallbackBeforeReturning(t *testing.T) {
+	db := testutil.SetupStorageServiceTestDB(t)
+
+	saved := `{"default_provider":"","providers":[{"name":"OpenAI","api_key":"sk-test","base_url":"https://api.openai.com/v1","models":[{"id":"gpt-4o","name":"GPT-4o","description":"default"}]},{"name":"DashScope","api_key":"sk-dash","base_url":"https://dashscope.aliyuncs.com/compatible-mode/v1","models":[{"id":"qwen-max","name":"qwen-max","description":"dash"}]}]}`
+	if err := db.Create(&model.SysConfig{
+		Name:      "AI配置",
+		Key:       "ai_config",
+		Value:     saved,
+		ValueType: "json",
+		Remark:    "AI平台配置",
+	}).Error; err != nil {
+		t.Fatalf("create legacy ai_config: %v", err)
+	}
+
+	cfg, err := Default.GetAdminConfig()
+	if err != nil {
+		t.Fatalf("GetAdminConfig error: %v", err)
+	}
+	if cfg.DefaultProvider != "OpenAI" {
+		t.Fatalf("default provider = %s, want OpenAI", cfg.DefaultProvider)
+	}
+
+	models, err := Default.GetModels()
+	if err != nil {
+		t.Fatalf("GetModels error: %v", err)
+	}
+	if len(models) != 1 || models[0].ID != "gpt-4o" {
+		t.Fatalf("models = %#v, want one gpt-4o", models)
+	}
+}
+
+func TestAIServiceGetAdminConfigNormalizesLegacyTagsToCapabilities(t *testing.T) {
+	db := testutil.SetupStorageServiceTestDB(t)
+
+	saved := `{"default_provider":"OpenAI","providers":[{"name":"OpenAI","api_key":"sk-test","base_url":"https://api.openai.com/v1","models":[{"id":"gpt-4o","name":"GPT-4o","description":"default","tags":["reasoning","vision","search","tool","free"]}]}]}`
+	if err := db.Create(&model.SysConfig{
+		Name:      "AI配置",
+		Key:       "ai_config",
+		Value:     saved,
+		ValueType: "json",
+		Remark:    "AI平台配置",
+	}).Error; err != nil {
+		t.Fatalf("create legacy ai_config: %v", err)
+	}
+
+	cfg, err := Default.GetAdminConfig()
+	if err != nil {
+		t.Fatalf("GetAdminConfig error: %v", err)
+	}
+	if len(cfg.Providers) != 1 || len(cfg.Providers[0].Models) != 1 {
+		t.Fatalf("cfg providers = %#v, want one provider with one model", cfg.Providers)
+	}
+
+	got := cfg.Providers[0].Models[0]
+	if !got.IsThinking || !got.SupportVision || !got.SupportTools || !got.IsFree {
+		t.Fatalf("normalized model flags = %#v", got)
+	}
+	if got.SearchStrategy == "" || got.SearchStrategy == "none" {
+		t.Fatalf("search strategy = %q, want normalized searchable strategy", got.SearchStrategy)
+	}
+	if len(got.Tags) == 0 {
+		t.Fatalf("normalized tags should not be empty: %#v", got)
+	}
+}
+
 func TestAIServiceGetAdminConfigReturnsEmptyConfigWhenMissing(t *testing.T) {
 	testutil.SetupStorageServiceTestDB(t)
 
@@ -147,7 +223,7 @@ func TestAIServiceGetAdminConfigReturnsEmptyConfigWhenMissing(t *testing.T) {
 	}
 }
 
-func TestAIServiceSaveAdminConfigUpsertsCompatibleAIConfig(t *testing.T) {
+func TestAIServiceSaveAdminConfigOnlyWritesProviders(t *testing.T) {
 	db := testutil.SetupStorageServiceTestDB(t)
 
 	oldModels, err := json.Marshal([]appconfig.AIModel{{ID: "old-model", Name: "Old Model", Description: "old"}})
@@ -183,7 +259,16 @@ func TestAIServiceSaveAdminConfigUpsertsCompatibleAIConfig(t *testing.T) {
 				APIKey:  "sk-new",
 				BaseURL: "https://provider.example/v1",
 				Models: []appconfig.AIModel{
-					{ID: "model-a", Name: "Model A", Description: "alpha"},
+					{
+						ID:             "model-a",
+						Name:           "Model A",
+						Description:    "alpha",
+						IsThinking:     true,
+						SupportVision:  true,
+						SearchStrategy: "builtin",
+						Temperature:    float64Ptr(0.6),
+						ContextWindow:  intPtr(32768),
+					},
 				},
 			},
 		},
@@ -228,7 +313,41 @@ func TestAIServiceSaveAdminConfigUpsertsCompatibleAIConfig(t *testing.T) {
 		t.Fatalf("reload legacy ai_config: %v", err)
 	}
 	if legacy.Value != `{"default_provider":"Old","providers":[]}` {
-		t.Fatalf("legacy ai_config value changed = %s", legacy.Value)
+		t.Fatalf("legacy ai_config should stay untouched, got %s", legacy.Value)
+	}
+}
+
+func TestAIServiceSaveAdminConfigEmptyDoesNotTouchLegacyFallback(t *testing.T) {
+	db := testutil.SetupStorageServiceTestDB(t)
+
+	if err := db.Create(&model.SysConfig{
+		Name:      "AI配置",
+		Key:       "ai_config",
+		Value:     `{"default_provider":"Legacy","providers":[{"name":"Legacy","api_key":"sk-legacy","base_url":"https://legacy.example/v1","models":[{"id":"legacy-model","name":"Legacy Model","description":""}]}]}`,
+		ValueType: "json",
+		Remark:    "legacy ai config",
+	}).Error; err != nil {
+		t.Fatalf("create legacy ai_config: %v", err)
+	}
+
+	if err := Default.SaveAdminConfig(&appconfig.AI{}); err != nil {
+		t.Fatalf("SaveAdminConfig error: %v", err)
+	}
+
+	var legacyCount int64
+	if err := db.Model(&model.SysConfig{}).Where("`key` = ?", "ai_config").Count(&legacyCount).Error; err != nil {
+		t.Fatalf("count legacy ai_config: %v", err)
+	}
+	if legacyCount != 1 {
+		t.Fatalf("legacy ai_config count = %d, want 1", legacyCount)
+	}
+
+	var providerCount int64
+	if err := db.Model(&model.AIProviderConfig{}).Count(&providerCount).Error; err != nil {
+		t.Fatalf("count ai_providers: %v", err)
+	}
+	if providerCount != 0 {
+		t.Fatalf("ai_providers count = %d, want 0", providerCount)
 	}
 }
 
@@ -310,5 +429,47 @@ func TestAIServiceResolveProviderUsesProvidersInsteadOfLegacySysConfig(t *testin
 	}
 	if provider.Name != "OpenAI" || provider.APIKey != "sk-provider" {
 		t.Fatalf("provider = %#v, want OpenAI from ai_providers", provider)
+	}
+}
+
+func TestAIServiceGetAdminConfigFallsBackWhenProvidersTableMissing(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite db: %v", err)
+	}
+	if err := db.AutoMigrate(&model.SysConfig{}); err != nil {
+		t.Fatalf("auto migrate sys_config: %v", err)
+	}
+
+	previousDB := global.DB
+	global.DB = db
+	t.Cleanup(func() {
+		global.DB = previousDB
+	})
+
+	if err := db.Create(&model.SysConfig{
+		Name:      "AI配置",
+		Key:       "ai_config",
+		Value:     `{"default_provider":"Legacy","providers":[{"name":"Legacy","api_key":"sk-legacy","base_url":"https://legacy.example/v1","models":[{"id":"legacy-model","name":"Legacy Model","description":""}]}]}`,
+		ValueType: "json",
+		Remark:    "legacy ai config",
+	}).Error; err != nil {
+		t.Fatalf("create legacy ai_config: %v", err)
+	}
+
+	cfg, err := Default.GetAdminConfig()
+	if err != nil {
+		t.Fatalf("GetAdminConfig error: %v", err)
+	}
+	if cfg.DefaultProvider != "Legacy" {
+		t.Fatalf("default provider = %s, want Legacy", cfg.DefaultProvider)
+	}
+
+	models, err := Default.GetModels()
+	if err != nil {
+		t.Fatalf("GetModels error: %v", err)
+	}
+	if len(models) != 1 || models[0].ID != "legacy-model" {
+		t.Fatalf("models = %#v, want one legacy-model", models)
 	}
 }

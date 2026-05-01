@@ -3,33 +3,36 @@
     <!-- 左侧对话列表 -->
     <div class="conversation-sidebar">
       <div class="sidebar-header">
-        <a-button v-if="!batchMode" type="primary" block @click="handleNewChat">
-          <template #icon><PlusOutlined /></template>
-          新对话
-        </a-button>
-        <div v-else class="batch-toolbar">
-          <a-checkbox
-            :checked="allVisibleSelected"
-            :indeterminate="partiallyVisibleSelected"
-            @change="handleToggleSelectAllVisible"
-          >
-            全选
-          </a-checkbox>
-          <span class="batch-count">已选 {{ selectedConversationIds.length }}</span>
-        </div>
-        <div class="sidebar-actions">
-          <a-button size="small" @click="toggleBatchMode">
-            {{ batchMode ? '完成' : '批量删除' }}
+        <div class="sidebar-header-top">
+          <a-button v-if="!batchMode" type="primary" class="new-chat-btn" @click="handleNewChat">
+            <template #icon><PlusOutlined /></template>
+            新对话
           </a-button>
-          <a-popconfirm
-            v-if="batchMode"
-            :title="`确定删除选中的 ${selectedConversationIds.length} 个对话吗？`"
-            @confirm="handleBatchDeleteConversations"
-          >
-            <a-button danger size="small" :disabled="selectedConversationIds.length === 0">
-              删除选中
+          <div v-else class="batch-toolbar">
+            <a-checkbox
+              :checked="allVisibleSelected"
+              :indeterminate="partiallyVisibleSelected"
+              @change="handleToggleSelectAllVisible"
+            >
+              全选
+            </a-checkbox>
+            <span class="batch-count">已选 {{ selectedConversationIds.length }}</span>
+          </div>
+
+          <div class="sidebar-actions">
+            <a-popconfirm
+              v-if="batchMode"
+              :title="`确定删除选中的 ${selectedConversationIds.length} 个对话吗？`"
+              @confirm="handleBatchDeleteConversations"
+            >
+              <a-button danger size="small" :disabled="selectedConversationIds.length === 0">
+                删除选中
+              </a-button>
+            </a-popconfirm>
+            <a-button size="small" @click="toggleBatchMode">
+              {{ batchMode ? '完成' : '批量删除' }}
             </a-button>
-          </a-popconfirm>
+          </div>
         </div>
         <a-input
           v-model:value="searchKeyword"
@@ -893,11 +896,22 @@ function renderMarkdown(text: string): string {
     padding: 16px;
     border-bottom: 1px solid #e8e8e8;
 
+    .sidebar-header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .new-chat-btn {
+      flex: 1;
+    }
+
     .batch-toolbar {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      gap: 12px;
+      flex: 1;
     }
 
     .batch-count {
@@ -908,7 +922,9 @@ function renderMarkdown(text: string): string {
     .sidebar-actions {
       display: flex;
       gap: 8px;
-      margin-top: 8px;
+      justify-content: flex-end;
+      flex-shrink: 0;
+      margin-top: 0;
     }
   }
   

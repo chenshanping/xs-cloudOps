@@ -38,6 +38,7 @@ type AITestRequest struct {
 }
 
 type AIProviderModelsFetchRequest struct {
-	APIKey  string `json:"api_key" binding:"required"`
-	BaseURL string `json:"base_url" binding:"required"`
+	APIKey       string `json:"api_key" binding:"required"`
+	BaseURL      string `json:"base_url" binding:"required"`
+	ProviderName string `json:"provider_name"`
 }

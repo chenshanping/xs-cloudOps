@@ -2,11 +2,11 @@
   <div class="ai-config">
     <a-spin :spinning="loading">
       <div class="ai-config-layout">
-        <section class="provider-panel">
-          <div class="panel-header">
+        <aside class="provider-sidebar">
+          <div class="sidebar-header">
             <div>
-              <div class="panel-title">AI 平台</div>
-              <div class="panel-subtitle">选择平台并维护本地导入模型</div>
+              <div class="sidebar-title">AI 平台</div>
+              <div class="sidebar-subtitle">左侧切换平台，右侧直接管理当前平台模型</div>
             </div>
             <a-button type="primary" @click="openCreateProviderDrawer">
               <template #icon><PlusOutlined /></template>
@@ -23,25 +23,28 @@
               :class="{ 'provider-item--active': index === selectedProviderIndex }"
               @click="selectProvider(index)"
             >
-              <div class="provider-item__header">
-                <span class="provider-item__name">{{ provider.name || '未命名平台' }}</span>
+              <div class="provider-item__head">
+                <div class="provider-item__name">{{ provider.name || '未命名平台' }}</div>
                 <a-tag v-if="isDefaultProvider(index)" color="blue">默认</a-tag>
               </div>
-              <div class="provider-item__meta">{{ provider.models.length }} 个已导入模型</div>
+              <div class="provider-item__meta">
+                <span>{{ provider.models.length }} 个模型</span>
+                <span>{{ provider.base_url || '未配置 Base URL' }}</span>
+              </div>
             </button>
           </div>
 
           <a-empty v-else description="暂未配置 AI 平台">
             <a-button type="primary" @click="openCreateProviderDrawer">新增第一个平台</a-button>
           </a-empty>
-        </section>
+        </aside>
 
-        <section class="models-panel">
+        <section class="workspace-panel">
           <template v-if="selectedProvider">
-            <div class="panel-header">
+            <div class="workspace-hero">
               <div>
-                <div class="panel-title">{{ selectedProvider.name || '未命名平台' }}</div>
-                <div class="panel-subtitle">
+                <div class="workspace-hero__title">{{ selectedProvider.name || '未命名平台' }}</div>
+                <div class="workspace-hero__subtitle">
                   {{ selectedProvider.base_url || '请先配置 Base URL' }}
                 </div>
               </div>
@@ -50,113 +53,130 @@
                   <template #icon><EditOutlined /></template>
                   编辑平台
                 </a-button>
-                <a-button type="primary" @click="openModelManagerDrawer">
+                <a-button @click="openCreateModelDrawer">
+                  <template #icon><PlusOutlined /></template>
+                  新增模型
+                </a-button>
+                <a-button @click="openImportDrawer">
                   <template #icon><CloudDownloadOutlined /></template>
-                  管理平台模型
+                  自动识别导入
+                </a-button>
+                <a-button type="primary" :loading="saving" @click="handleSave">
+                  <template #icon><SaveOutlined /></template>
+                  保存配置
                 </a-button>
               </a-space>
             </div>
 
-            <a-alert
-              class="page-alert"
-              type="info"
-              show-icon
-              message="模型导入只更新当前编辑态；仍需点击底部“保存配置”后才会真正落库。"
-            />
-
-            <div class="models-header">
-              <div>
-                <div class="models-title">已导入模型</div>
-                <div class="models-subtitle">支持本地维护显示名称、描述、顺序与测试。</div>
-              </div>
-              <a-button @click="addModel">
-                <template #icon><PlusOutlined /></template>
-                手动添加模型
-              </a-button>
+            <div class="workspace-summary">
+              <span class="summary-chip">已导入 {{ selectedProvider.models.length }} 个模型</span>
+              <span class="summary-chip">当前视图 {{ filteredProviderModels.length }} 个</span>
+              <span class="summary-chip">已选批量 {{ selectedBatchIndices.length }} 个</span>
+              <span class="summary-chip">默认平台 {{ isDefaultProvider(selectedProviderIndex) ? '是' : '否' }}</span>
             </div>
 
-            <a-table
-              :data-source="selectedProvider.models"
-              :columns="modelColumns"
-              :pagination="false"
-              :row-key="(_record, index) => `model-${index}`"
-              size="small"
-              class="models-table"
-              :locale="{ emptyText: '当前平台还没有已导入模型' }"
-            >
-              <template #bodyCell="{ column, index }">
-                <template v-if="column.key === 'id'">
-                  <a-input
-                    v-model:value="selectedProvider.models[index].id"
-                    size="small"
-                    placeholder="模型 ID"
-                  />
-                </template>
-                <template v-else-if="column.key === 'name'">
-                  <a-input
-                    v-model:value="selectedProvider.models[index].name"
-                    size="small"
-                    placeholder="显示名称"
-                  />
-                </template>
-                <template v-else-if="column.key === 'description'">
-                  <a-input
-                    v-model:value="selectedProvider.models[index].description"
-                    size="small"
-                    placeholder="模型描述"
-                  />
-                </template>
-                <template v-else-if="column.key === 'actions'">
-                  <div class="model-actions">
-                    <a-tooltip title="上移">
-                      <a-button
-                        type="text"
-                        size="small"
-                        :disabled="index === 0"
-                        @click="moveModel(index, -1)"
-                      >
-                        <template #icon><UpOutlined /></template>
-                      </a-button>
-                    </a-tooltip>
-                    <a-tooltip title="下移">
-                      <a-button
-                        type="text"
-                        size="small"
-                        :disabled="index === selectedProvider.models.length - 1"
-                        @click="moveModel(index, 1)"
-                      >
-                        <template #icon><DownOutlined /></template>
-                      </a-button>
-                    </a-tooltip>
-                    <a-tooltip title="测试">
-                      <a-button
-                        type="text"
-                        size="small"
-                        :loading="testingModel === `${selectedProviderIndex}-${index}`"
-                        @click="testModel(index)"
-                      >
-                        <template #icon><ThunderboltOutlined /></template>
-                      </a-button>
-                    </a-tooltip>
-                    <a-tooltip title="删除">
-                      <a-button type="text" danger size="small" @click="removeModel(index)">
-                        <template #icon><DeleteOutlined /></template>
-                      </a-button>
-                    </a-tooltip>
+            <div class="workspace-toolbar">
+              <div class="workspace-toolbar__main">
+                <div class="toolbar-title">模型工作区</div>
+                <div class="toolbar-meta">
+                  <span v-if="activeModel">当前模型：{{ activeModel.name || activeModel.id || '未命名模型' }}</span>
+                  <span v-else>请选择一个模型继续编辑、测试或排序</span>
+                </div>
+              </div>
+              <a-space wrap>
+                <a-button :disabled="!activeModel" @click="openEditModelDrawer()">
+                  编辑模型
+                </a-button>
+                <a-button :disabled="!activeModel" :loading="testingModel" @click="handleTestActiveModel">
+                  测试模型
+                </a-button>
+                <a-button :disabled="activeModelIndex <= 0" @click="moveActiveModel(-1)">上移</a-button>
+                <a-button
+                  :disabled="activeModelIndex < 0 || activeModelIndex >= selectedProvider.models.length - 1"
+                  @click="moveActiveModel(1)"
+                >
+                  下移
+                </a-button>
+                <a-popconfirm title="确定删除当前模型吗？" @confirm="handleRemoveActiveModel">
+                  <a-button danger :disabled="!activeModel">删除当前</a-button>
+                </a-popconfirm>
+                <a-popconfirm title="确定删除已选中的模型吗？" @confirm="handleBatchRemoveModels">
+                  <a-button danger :disabled="selectedBatchIndices.length === 0">批量删除</a-button>
+                </a-popconfirm>
+              </a-space>
+            </div>
+
+            <div class="workspace-filters">
+              <a-tabs v-model:activeKey="activeCapabilityTab" class="workspace-tabs">
+                <a-tab-pane
+                  v-for="item in capabilityTabOptions"
+                  :key="item.value"
+                  :tab="`${item.label} (${getCapabilityCount(item.value)})`"
+                />
+              </a-tabs>
+              <a-input-search
+                v-model:value="modelKeyword"
+                allow-clear
+                placeholder="搜索模型 ID / 名称 / 描述"
+                class="workspace-search"
+              />
+            </div>
+
+            <div v-if="filteredProviderModels.length > 0" class="model-grid">
+              <article
+                v-for="entry in filteredProviderModels"
+                :key="`${entry.index}-${entry.model.id || entry.model.name || 'model'}`"
+                class="model-card"
+                :class="{ 'model-card--active': entry.index === activeModelIndex }"
+                @click="selectActiveModel(entry.index)"
+              >
+                <div class="model-card__head">
+                  <div class="model-card__title-wrap">
+                    <div class="model-card__name">{{ entry.model.name || entry.model.id || '未命名模型' }}</div>
+                    <div class="model-card__id">{{ entry.model.id || '待填写模型 ID' }}</div>
                   </div>
-                </template>
-              </template>
-            </a-table>
+                  <a-checkbox
+                    :checked="selectedBatchSet.has(entry.index)"
+                    @click.stop
+                    @change="toggleBatchModel(entry.index)"
+                  />
+                </div>
+
+                <div class="model-card__tags">
+                  <a-tag
+                    v-for="tag in getModelCapabilityTags(entry.model)"
+                    :key="tag"
+                    :color="capabilityTagMetaMap[tag].color"
+                  >
+                    {{ capabilityTagMetaMap[tag].label }}
+                  </a-tag>
+                  <span v-if="getModelCapabilityTags(entry.model).length === 0" class="model-card__placeholder">未识别能力</span>
+                </div>
+
+                <div class="model-card__meta">
+                  <span>联网 {{ formatSearchStrategyLabel(entry.model.search_strategy) }}</span>
+                  <span>温度 {{ formatTemperature(entry.model.temperature) }}</span>
+                  <span>上下文 {{ formatContextWindow(entry.model.context_window) }}</span>
+                </div>
+
+                <div v-if="entry.model.description" class="model-card__desc">{{ entry.model.description }}</div>
+
+                <div class="model-card__footer">
+                  <span>排序 {{ entry.index + 1 }}</span>
+                  <a-button type="link" size="small" @click.stop="openEditModelDrawer(entry.index)">编辑</a-button>
+                </div>
+              </article>
+            </div>
+
+            <a-empty v-else description="当前筛选条件下没有模型">
+              <a-button type="primary" @click="openCreateModelDrawer">新增模型</a-button>
+            </a-empty>
           </template>
 
           <a-empty v-else description="请先新增 AI 平台">
             <a-button type="primary" @click="openCreateProviderDrawer">新增平台</a-button>
           </a-empty>
         </section>
-      </div>
-
-      <div class="page-actions">
-        <a-button type="primary" :loading="saving" @click="handleSave">保存配置</a-button>
       </div>
     </a-spin>
 
@@ -170,12 +190,22 @@
       @remove="handleProviderRemove"
     />
 
-    <ProviderModelManagerDrawer
-      v-model:open="modelManagerDrawerOpen"
+    <ProviderModelEditorDrawer
+      v-model:open="modelEditorOpen"
+      :is-edit="modelEditorMode === 'edit'"
+      :model="modelEditorInitialValue"
+      :provider-name="selectedProvider?.name ?? ''"
+      @submit="handleModelSubmit"
+      @remove="handleModelRemoveFromDrawer"
+      @test="handleTestModel"
+    />
+
+    <ProviderRemoteModelImportDrawer
+      v-model:open="importDrawerOpen"
       :provider-name="selectedProvider?.name ?? ''"
       :api-key="selectedProvider?.api_key ?? ''"
       :provider-base-url="selectedProvider?.base_url ?? ''"
-      :local-models="selectedProvider?.models ?? []"
+      :existing-models="selectedProvider?.models ?? []"
       @import="handleImportModels"
     />
   </div>
@@ -186,24 +216,31 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import {
   CloudDownloadOutlined,
-  DeleteOutlined,
-  DownOutlined,
   EditOutlined,
   PlusOutlined,
-  ThunderboltOutlined,
-  UpOutlined,
+  SaveOutlined,
 } from '@ant-design/icons-vue'
 import { aiTest, getAIConfig, updateAIConfig } from '@/api/ai'
 import { cloneFromSnapshot, createSnapshot, isSnapshotDirty } from '../config-tab-guard'
 import ProviderEditorDrawer from './ai-config/ProviderEditorDrawer.vue'
-import ProviderModelManagerDrawer from './ai-config/ProviderModelManagerDrawer.vue'
+import ProviderModelEditorDrawer from './ai-config/ProviderModelEditorDrawer.vue'
+import ProviderRemoteModelImportDrawer from './ai-config/ProviderRemoteModelImportDrawer.vue'
 import {
+  capabilityTabOptions,
+  capabilityTagMetaMap,
   createEmptyModel,
   createEmptyProvider,
+  filterModelsByCapabilityAndKeyword,
+  formatSearchStrategyLabel,
+  getModelCapabilityTags,
+  matchesModelCapability,
   mergeImportedModels,
   normalizeAIConfig,
+  normalizeModel,
+  serializeModel,
   type AIConfigState,
-  type RemoteProviderModel,
+  type AIModel,
+  type AIModelCapabilityKey,
 } from './ai-config/state'
 
 interface ProviderEditorSubmitValue {
@@ -213,26 +250,30 @@ interface ProviderEditorSubmitValue {
   isDefault: boolean
 }
 
-const modelColumns = [
-  { title: '模型 ID', key: 'id', width: 220 },
-  { title: '显示名称', key: 'name', width: 220 },
-  { title: '模型描述', key: 'description' },
-  { title: '操作', key: 'actions', width: 180, fixed: 'right' as const },
-]
-
-const loading = ref(true)
-const saving = ref(false)
-const selectedProviderIndex = ref(0)
-const providerDrawerOpen = ref(false)
-const providerDrawerMode = ref<'create' | 'edit'>('create')
-const editingProviderIndex = ref<number | null>(null)
-const modelManagerDrawerOpen = ref(false)
-const testingModel = ref<string | null>(null)
-const initialized = ref(false)
-
 const emit = defineEmits<{
   (e: 'dirty-change', value: boolean): void
 }>()
+
+const loading = ref(true)
+const saving = ref(false)
+const initialized = ref(false)
+const selectedProviderIndex = ref(0)
+const activeModelIndex = ref(-1)
+const activeCapabilityTab = ref<AIModelCapabilityKey>('all')
+const modelKeyword = ref('')
+const selectedBatchIndices = ref<number[]>([])
+const testingModel = ref(false)
+
+const providerDrawerOpen = ref(false)
+const providerDrawerMode = ref<'create' | 'edit'>('create')
+const editingProviderIndex = ref<number | null>(null)
+
+const modelEditorOpen = ref(false)
+const modelEditorMode = ref<'create' | 'edit'>('create')
+const editingModelIndex = ref<number | null>(null)
+const modelEditorInitialValue = ref<AIModel>(createEmptyModel())
+
+const importDrawerOpen = ref(false)
 
 const formData = reactive<AIConfigState>({
   default_provider: '',
@@ -241,17 +282,36 @@ const formData = reactive<AIConfigState>({
 
 const selectedProvider = computed(() => formData.providers[selectedProviderIndex.value] ?? null)
 const providerNames = computed(() => formData.providers.map(provider => provider.name))
-const editingProvider = computed(() => {
-  if (editingProviderIndex.value === null) {
-    return undefined
+const editingProvider = computed(() => (
+  editingProviderIndex.value === null ? undefined : formData.providers[editingProviderIndex.value]
+))
+const editingProviderIsDefault = computed(() => (
+  editingProviderIndex.value === null
+    ? formData.providers.length === 0
+    : isDefaultProvider(editingProviderIndex.value)
+))
+const activeModel = computed(() => {
+  const provider = selectedProvider.value
+  if (!provider || activeModelIndex.value < 0 || activeModelIndex.value >= provider.models.length) {
+    return null
   }
-  return formData.providers[editingProviderIndex.value]
+  return provider.models[activeModelIndex.value]
 })
-const editingProviderIsDefault = computed(() => {
-  if (editingProviderIndex.value === null) {
-    return formData.providers.length === 0
+const selectedBatchSet = computed(() => new Set(selectedBatchIndices.value))
+const filteredProviderModels = computed(() => {
+  const provider = selectedProvider.value
+  if (!provider) {
+    return []
   }
-  return isDefaultProvider(editingProviderIndex.value)
+  const filtered = filterModelsByCapabilityAndKeyword(
+    provider.models,
+    activeCapabilityTab.value,
+    modelKeyword.value,
+  )
+  const visibleSet = new Set(filtered)
+  return provider.models
+    .map((model, index) => ({ model, index }))
+    .filter(entry => visibleSet.has(entry.model))
 })
 
 const getConfigState = (): AIConfigState => ({
@@ -260,12 +320,23 @@ const getConfigState = (): AIConfigState => ({
     name: provider.name,
     api_key: provider.api_key,
     base_url: provider.base_url,
-    models: provider.models.map(model => ({
-      id: model.id,
-      name: model.name,
-      description: model.description,
-    })),
+    models: provider.models.map(model => serializeModel(model)),
   })),
+})
+
+const baselineSnapshot = ref(createSnapshot(getConfigState()))
+const hasUnsavedChanges = computed(() => initialized.value && isSnapshotDirty(baselineSnapshot.value, getConfigState()))
+
+watch(
+  hasUnsavedChanges,
+  value => emit('dirty-change', value),
+  { immediate: true },
+)
+
+watch(selectedProviderIndex, () => {
+  activeCapabilityTab.value = 'all'
+  modelKeyword.value = ''
+  syncModelSelection(0)
 })
 
 const syncSelectedProviderIndex = (preferredIndex = selectedProviderIndex.value) => {
@@ -276,6 +347,17 @@ const syncSelectedProviderIndex = (preferredIndex = selectedProviderIndex.value)
   selectedProviderIndex.value = Math.min(Math.max(preferredIndex, 0), formData.providers.length - 1)
 }
 
+const syncModelSelection = (preferredIndex = activeModelIndex.value) => {
+  const provider = selectedProvider.value
+  if (!provider || provider.models.length === 0) {
+    activeModelIndex.value = -1
+    selectedBatchIndices.value = []
+    return
+  }
+  activeModelIndex.value = Math.min(Math.max(preferredIndex, 0), provider.models.length - 1)
+  selectedBatchIndices.value = selectedBatchIndices.value.filter(index => index >= 0 && index < provider.models.length)
+}
+
 const applyConfigState = (state?: Partial<AIConfigState> | null) => {
   const normalized = normalizeAIConfig(state)
   formData.default_provider = normalized.default_provider
@@ -284,18 +366,8 @@ const applyConfigState = (state?: Partial<AIConfigState> | null) => {
     formData.default_provider = formData.providers[0].name
   }
   syncSelectedProviderIndex()
+  syncModelSelection(0)
 }
-
-const baselineSnapshot = ref(createSnapshot(getConfigState()))
-const hasUnsavedChanges = computed(() => initialized.value && isSnapshotDirty(baselineSnapshot.value, getConfigState()))
-
-watch(
-  hasUnsavedChanges,
-  value => {
-    emit('dirty-change', value)
-  },
-  { immediate: true },
-)
 
 const loadConfig = async () => {
   loading.value = true
@@ -309,6 +381,34 @@ const loadConfig = async () => {
     baselineSnapshot.value = createSnapshot(getConfigState())
     initialized.value = true
     loading.value = false
+  }
+}
+
+const selectProvider = (index: number) => {
+  selectedProviderIndex.value = index
+}
+
+const selectActiveModel = (index: number) => {
+  activeModelIndex.value = index
+}
+
+const toggleBatchModel = (index: number) => {
+  if (selectedBatchSet.value.has(index)) {
+    selectedBatchIndices.value = selectedBatchIndices.value.filter(item => item !== index)
+    return
+  }
+  selectedBatchIndices.value = [...selectedBatchIndices.value, index].sort((a, b) => a - b)
+}
+
+const isDefaultProvider = (index: number) => formData.providers[index]?.name === formData.default_provider
+
+const ensureDefaultProvider = () => {
+  if (formData.providers.length === 0) {
+    formData.default_provider = ''
+    return
+  }
+  if (!formData.providers.some(provider => provider.name === formData.default_provider)) {
+    formData.default_provider = formData.providers[0].name
   }
 }
 
@@ -328,23 +428,6 @@ const openEditProviderDrawer = () => {
   providerDrawerOpen.value = true
 }
 
-const selectProvider = (index: number) => {
-  selectedProviderIndex.value = index
-}
-
-const isDefaultProvider = (index: number) => formData.providers[index]?.name === formData.default_provider
-
-const ensureDefaultProvider = () => {
-  if (formData.providers.length === 0) {
-    formData.default_provider = ''
-    return
-  }
-  const hasDefaultProvider = formData.providers.some(provider => provider.name === formData.default_provider)
-  if (!hasDefaultProvider) {
-    formData.default_provider = formData.providers[0].name
-  }
-}
-
 const handleProviderSubmit = (value: ProviderEditorSubmitValue) => {
   if (providerDrawerMode.value === 'create') {
     formData.providers.push({
@@ -359,22 +442,19 @@ const handleProviderSubmit = (value: ProviderEditorSubmitValue) => {
     } else {
       ensureDefaultProvider()
     }
+    syncModelSelection(-1)
   } else if (editingProviderIndex.value !== null) {
     const provider = formData.providers[editingProviderIndex.value]
     const previousName = provider.name
     provider.name = value.name
     provider.api_key = value.api_key
     provider.base_url = value.base_url
-
-    if (value.isDefault) {
-      formData.default_provider = value.name
-    } else if (formData.default_provider === previousName) {
+    if (value.isDefault || formData.default_provider === previousName) {
       formData.default_provider = value.name
     }
     ensureDefaultProvider()
     selectedProviderIndex.value = editingProviderIndex.value
   }
-
   providerDrawerOpen.value = false
 }
 
@@ -383,7 +463,6 @@ const handleProviderRemove = () => {
   if (index < 0 || index >= formData.providers.length) {
     return
   }
-
   const removed = formData.providers[index]
   formData.providers.splice(index, 1)
   if (formData.default_provider === removed.name) {
@@ -392,49 +471,131 @@ const handleProviderRemove = () => {
   providerDrawerOpen.value = false
   ensureDefaultProvider()
   syncSelectedProviderIndex(index)
+  syncModelSelection(0)
   message.success(`已删除平台 ${removed.name || '未命名平台'}`)
 }
 
-const openModelManagerDrawer = () => {
+const hasModelIDConflict = (value: AIModel, ignoreIndex = -1) => {
+  const provider = selectedProvider.value
+  if (!provider || !value.id.trim()) {
+    return false
+  }
+  return provider.models.some((model, index) => index !== ignoreIndex && model.id.trim() === value.id.trim())
+}
+
+const openCreateModelDrawer = () => {
   if (!selectedProvider.value) {
     message.warning('请先选择平台')
     return
   }
-  modelManagerDrawerOpen.value = true
+  modelEditorMode.value = 'create'
+  editingModelIndex.value = null
+  modelEditorInitialValue.value = createEmptyModel()
+  modelEditorOpen.value = true
 }
 
-const addModel = () => {
-  if (!selectedProvider.value) {
-    return
-  }
-  selectedProvider.value.models.push(createEmptyModel())
-}
-
-const removeModel = (modelIndex: number) => {
-  selectedProvider.value?.models.splice(modelIndex, 1)
-}
-
-const moveModel = (modelIndex: number, direction: number) => {
-  const models = selectedProvider.value?.models
-  if (!models) {
-    return
-  }
-  const targetIndex = modelIndex + direction
-  if (targetIndex < 0 || targetIndex >= models.length) {
-    return
-  }
-  const current = models[modelIndex]
-  models[modelIndex] = models[targetIndex]
-  models[targetIndex] = current
-}
-
-const testModel = async (modelIndex: number) => {
+const openEditModelDrawer = (index = activeModelIndex.value) => {
   const provider = selectedProvider.value
-  const model = provider?.models[modelIndex]
-  if (!provider || !model) {
+  if (!provider || index < 0 || index >= provider.models.length) {
+    message.warning('请先选择要编辑的模型')
+    return
+  }
+  modelEditorMode.value = 'edit'
+  editingModelIndex.value = index
+  modelEditorInitialValue.value = normalizeModel(provider.models[index])
+  modelEditorOpen.value = true
+}
+
+const handleModelSubmit = (value: AIModel) => {
+  const provider = selectedProvider.value
+  if (!provider) {
+    return
+  }
+  const normalized = normalizeModel(value)
+  const ignoreIndex = modelEditorMode.value === 'edit' ? (editingModelIndex.value ?? -1) : -1
+  if (hasModelIDConflict(normalized, ignoreIndex)) {
+    message.warning(`当前平台下已存在模型 ID：${normalized.id}`)
     return
   }
 
+  if (modelEditorMode.value === 'create') {
+    provider.models.push(normalized)
+    activeModelIndex.value = provider.models.length - 1
+  } else if (editingModelIndex.value !== null) {
+    provider.models[editingModelIndex.value] = normalized
+    activeModelIndex.value = editingModelIndex.value
+  }
+
+  syncModelSelection(activeModelIndex.value)
+  modelEditorOpen.value = false
+}
+
+const handleModelRemoveFromDrawer = () => {
+  handleRemoveModelByIndex(editingModelIndex.value ?? activeModelIndex.value)
+  modelEditorOpen.value = false
+}
+
+const handleRemoveModelByIndex = (index: number) => {
+  const provider = selectedProvider.value
+  if (!provider || index < 0 || index >= provider.models.length) {
+    return
+  }
+  provider.models.splice(index, 1)
+  selectedBatchIndices.value = selectedBatchIndices.value
+    .filter(item => item !== index)
+    .map(item => (item > index ? item - 1 : item))
+  syncModelSelection(Math.min(index, provider.models.length - 1))
+  message.success('模型已删除')
+}
+
+const handleRemoveActiveModel = () => {
+  handleRemoveModelByIndex(activeModelIndex.value)
+}
+
+const handleBatchRemoveModels = () => {
+  const provider = selectedProvider.value
+  if (!provider || selectedBatchIndices.value.length === 0) {
+    return
+  }
+  const indices = [...selectedBatchIndices.value].sort((a, b) => b - a)
+  for (const index of indices) {
+    provider.models.splice(index, 1)
+  }
+  selectedBatchIndices.value = []
+  syncModelSelection(Math.min(activeModelIndex.value, provider.models.length - 1))
+  message.success(`已删除 ${indices.length} 个模型`)
+}
+
+const moveActiveModel = (direction: number) => {
+  const provider = selectedProvider.value
+  if (!provider || activeModelIndex.value < 0) {
+    return
+  }
+  const currentIndex = activeModelIndex.value
+  const nextIndex = currentIndex + direction
+  if (nextIndex < 0 || nextIndex >= provider.models.length) {
+    return
+  }
+  const current = provider.models[currentIndex]
+  provider.models[currentIndex] = provider.models[nextIndex]
+  provider.models[nextIndex] = current
+  selectedBatchIndices.value = selectedBatchIndices.value.map((item) => {
+    if (item === currentIndex) {
+      return nextIndex
+    }
+    if (item === nextIndex) {
+      return currentIndex
+    }
+    return item
+  }).sort((a, b) => a - b)
+  activeModelIndex.value = nextIndex
+}
+
+const runModelTest = async (model: AIModel) => {
+  const provider = selectedProvider.value
+  if (!provider) {
+    return
+  }
   if (!provider.api_key.trim()) {
     message.warning('请先填写当前平台的 API Key')
     return
@@ -448,7 +609,7 @@ const testModel = async (modelIndex: number) => {
     return
   }
 
-  testingModel.value = `${selectedProviderIndex.value}-${modelIndex}`
+  testingModel.value = true
   try {
     await aiTest({
       api_key: provider.api_key,
@@ -459,32 +620,64 @@ const testModel = async (modelIndex: number) => {
   } catch (error: any) {
     message.error(error.message || '测试失败')
   } finally {
-    testingModel.value = null
+    testingModel.value = false
   }
 }
 
-const handleImportModels = (models: RemoteProviderModel[]) => {
-  if (!selectedProvider.value) {
+const handleTestModel = async (model: AIModel) => {
+  await runModelTest(model)
+}
+
+const handleTestActiveModel = async () => {
+  if (!activeModel.value) {
+    message.warning('请先选择模型')
     return
   }
-  const result = mergeImportedModels(selectedProvider.value.models, models)
-  selectedProvider.value.models = result.models
+  await runModelTest(activeModel.value)
+}
 
-  if (result.importedCount > 0) {
-    message.success(`已导入 ${result.importedCount} 个模型，重复跳过 ${result.skippedCount} 个`)
+const openImportDrawer = () => {
+  if (!selectedProvider.value) {
+    message.warning('请先选择平台')
+    return
+  }
+  importDrawerOpen.value = true
+}
+
+const handleImportModels = (models: AIModel[]) => {
+  const provider = selectedProvider.value
+  if (!provider) {
+    return
+  }
+  const merged = mergeImportedModels(provider.models, models)
+  provider.models = merged.models
+  if (merged.importedCount > 0) {
+    const firstImportedId = models.find(model => model.id)?.id ?? ''
+    const nextIndex = provider.models.findIndex(model => model.id === firstImportedId)
+    syncModelSelection(nextIndex >= 0 ? nextIndex : provider.models.length - 1)
+    message.success(`已导入 ${merged.importedCount} 个模型${merged.skippedCount > 0 ? `，跳过 ${merged.skippedCount} 个重复模型` : ''}`)
     return
   }
   message.info('所选模型都已存在，未重复导入')
 }
 
+const getCapabilityCount = (capability: AIModelCapabilityKey) => {
+  const provider = selectedProvider.value
+  if (!provider) {
+    return 0
+  }
+  return provider.models.filter(model => matchesModelCapability(model, capability)).length
+}
+
+const formatTemperature = (value: number | null) => (typeof value === 'number' ? value.toFixed(1) : '-')
+const formatContextWindow = (value: number | null) => (typeof value === 'number' && value > 0 ? `${value}` : '-')
+
 const validateBeforeSave = () => {
   const providerNameSet = new Set<string>()
-
   for (const provider of formData.providers) {
     provider.name = provider.name.trim()
     provider.api_key = provider.api_key.trim()
     provider.base_url = provider.base_url.trim()
-
     if (!provider.name) {
       message.warning('请填写平台名称')
       return false
@@ -494,30 +687,25 @@ const validateBeforeSave = () => {
       return false
     }
     providerNameSet.add(provider.name)
-
     if (!provider.base_url) {
       message.warning(`请填写 ${provider.name} 的 Base URL`)
       return false
     }
-
     const modelIDSet = new Set<string>()
-    for (const model of provider.models) {
-      model.id = model.id.trim()
-      model.name = (model.name || model.id).trim()
-      model.description = model.description.trim()
-
-      if (!model.id) {
+    for (let index = 0; index < provider.models.length; index += 1) {
+      const normalized = serializeModel(provider.models[index])
+      provider.models[index] = normalized
+      if (!normalized.id) {
         message.warning(`请填写 ${provider.name} 平台下的模型 ID`)
         return false
       }
-      if (modelIDSet.has(model.id)) {
-        message.warning(`平台 ${provider.name} 下存在重复模型 ID：${model.id}`)
+      if (modelIDSet.has(normalized.id)) {
+        message.warning(`平台 ${provider.name} 下存在重复模型 ID：${normalized.id}`)
         return false
       }
-      modelIDSet.add(model.id)
+      modelIDSet.add(normalized.id)
     }
   }
-
   ensureDefaultProvider()
   return true
 }
@@ -526,7 +714,6 @@ const save = async () => {
   if (!validateBeforeSave()) {
     return false
   }
-
   saving.value = true
   try {
     await updateAIConfig(getConfigState())
@@ -549,7 +736,8 @@ const discardChanges = () => {
 
 const closeTransientUi = () => {
   providerDrawerOpen.value = false
-  modelManagerDrawerOpen.value = false
+  modelEditorOpen.value = false
+  importDrawerOpen.value = false
 }
 
 const handleSave = async () => {
@@ -569,186 +757,239 @@ defineExpose({
 </script>
 
 <style scoped>
-.ai-config {
-  display: flex;
-  flex-direction: column;
+.ai-config-layout {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
   gap: 16px;
+  min-height: 680px;
   color: var(--app-text-color);
 }
 
-.ai-config-layout {
-  display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-}
-
-.provider-panel,
-.models-panel {
+.provider-sidebar,
+.workspace-panel {
   border: 1px solid var(--app-border-color);
-  border-radius: 10px;
+  border-radius: 18px;
   background: var(--app-surface-color);
-  padding: 16px;
 }
 
-.panel-header {
+.provider-sidebar {
   display: flex;
+  flex-direction: column;
+  padding: 18px 16px;
+  background: linear-gradient(180deg, var(--app-surface-color) 0%, var(--app-surface-soft) 100%);
+}
+
+.workspace-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  min-width: 0;
+}
+
+.sidebar-header,
+.workspace-hero,
+.workspace-toolbar,
+.workspace-filters,
+.model-card__head,
+.model-card__footer {
+  display: flex;
+  gap: 16px;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
 }
 
-.panel-title {
-  font-size: 16px;
+.sidebar-title,
+.workspace-hero__title,
+.toolbar-title {
+  font-size: 18px;
   font-weight: 600;
   color: var(--app-text-strong);
 }
 
-.panel-subtitle {
-  margin-top: 4px;
+.sidebar-subtitle,
+.workspace-hero__subtitle,
+.toolbar-meta,
+.provider-item__meta,
+.summary-chip,
+.model-card__id,
+.model-card__meta,
+.model-card__desc,
+.model-card__placeholder,
+.model-card__footer {
   color: var(--app-text-secondary);
-  word-break: break-all;
+}
+
+.sidebar-subtitle,
+.workspace-hero__subtitle,
+.toolbar-meta {
+  margin-top: 4px;
 }
 
 .provider-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  margin-top: 18px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .provider-item {
   width: 100%;
   border: 1px solid var(--app-border-color);
-  border-radius: 10px;
+  border-radius: 16px;
+  background: var(--app-surface-color);
   padding: 14px 16px;
-  background: var(--app-surface-soft);
+  color: var(--app-text-color);
   cursor: pointer;
   text-align: left;
   transition: all 0.2s ease;
-  color: var(--app-text-color);
 }
 
-.provider-item:hover,
+.provider-item:hover {
+  border-color: var(--app-primary-color);
+  background: var(--app-hover-bg);
+}
+
 .provider-item--active {
   border-color: var(--app-primary-color);
   background: var(--app-primary-color-soft);
+  box-shadow: 0 12px 24px rgba(24, 144, 255, 0.12);
 }
 
-.provider-item__header {
+.provider-item__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
 
-.provider-item__name {
-  min-width: 0;
+.provider-item__name,
+.model-card__name {
   font-weight: 600;
   color: var(--app-text-strong);
 }
 
 .provider-item__meta {
-  margin-top: 8px;
-  color: var(--app-text-secondary);
-  font-size: 12px;
-}
-
-.page-alert {
-  margin-bottom: 16px;
-}
-
-.models-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.workspace-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.summary-chip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--app-border-color);
+  background: var(--app-surface-soft);
+  font-size: 13px;
+}
+
+.workspace-toolbar {
+  padding: 14px 16px;
+  border: 1px solid var(--app-border-color);
+  border-radius: 16px;
+  background: var(--app-surface-soft);
+}
+
+.workspace-toolbar__main {
+  min-width: 0;
+}
+
+.workspace-tabs {
+  min-width: 0;
+  flex: 1;
+}
+
+.workspace-search {
+  width: 320px;
+  flex-shrink: 0;
+}
+
+.model-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.model-card {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
-  margin-bottom: 12px;
+  padding: 16px;
+  border: 1px solid var(--app-border-color);
+  border-radius: 18px;
+  background: linear-gradient(180deg, var(--app-surface-color) 0%, var(--app-surface-soft) 100%);
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
 
-.models-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--app-text-strong);
+.model-card:hover,
+.model-card--active {
+  border-color: var(--app-primary-color);
+  box-shadow: 0 16px 28px rgba(15, 23, 42, 0.1);
+  transform: translateY(-2px);
 }
 
-.models-subtitle {
-  margin-top: 4px;
-  color: var(--app-text-secondary);
+.model-card__title-wrap {
+  min-width: 0;
+  flex: 1;
 }
 
-.models-table :deep(.ant-table-cell) {
-  vertical-align: middle;
+.model-card__id,
+.model-card__meta,
+.model-card__desc {
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.model-card__tags,
+.model-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
 }
 
 .ai-config :deep(.ant-empty-description) {
   color: var(--app-text-secondary);
 }
 
-.ai-config :deep(.ant-alert) {
-  border-color: var(--app-border-color);
+.ai-config :deep(.ant-tabs-nav) {
+  margin-bottom: 0;
 }
 
-.ai-config :deep(.ant-alert-message),
-.ai-config :deep(.ant-alert-description) {
-  color: var(--app-text-color);
-}
-
-.models-table :deep(.ant-table) {
-  background: transparent;
-  color: var(--app-text-color);
-}
-
-.models-table :deep(.ant-table-container) {
-  border: 1px solid var(--app-border-color);
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.models-table :deep(.ant-table-thead > tr > th) {
-  background: var(--app-surface-soft);
-  color: var(--app-text-strong);
-  border-bottom-color: var(--app-border-color);
-}
-
-.models-table :deep(.ant-table-tbody > tr > td) {
-  background: var(--app-surface-color);
-  border-bottom-color: var(--app-border-color);
-  color: var(--app-text-color);
-}
-
-.models-table :deep(.ant-table-tbody > tr:hover > td) {
-  background: var(--app-hover-bg);
-}
-
-.models-table :deep(.ant-table-placeholder > td) {
-  background: var(--app-surface-color);
-}
-
-.models-table :deep(.ant-input) {
-  background: var(--app-surface-soft);
-  border-color: var(--app-border-color);
-  color: var(--app-text-color);
-}
-
-.models-table :deep(.ant-input::placeholder) {
-  color: var(--app-text-muted);
-}
-
-.model-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-}
-
-.page-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-@media (max-width: 960px) {
+@media (max-width: 1200px) {
   .ai-config-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar-header,
+  .workspace-hero,
+  .workspace-toolbar,
+  .workspace-filters,
+  .model-card__head,
+  .model-card__footer {
+    flex-direction: column;
+  }
+
+  .workspace-search {
+    width: 100%;
+  }
+
+  .model-grid {
     grid-template-columns: 1fr;
   }
 }

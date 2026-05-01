@@ -386,7 +386,7 @@ func (a *AIApi) FetchProviderModels(c *gin.Context) {
 		return
 	}
 
-	models, err := service.AI.FetchProviderModels(req.APIKey, req.BaseURL)
+	models, err := service.AI.FetchProviderModels(req.APIKey, req.BaseURL, req.ProviderName)
 	if err != nil {
 		if fetchErr, ok := err.(*service.AIProviderModelFetchError); ok {
 			response.FailWithCode(c, fetchErr.Code, fetchErr.Message)

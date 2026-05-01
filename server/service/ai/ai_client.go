@@ -33,7 +33,7 @@ func (e *AIProviderModelFetchError) Error() string {
 }
 
 type openAIModelsResponse struct {
-	Data []modelresponse.AIProviderModelItem `json:"data"`
+	Data []map[string]any `json:"data"`
 }
 
 func (s *AIService) defaultModelID() (string, error) {
@@ -161,9 +161,7 @@ func (s *AIService) TestConfig(apiKey, baseURL, model string) error {
 
 	reqBody := ChatCompletionRequest{
 		Model: model,
-		Messages: []ChatMessage{
-			{Role: "user", Content: "你好，请回复OK"},
-		},
+		Messages: buildTestConfigMessages(model),
 		Stream: false,
 	}
 
@@ -208,6 +206,20 @@ func (s *AIService) TestConfig(apiKey, baseURL, model string) error {
 	return nil
 }
 
+func buildTestConfigMessages(model string) []ChatMessage {
+	testContent := "你好，请回复OK"
+	messages := []ChatMessage{
+		{Role: "user", Content: testContent},
+	}
+	if isXiaomiMimoTTSModel(lowerBaseModelName(model)) {
+		messages = append(messages, ChatMessage{
+			Role:    "assistant",
+			Content: testContent,
+		})
+	}
+	return messages
+}
+
 func buildChatCompletionRequest(modelName string, messages []ChatMessage, stream bool, enableSearch bool, enableThinking bool) ChatCompletionRequest {
 	req := ChatCompletionRequest{
 		Model:          modelName,
@@ -240,12 +252,12 @@ func cloneChatMessages(messages []ChatMessage) []ChatMessage {
 	return cloned
 }
 
-func (s *AIService) FetchProviderModels(apiKey, baseURL string) ([]modelresponse.AIProviderModelItem, error) {
+func (s *AIService) FetchProviderModels(apiKey, baseURL, providerName string) ([]modelresponse.AIProviderModelItem, error) {
 	client := &http.Client{Timeout: providerModelsFetchTimeout}
-	return s.fetchProviderModelsWithClient(client, apiKey, baseURL)
+	return s.fetchProviderModelsWithClient(client, apiKey, baseURL, providerName)
 }
 
-func (s *AIService) fetchProviderModelsWithClient(client *http.Client, apiKey, baseURL string) ([]modelresponse.AIProviderModelItem, error) {
+func (s *AIService) fetchProviderModelsWithClient(client *http.Client, apiKey, baseURL, providerName string) ([]modelresponse.AIProviderModelItem, error) {
 	if strings.TrimSpace(apiKey) == "" {
 		return nil, &AIProviderModelFetchError{Code: 400, Message: "请先填写 API Key"}
 	}
@@ -257,10 +269,11 @@ func (s *AIService) fetchProviderModelsWithClient(client *http.Client, apiKey, b
 	if err != nil {
 		return nil, &AIProviderModelFetchError{Code: 400, Message: "Base URL 格式不正确"}
 	}
+	capabilityContext := buildProviderCapabilityContext(providerName, baseURL)
 
 	var lastErr error
 	for index, candidate := range candidates {
-		models, fetchErr := fetchProviderModelsFromURL(client, apiKey, candidate)
+		models, fetchErr := fetchProviderModelsFromURL(client, apiKey, candidate, capabilityContext)
 		if fetchErr == nil {
 			return models, nil
 		}
@@ -322,7 +335,7 @@ func appendURLPath(base *url.URL, segments ...string) string {
 	return cloned.String()
 }
 
-func fetchProviderModelsFromURL(client *http.Client, apiKey, endpoint string) ([]modelresponse.AIProviderModelItem, error) {
+func fetchProviderModelsFromURL(client *http.Client, apiKey, endpoint string, capabilityContext providerCapabilityContext) ([]modelresponse.AIProviderModelItem, error) {
 	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, &AIProviderModelFetchError{Code: 400, Message: "模型列表地址无效"}
@@ -347,21 +360,19 @@ func fetchProviderModelsFromURL(client *http.Client, apiKey, endpoint string) ([
 	}
 
 	var payload openAIModelsResponse
-	if err := json.NewDecoder(reader).Decode(&payload); err != nil {
+	decoder := json.NewDecoder(reader)
+	decoder.UseNumber()
+	if err := decoder.Decode(&payload); err != nil {
 		return nil, &AIProviderModelFetchError{Code: 502, Message: "平台模型列表响应格式无效"}
 	}
 
 	models := make([]modelresponse.AIProviderModelItem, 0, len(payload.Data))
 	for _, item := range payload.Data {
-		if strings.TrimSpace(item.ID) == "" {
+		normalized := normalizeRemoteProviderModelItem(item, capabilityContext)
+		if strings.TrimSpace(normalized.ID) == "" {
 			continue
 		}
-		models = append(models, modelresponse.AIProviderModelItem{
-			ID:      strings.TrimSpace(item.ID),
-			Object:  strings.TrimSpace(item.Object),
-			Created: item.Created,
-			OwnedBy: strings.TrimSpace(item.OwnedBy),
-		})
+		models = append(models, normalized)
 	}
 	return models, nil
 }
