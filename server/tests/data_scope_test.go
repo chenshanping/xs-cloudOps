@@ -11,8 +11,20 @@ import (
 	"server/model"
 	"server/model/request"
 	. "server/service"
+	core "server/service/core"
 	"server/utils"
 )
+
+type scopeTestRecord struct {
+	ID        uint   `gorm:"primarykey"`
+	Name      string `gorm:"size:64"`
+	DeptID    uint   `gorm:"column:dept_id"`
+	CreatedBy uint   `gorm:"column:created_by"`
+}
+
+func (scopeTestRecord) TableName() string {
+	return "scope_test_record"
+}
 
 func setupDataScopeTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
@@ -319,6 +331,132 @@ func TestUserServiceGetUserListUsesCreatorForSelfScopeInUserManagement(t *testin
 	if len(list) != 1 || list[0].Username != createdMember.Username {
 		t.Fatalf("unexpected creator scoped users: %+v", list)
 	}
+}
+
+func TestApplyRecordDataScopeUsesDeptAndCreatorOwnership(t *testing.T) {
+	db := setupDataScopeTestDB(t)
+	createRoleFeatureScopeTables(t, db)
+
+	if err := db.AutoMigrate(&scopeTestRecord{}); err != nil {
+		t.Fatalf("auto migrate scope test record: %v", err)
+	}
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+	deptA := model.SysDept{Name: "研发部", ParentID: root.ID, Ancestors: fmt.Sprintf("0,%d", root.ID), Sort: 1, Status: 1}
+	if err := db.Create(&deptA).Error; err != nil {
+		t.Fatalf("create deptA: %v", err)
+	}
+	deptB := model.SysDept{Name: "市场部", ParentID: root.ID, Ancestors: fmt.Sprintf("0,%d", root.ID), Sort: 2, Status: 1}
+	if err := db.Create(&deptB).Error; err != nil {
+		t.Fatalf("create deptB: %v", err)
+	}
+
+	roleDept := model.SysRole{Name: "本部门", Code: "record-scope-dept", DataScope: model.DataScopeDept, Status: 1}
+	roleFeatureSelf := model.SysRole{Name: "模块本人", Code: "record-scope-feature-self", DataScope: model.DataScopeAll, Status: 1}
+	if err := db.Create(&roleDept).Error; err != nil {
+		t.Fatalf("create roleDept: %v", err)
+	}
+	if err := db.Create(&roleFeatureSelf).Error; err != nil {
+		t.Fatalf("create roleFeatureSelf: %v", err)
+	}
+
+	operator := model.SysUser{
+		Username: "record-scope-operator",
+		Password: "pwd",
+		Nickname: "记录范围操作员",
+		Status:   1,
+		DeptID:   deptA.ID,
+		Roles:    []model.SysRole{roleDept, roleFeatureSelf},
+	}
+	delegateCreator := model.SysUser{
+		Username: "record-scope-delegate",
+		Password: "pwd",
+		Nickname: "委托创建人",
+		Status:   1,
+		DeptID:   deptB.ID,
+	}
+	if err := db.Create(&operator).Error; err != nil {
+		t.Fatalf("create operator: %v", err)
+	}
+	if err := db.Create(&delegateCreator).Error; err != nil {
+		t.Fatalf("create delegateCreator: %v", err)
+	}
+
+	insertRoleFeatureScope(t, db, roleFeatureSelf.ID, "biz:record-scope", model.DataScopeSelf)
+
+	records := []scopeTestRecord{
+		{Name: "dept-visible", DeptID: deptA.ID, CreatedBy: delegateCreator.ID},
+		{Name: "self-visible", DeptID: deptB.ID, CreatedBy: operator.ID},
+		{Name: "creator-visible", DeptID: deptB.ID, CreatedBy: delegateCreator.ID},
+		{Name: "out-of-scope", DeptID: deptB.ID, CreatedBy: root.ID + 999},
+	}
+	if err := db.Create(&records).Error; err != nil {
+		t.Fatalf("create scope test records: %v", err)
+	}
+
+	binding := core.RecordDataScopeBinding{
+		TableAlias:      "scope_test_record",
+		DeptColumn:      "dept_id",
+		CreatedByColumn: "created_by",
+	}
+
+	t.Run("role default dept plus feature self uses created_by", func(t *testing.T) {
+		scope, err := core.ResolveUserDataScopeForResource(operator.ID, "biz:record-scope")
+		if err != nil {
+			t.Fatalf("ResolveUserDataScopeForResource error: %v", err)
+		}
+
+		var visible []scopeTestRecord
+		query := core.ApplyRecordDataScope(db.Model(&scopeTestRecord{}).Order("id asc"), scope, binding)
+		if err := query.Find(&visible).Error; err != nil {
+			t.Fatalf("ApplyRecordDataScope query error: %v", err)
+		}
+
+		if len(visible) != 2 {
+			t.Fatalf("visible records len = %d, want 2; records = %+v", len(visible), visible)
+		}
+		if visible[0].Name != "dept-visible" || visible[1].Name != "self-visible" {
+			t.Fatalf("unexpected visible records: %+v", visible)
+		}
+	})
+
+	t.Run("creator scope uses created_by ownership", func(t *testing.T) {
+		scope := &core.UserDataScope{
+			OperatorID: operator.ID,
+			CreatorIDs: []uint{delegateCreator.ID},
+		}
+
+		var visible []scopeTestRecord
+		query := core.ApplyRecordDataScope(db.Model(&scopeTestRecord{}).Order("id asc"), scope, binding)
+		if err := query.Find(&visible).Error; err != nil {
+			t.Fatalf("ApplyRecordDataScope query error: %v", err)
+		}
+
+		if len(visible) != 2 {
+			t.Fatalf("creator scope records len = %d, want 2; records = %+v", len(visible), visible)
+		}
+		if visible[0].Name != "dept-visible" || visible[1].Name != "creator-visible" {
+			t.Fatalf("unexpected creator scope records: %+v", visible)
+		}
+	})
+
+	t.Run("all scope bypasses record filter", func(t *testing.T) {
+		scope := &core.UserDataScope{
+			OperatorID: operator.ID,
+			All:        true,
+		}
+
+		var count int64
+		if err := core.ApplyRecordDataScope(db.Model(&scopeTestRecord{}), scope, binding).Count(&count).Error; err != nil {
+			t.Fatalf("ApplyRecordDataScope count error: %v", err)
+		}
+		if count != int64(len(records)) {
+			t.Fatalf("all scope count = %d, want %d", count, len(records))
+		}
+	})
 }
 
 func TestUserServiceGetManagedUserInfoUsesCreatorForSelfScopeInUserManagement(t *testing.T) {
