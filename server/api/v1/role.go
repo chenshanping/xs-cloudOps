@@ -8,6 +8,7 @@ import (
 	"server/model/request"
 	"server/model/response"
 	"server/service"
+	"server/service/core"
 )
 
 type RoleApi struct{}
@@ -39,6 +40,11 @@ func (a *RoleApi) GetRole(c *gin.Context) {
 	}
 
 	response.OkWithData(c, role)
+}
+
+// 获取数据权限资源列表
+func (a *RoleApi) GetDataScopeResources(c *gin.Context) {
+	response.OkWithData(c, core.SupportedDataScopeResources())
 }
 
 // 创建角色

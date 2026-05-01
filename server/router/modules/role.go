@@ -24,6 +24,7 @@ func (m *RoleModule) RegisterPublicRoutes(rg *gin.RouterGroup) {
 
 func (m *RoleModule) RegisterPrivateRoutes(rg *gin.RouterGroup) {
 	R(rg, "GET", "/roles", m.Name(), "角色列表", v1.Role.GetRoleList, registry.WithAuth())
+	R(rg, "GET", "/roles/data-scope-resources", m.Name(), "数据权限资源列表", v1.Role.GetDataScopeResources, registry.WithAuth())
 	R(rg, "GET", "/roles/:id", m.Name(), "角色详情", v1.Role.GetRole, registry.WithAuth())
 	R(rg, "POST", "/roles", m.Name(), "创建角色", v1.Role.CreateRole,
 		registry.WithAuth(), registry.WithRequest(request.CreateRoleRequest{}))
