@@ -1,0 +1,10 @@
+.git
+.gitignore
+.idea
+.codex-backend.combined.log
+.codex-backend.err.log
+.codex-backend.out.log
+logs
+uploads
+tests
+testutil

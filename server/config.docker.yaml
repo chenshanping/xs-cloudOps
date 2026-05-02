@@ -1,0 +1,34 @@
+server:
+  port: 9000
+  mode: release
+  host: 0.0.0.0:9000
+
+mysql:
+  host: mysql
+  port: 3306
+  username: root
+  password: 123456
+  dbname: go-base
+  charset: utf8mb4
+  max_idle_conns: 10
+  max_open_conns: 100
+
+redis:
+  host: redis
+  port: 6379
+  password: "123456"
+  db: 1
+
+jwt:
+  secret: go-base-jwt-secret-key
+  expires: 7200
+  refresh_window: 604800
+  issuer: web
+
+casbin:
+  model_path: ./rbac_model.conf
+
+log:
+  level: info
+  format: console
+  directory: ./logs
