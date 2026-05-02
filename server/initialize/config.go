@@ -8,20 +8,31 @@ import (
 	"github.com/spf13/viper"
 )
 
-func InitConfig() {
+func LoadConfig(configPath string) (*config.Config, *viper.Viper, error) {
 	v := viper.New()
-	v.SetConfigFile("config.yaml")
-	v.SetConfigType("yaml")
+	if configPath == "" {
+		configPath = "config.yaml"
+	}
+	v.SetConfigFile(configPath)
 
 	if err := v.ReadInConfig(); err != nil {
-		panic(fmt.Errorf("读取配置文件失败: %w", err))
+		return nil, nil, fmt.Errorf("读取配置文件失败: %w", err)
 	}
 
 	var cfg config.Config
 	if err := v.Unmarshal(&cfg); err != nil {
-		panic(fmt.Errorf("解析配置文件失败: %w", err))
+		return nil, nil, fmt.Errorf("解析配置文件失败: %w", err)
 	}
 
-	global.Config = &cfg
+	return &cfg, v, nil
+}
+
+func InitConfig(configPath string) {
+	cfg, v, err := LoadConfig(configPath)
+	if err != nil {
+		panic(err)
+	}
+
+	global.Config = cfg
 	global.Viper = v
 }

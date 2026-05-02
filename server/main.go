@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"server/global"
 	"server/initialize"
@@ -10,8 +11,11 @@ import (
 )
 
 func main() {
+	configPath := flag.String("c", "config.yaml", "配置文件路径")
+	flag.Parse()
+
 	// 初始化配置
-	initialize.InitConfig()
+	initialize.InitConfig(*configPath)
 
 	// 初始化日志
 	initialize.InitLogger()
