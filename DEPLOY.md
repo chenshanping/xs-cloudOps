@@ -199,225 +199,139 @@ server {
 
 ---
 
-## 二、Docker 部署方案
+## 二、Docker Compose 部署运行手册
 
-### 1. 后端 Dockerfile
+当前仓库的 Docker 栈固定为：`mysql + redis + server + web`。
 
-在 `server/` 目录下创建 `Dockerfile`：
+- `mysql`：MySQL 8.4，数据保存在命名卷 `mysql_data`
+- `redis`：Redis 7.4，启用密码与 AOF，数据保存在命名卷 `redis_data`
+- `server`：Go 后端，对宿主机暴露 `9000`
+- `web`：Nginx 托管前端，对宿主机暴露 `8081`
 
-```dockerfile
-# 构建阶段
-FROM golang:1.22-alpine AS builder
+### 1. 启动前确认
 
-WORKDIR /app
-COPY go.mod go.sum ./
-RUN go mod download
-COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o server main.go
-
-# 运行阶段
-FROM alpine:3.20
-WORKDIR /app
-
-RUN apk add --no-cache ca-certificates tzdata && \
-    ln -snf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
-    echo "Asia/Shanghai" > /etc/timezone
-
-COPY --from=builder /app/server /app/server
-COPY config.docker.yaml /app/config.docker.yaml
-COPY rbac_model.conf /app/rbac_model.conf
-
-EXPOSE 8080
-
-CMD ["./server", "-c", "config.docker.yaml"]
-```
-
-### 2. 后端 Docker 配置文件
-
-在 `server/` 目录下创建 `config.docker.yaml`：
-
-```yaml
-server:
-  port: 8080
-  mode: release
-  host: 0.0.0.0:8080
-
-mysql:
-  host: mysql
-  port: 3306
-  username: go_base_user
-  password: go_base_pass
-  dbname: go_base
-  charset: utf8mb4
-  max_idle_conns: 10
-  max_open_conns: 100
-
-redis:
-  host: redis
-  port: 6379
-  password: ""
-  db: 1
-
-jwt:
-  secret: your-jwt-secret
-  expires: 7200
-  issuer: server
-
-casbin:
-  model_path: ./rbac_model.conf
-
-log:
-  level: info
-  format: console
-  directory: ./logs
-```
-
-### 3. 前端 Dockerfile
-
-在 `web/` 目录下创建 `Dockerfile`：
-
-```dockerfile
-# 构建阶段
-FROM node:20-alpine AS build
-
-WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
-
-# 运行阶段
-FROM nginx:1.27-alpine
-
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
-```
-
-### 4. 前端 Nginx 配置
-
-在 `web/` 目录下创建 `nginx.conf`：
-
-```nginx
-server {
-    listen 80;
-    server_name _;
-
-    root /usr/share/nginx/html;
-    index index.html;
-
-    # SPA 路由支持
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    # API 反向代理
-    location /api/ {
-        proxy_pass http://server:8080/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    }
-}
-```
-
-### 5. docker-compose.yml
-
-在项目根目录 `go-base/` 下创建 `docker-compose.yml`：
-
-```yaml
-version: "3.9"
-
-services:
-  mysql:
-    image: mysql:8.0
-    container_name: go-base-mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: root123456
-      MYSQL_DATABASE: go_base
-      MYSQL_USER: go_base_user
-      MYSQL_PASSWORD: go_base_pass
-    command: ["--default-authentication-plugin=mysql_native_password"]
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./server/sql:/docker-entrypoint-initdb.d
-    networks:
-      - go-base-net
-
-  redis:
-    image: redis:7-alpine
-    container_name: go-base-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - go-base-net
-
-  server:
-    build:
-      context: ./server
-      dockerfile: Dockerfile
-    container_name: server
-    ports:
-      - "8080:8080"
-    depends_on:
-      - mysql
-      - redis
-    networks:
-      - go-base-net
-
-  web:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
-    container_name: web
-    ports:
-      - "8081:80"
-    depends_on:
-      - server
-    networks:
-      - go-base-net
-
-networks:
-  go-base-net:
-    driver: bridge
-
-volumes:
-  mysql_data:
-  redis_data:
-```
-
-### 6. Docker 部署命令
+在仓库根目录执行以下命令：
 
 ```bash
-# 构建并启动所有服务
-docker-compose build
-docker-compose up -d
-
-# 查看日志
-docker-compose logs -f
-
-# 查看单个服务日志
-docker-compose logs -f server
-docker-compose logs -f web
-
-# 停止并移除容器
-docker-compose down
-
-# 停止并移除容器及数据卷（会清空数据库）
-docker-compose down -v
+docker compose up -d --build
 ```
 
-### 7. Docker 部署访问地址
+首次启动说明：
 
-- 后端接口：`http://localhost:8080`
-- 前端页面：`http://localhost:8081`
+- 首次启动会拉取镜像、构建前后端镜像，并初始化 MySQL/Redis，耗时会明显更长。
+- `server` 依赖 `mysql` 和 `redis` 健康检查通过后才会启动，`web` 会等待 `server` 健康检查通过。
+- 如果本机已经存在旧的 `mysql_data` 卷，新的 `MYSQL_USER`、`MYSQL_PASSWORD`、`MYSQL_DATABASE` 环境变量不会回填到旧数据目录；此时应按下文“重置并清空数据”流程清理旧卷后再重启。
+
+### 2. 状态与日志
+
+查看服务状态：
+
+```bash
+docker compose ps
+```
+
+查看全部日志：
+
+```bash
+docker compose logs --tail=100
+```
+
+查看单个服务日志：
+
+```bash
+docker compose logs --tail=100 mysql
+docker compose logs --tail=100 redis
+docker compose logs --tail=100 server
+docker compose logs --tail=100 web
+```
+
+持续跟随日志：
+
+```bash
+docker compose logs -f server
+docker compose logs -f web
+```
+
+### 3. 访问地址
+
+- 前端首页：`http://127.0.0.1:8081`
+- 后端 API 基础地址：`http://127.0.0.1:9000/api/v1`
+- 健康检查：`http://127.0.0.1:9000/api/v1/health`
+
+说明：
+
+- 前端通过同源 `/api/*` 反向代理到 `server:9000`，浏览器访问前端时无需额外改 API 地址。
+- `mysql` 和 `redis` 未对宿主机开放端口，默认仅供 Compose 内部服务使用。
+
+### 4. 默认管理员账号
+
+首次初始化完成后，系统会自动创建默认管理员：
+
+- 用户名：`admin`
+- 密码：`123456`
+
+首次登录后请立即修改默认密码。
+
+### 5. 保留数据的重建流程
+
+以下命令会重建镜像并重启服务，但保留 `mysql_data`、`redis_data`、`server/uploads`、`server/logs` 中的数据：
+
+```bash
+docker compose up -d --build
+```
+
+如果希望先停再起，也可以执行：
+
+```bash
+docker compose down
+docker compose up -d --build
+```
+
+`docker compose down` 不会删除命名卷，因此数据库与 Redis 数据会保留。
+
+### 6. 重置并清空数据
+
+如果需要回到全新初始化状态，执行：
+
+```bash
+docker compose down -v
+```
+
+如需同时清空后端本地挂载目录中的上传文件与日志，再删除：
+
+```bash
+rm -rf server/uploads server/logs
+```
+
+```powershell
+Remove-Item -Recurse -Force server\uploads, server\logs
+```
+
+说明：
+
+- `docker compose down -v` 会删除 `mysql_data` 和 `redis_data`，下次启动会重新初始化数据库、Redis 与默认管理员数据。
+- 旧卷导致账号密码不匹配、初始化数据不符合当前 compose 配置时，应优先使用此流程。
+
+### 7. 常用运维命令
+
+停止服务：
+
+```bash
+docker compose down
+```
+
+仅重启后端：
+
+```bash
+docker compose restart server
+```
+
+重新拉起单个服务并带重建：
+
+```bash
+docker compose up -d --build server
+docker compose up -d --build web
+```
 
 ---
 
