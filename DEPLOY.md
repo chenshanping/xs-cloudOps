@@ -192,7 +192,7 @@ server {
 }
 ```
 
-### 6. 验证部署
+### 6. 1Panel 部署后基础连通性检查
 
 - 后端接口：`http://服务器IP:8080`
 - 前端页面：`http://服务器IP` 或绑定的域名
@@ -254,9 +254,13 @@ docker compose logs -f web
 
 ### 3. 访问地址
 
-- 前端首页：`http://127.0.0.1:8081`
-- 后端 API 基础地址：`http://127.0.0.1:9000/api/v1`
-- 健康检查：`http://127.0.0.1:9000/api/v1/health`
+- 宿主机本地检查：
+  - 前端首页：`http://127.0.0.1:8081`
+  - 后端 API 基础地址：`http://127.0.0.1:9000/api/v1`
+  - 健康检查：`http://127.0.0.1:9000/api/v1/health`
+- 外部测试机访问形式：
+  - 前端首页：`http://<server-ip>:8081`
+  - 健康检查：`http://<server-ip>:9000/api/v1/health`
 
 说明：
 
@@ -332,6 +336,46 @@ docker compose restart server
 docker compose up -d --build server
 docker compose up -d --build web
 ```
+
+### 8. 本工作树实际验证结果
+
+以下结果来自本工作树 `codex/docker-test-deploy` 的实际执行，不代表所有环境都能直接复现。
+
+实际尝试的命令：
+
+```bash
+cd server && go test ./...
+cd ../web && npm run test:docker-test-env
+cd ../web && npm run build:test
+docker compose up -d --build
+docker compose ps
+docker compose logs --tail=100 server
+curl http://127.0.0.1:9000/api/v1/health
+```
+
+已通过：
+
+- `cd server && go test ./...`
+- `cd ../web && npm run test:docker-test-env`
+- `cd ../web && npm run build:test`
+
+未通过：
+
+- `docker compose up -d --build`
+  - 失败原因是 Docker Hub 拉取 `mysql:8.4` 时超时，实际报错为：
+  - `failed to resolve reference "docker.io/library/mysql:8.4": failed to do request: Head "https://registry-1.docker.io/v2/library/mysql/manifests/8.4"`
+  - `dial tcp 159.138.20.20:443: connectex: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond`
+- `docker compose ps`
+  - 命令本身执行成功，但因为镜像未拉取完成，Compose 栈没有服务启动。
+- `docker compose logs --tail=100 server`
+  - 命令本身执行成功，但没有 `server` 容器日志可读。
+- `curl http://127.0.0.1:9000/api/v1/health`
+  - 本次没有得到 Compose 栈健康结果；在该次验证中 `docker compose up -d --build` 已失败，且宿主机 `9000` 端口当时被其他本地进程占用，返回的不是这套 Compose 服务的健康响应。
+
+结论：
+
+- 本工作树已经完成后端测试、前端 Docker 环境脚本检查、前端 test 构建验证。
+- 端到端 Compose 启动、容器健康检查、以及基于该栈的 UI 登录验证未完成，原因是镜像未能从 Docker Hub 拉取成功。
 
 ---
 
