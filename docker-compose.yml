@@ -4,11 +4,17 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: 123456
       MYSQL_DATABASE: go-base
+      MYSQL_USER: go_base_app
+      MYSQL_PASSWORD: go_base_app_pwd
       TZ: Asia/Shanghai
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      test:
+        [
+          "CMD-SHELL",
+          "mysql --protocol=tcp -h 127.0.0.1 -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} -D$${MYSQL_DATABASE} -e 'SELECT 1' > /dev/null 2>&1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 10
