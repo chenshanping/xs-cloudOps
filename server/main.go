@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"server/global"
 	"server/initialize"
 	"server/router"
@@ -15,7 +16,9 @@ func main() {
 	flag.Parse()
 
 	// 初始化配置
-	initialize.InitConfig(*configPath)
+	if err := initialize.InitConfig(*configPath); err != nil {
+		log.Fatalf("startup failed: %v", err)
+	}
 
 	// 初始化日志
 	initialize.InitLogger()

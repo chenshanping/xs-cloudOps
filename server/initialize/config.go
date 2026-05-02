@@ -14,25 +14,27 @@ func LoadConfig(configPath string) (*config.Config, *viper.Viper, error) {
 		configPath = "config.yaml"
 	}
 	v.SetConfigFile(configPath)
+	v.SetConfigType("yaml")
 
 	if err := v.ReadInConfig(); err != nil {
-		return nil, nil, fmt.Errorf("读取配置文件失败: %w", err)
+		return nil, nil, fmt.Errorf("读取配置文件失败 %q: %w", configPath, err)
 	}
 
 	var cfg config.Config
 	if err := v.Unmarshal(&cfg); err != nil {
-		return nil, nil, fmt.Errorf("解析配置文件失败: %w", err)
+		return nil, nil, fmt.Errorf("解析配置文件失败 %q: %w", configPath, err)
 	}
 
 	return &cfg, v, nil
 }
 
-func InitConfig(configPath string) {
+func InitConfig(configPath string) error {
 	cfg, v, err := LoadConfig(configPath)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	global.Config = cfg
 	global.Viper = v
+	return nil
 }
