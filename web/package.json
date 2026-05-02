@@ -17,6 +17,7 @@
     "test:ai-preferences": "node scripts/test-ai-preferences.mjs",
     "test:storage-wording": "node scripts/test-storage-wording.mjs",
     "test:file-preview": "node scripts/test-file-preview.mjs",
+    "test:docker-test-env": "node scripts/test-docker-test-env.mjs",
     "test:view-resolver": "node scripts/test-view-resolver.mjs",
     "typecheck": "vue-tsc --noEmit",
     "preview": "vite preview --mode development"
