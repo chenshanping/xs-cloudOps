@@ -18,13 +18,22 @@ export interface RoleFeatureDataScopeFormItem {
   dept_ids: number[]
 }
 
+const DATA_SCOPE_INHERIT = 0
+const DATA_SCOPE_ALL = 1
+const DATA_SCOPE_CUSTOM = 2
+const DATA_SCOPE_DEPT = 3
+const DATA_SCOPE_DEPT_AND_CHILDREN = 4
+const DATA_SCOPE_SELF = 5
+const OWNER_FIELD_DEPT_ID = 'dept_id'
+const OWNER_FIELD_CREATED_BY = 'created_by'
+
 export const FEATURE_SCOPE_OPTIONS = [
-  { value: 0, label: '继承默认数据范围' },
-  { value: 1, label: '全部数据' },
-  { value: 2, label: '自定义部门' },
-  { value: 3, label: '本部门' },
-  { value: 4, label: '本部门及下级' },
-  { value: 5, label: '仅本人' }
+  { value: DATA_SCOPE_INHERIT, label: '继承默认数据范围' },
+  { value: DATA_SCOPE_ALL, label: '全部数据' },
+  { value: DATA_SCOPE_CUSTOM, label: '自定义部门' },
+  { value: DATA_SCOPE_DEPT, label: '本部门' },
+  { value: DATA_SCOPE_DEPT_AND_CHILDREN, label: '本部门及下级' },
+  { value: DATA_SCOPE_SELF, label: '仅本人' }
 ]
 
 export function formatDataScopeLabel(value: number): string {
@@ -45,12 +54,44 @@ export function buildRoleFeatureDataScopeForm(
   const scopeMap = new Map((scopes || []).map(scope => [scope.resource_code, scope]))
   return resources.map(resource => {
     const current = scopeMap.get(resource.code)
+    const nextDataScope = normalizeSupportedDataScope(resource, current?.data_scope ?? DATA_SCOPE_INHERIT)
     return {
       resource_code: resource.code,
-      data_scope: current?.data_scope ?? 0,
-      dept_ids: current?.depts?.map(item => item.id) || []
+      data_scope: nextDataScope,
+      dept_ids: nextDataScope === DATA_SCOPE_CUSTOM ? current?.depts?.map(item => item.id) || [] : []
     }
   })
+}
+
+export function resourceSupportsDeptScope(resource?: DataScopeResourceDefinition) {
+  return Boolean(resource?.owner_fields?.includes(OWNER_FIELD_DEPT_ID))
+}
+
+export function resourceSupportsSelfScope(resource?: DataScopeResourceDefinition) {
+  return Boolean(resource?.owner_fields?.includes(OWNER_FIELD_CREATED_BY))
+}
+
+export function getSupportedFeatureScopeOptions(resource?: DataScopeResourceDefinition) {
+  return FEATURE_SCOPE_OPTIONS.filter(option => {
+    switch (option.value) {
+      case DATA_SCOPE_CUSTOM:
+      case DATA_SCOPE_DEPT:
+      case DATA_SCOPE_DEPT_AND_CHILDREN:
+        return resourceSupportsDeptScope(resource)
+      case DATA_SCOPE_SELF:
+        return resourceSupportsSelfScope(resource)
+      default:
+        return true
+    }
+  })
+}
+
+export function normalizeSupportedDataScope(
+  resource: DataScopeResourceDefinition | undefined,
+  dataScope: number
+) {
+  const supportedValues = new Set(getSupportedFeatureScopeOptions(resource).map(option => option.value))
+  return supportedValues.has(dataScope) ? dataScope : DATA_SCOPE_INHERIT
 }
 
 export function splitKnownAndUnknownFeatureDataScopes(
@@ -85,11 +126,11 @@ export function buildRoleFeatureDataScopePayload(
   unknownItems: RoleFeatureDataScopePayload[] = []
 ): RoleFeatureDataScopePayload[] {
   const knownScopePayloads = knownItems
-    .filter(item => item.data_scope > 0)
+    .filter(item => item.data_scope > DATA_SCOPE_INHERIT)
     .map(item => ({
       resource_code: item.resource_code,
       data_scope: item.data_scope,
-      dept_ids: item.data_scope === 2 ? [...item.dept_ids] : []
+      dept_ids: item.data_scope === DATA_SCOPE_CUSTOM ? [...item.dept_ids] : []
     }))
 
   const unknownScopePayloads = unknownItems.map(item => ({

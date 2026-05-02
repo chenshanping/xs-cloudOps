@@ -114,6 +114,32 @@ test('unknown resource scopes are split out and preserved in final payload', asy
   ])
 })
 
+test('resource-specific scope options hide unsupported self scope', async () => {
+  const helpers = await loadTsModule('src/views/admin/system/role/components/dataScopeResources.ts')
+
+  const userResource = {
+    code: 'system:user-management',
+    label: '用户管理',
+    description: 'desc',
+    owner_fields: ['dept_id', 'created_by']
+  }
+  const deptResource = {
+    code: 'system:dept-management',
+    label: '部门管理',
+    description: 'desc',
+    owner_fields: ['dept_id']
+  }
+
+  assert.deepEqual(
+    helpers.getSupportedFeatureScopeOptions(userResource).map(item => item.value),
+    [0, 1, 2, 3, 4, 5]
+  )
+  assert.deepEqual(
+    helpers.getSupportedFeatureScopeOptions(deptResource).map(item => item.value),
+    [0, 1, 2, 3, 4]
+  )
+})
+
 test('useRolePermissionDrawer loads data scope resources from backend API', () => {
   const source = readUtf8('src/views/admin/system/role/components/useRolePermissionDrawer.ts')
 
@@ -176,4 +202,11 @@ test('dataScopeResources no longer hardcodes role feature scope resource array',
   const source = readUtf8('src/views/admin/system/role/components/dataScopeResources.ts')
 
   assert.doesNotMatch(source, /ROLE_FEATURE_SCOPE_RESOURCES[\s\S]*=\s*\[/)
+})
+
+test('RolePermissionDataScopePanel renders scope options from resource capabilities', () => {
+  const source = readUtf8('src/views/admin/system/role/components/RolePermissionDataScopePanel.vue')
+
+  assert.match(source, /getSupportedFeatureScopeOptions/)
+  assert.doesNotMatch(source, /const\s+scopeOptions\s*=\s*FEATURE_SCOPE_OPTIONS/)
 })

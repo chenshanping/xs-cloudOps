@@ -27,7 +27,7 @@
           <a-form-item label="数据范围">
             <a-select
               :value="item.data_scope"
-              :options="scopeOptions"
+              :options="getScopeOptions(item.resource_code)"
               @change="value => handleScopeChange(item.resource_code, value)"
             />
           </a-form-item>
@@ -56,8 +56,8 @@
 
 <script setup lang="ts">
 import {
-  FEATURE_SCOPE_OPTIONS,
   findDataScopeResourceDefinition,
+  getSupportedFeatureScopeOptions,
   type DataScopeResourceDefinition,
   type RoleFeatureDataScopeFormItem,
   type RolePermissionDeptOption
@@ -74,10 +74,11 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: RoleFeatureDataScopeFormItem[]): void
 }>()
 
-const scopeOptions = FEATURE_SCOPE_OPTIONS
-
 const getResourceDefinition = (resourceCode: string) =>
   findDataScopeResourceDefinition(props.resourceDefinitions, resourceCode)
+
+const getScopeOptions = (resourceCode: string) =>
+  getSupportedFeatureScopeOptions(getResourceDefinition(resourceCode))
 
 const getDeptValidationMessage = (resourceCode: string) => {
   const resourceLabel = getResourceDefinition(resourceCode)?.label || resourceCode

@@ -260,12 +260,12 @@ func (s *RoleService) AssignDataScopes(
 		return err
 	}
 
-	normalizedAssignments, err := normalizeRoleFeatureDataScopeAssignments(assignments)
-	if err != nil {
-		return err
-	}
-
 	if err := global.DB.Transaction(func(tx *gorm.DB) error {
+		normalizedAssignments, err := normalizePersistedRoleFeatureDataScopeAssignmentsTx(tx, roleID, assignments)
+		if err != nil {
+			return err
+		}
+
 		var existingScopes []model.SysRoleDataScope
 		if err := tx.Preload("Depts").Where("role_id = ?", roleID).Find(&existingScopes).Error; err != nil {
 			return err
@@ -306,12 +306,12 @@ func (s *RoleService) SavePermissions(roleID uint, req *request.SaveRolePermissi
 		return err
 	}
 
-	normalizedAssignments, err := normalizeRoleFeatureDataScopeAssignments(req.Scopes)
-	if err != nil {
-		return err
-	}
-
 	if err := global.DB.Transaction(func(tx *gorm.DB) error {
+		normalizedAssignments, err := normalizePersistedRoleFeatureDataScopeAssignmentsTx(tx, roleID, req.Scopes)
+		if err != nil {
+			return err
+		}
+
 		menus, err := loadRoleMenusWithAncestors(tx, core.NormalizeIDs(req.MenuIds))
 		if err != nil {
 			return err
@@ -540,6 +540,31 @@ func validateRoleDataScope(dataScope int, deptIDs []uint) error {
 	return nil
 }
 
+func validateRoleFeatureDataScope(resourceCode string, dataScope int, deptIDs []uint) error {
+	if !core.IsSupportedDataScopeResource(resourceCode) {
+		return fmt.Errorf("不支持的数据权限资源: %s", resourceCode)
+	}
+	if err := validateRoleDataScope(dataScope, deptIDs); err != nil {
+		return err
+	}
+	if core.SupportsDataScopeForResource(resourceCode, dataScope) {
+		return nil
+	}
+
+	switch dataScope {
+	case model.DataScopeCustom:
+		return fmt.Errorf("数据权限资源 %s 不支持自定义部门范围", resourceCode)
+	case model.DataScopeDept:
+		return fmt.Errorf("数据权限资源 %s 不支持本部门范围", resourceCode)
+	case model.DataScopeDeptAndChildren:
+		return fmt.Errorf("数据权限资源 %s 不支持本部门及下级范围", resourceCode)
+	case model.DataScopeSelf:
+		return fmt.Errorf("数据权限资源 %s 不支持仅本人范围", resourceCode)
+	default:
+		return fmt.Errorf("数据权限资源 %s 不支持该数据范围", resourceCode)
+	}
+}
+
 func replaceRoleCustomDepts(tx *gorm.DB, role *model.SysRole, dataScope int, deptIDs []uint) error {
 	if dataScope != model.DataScopeCustom {
 		return tx.Model(role).Association("Depts").Replace([]model.SysDept{})
@@ -561,10 +586,7 @@ func normalizeRoleFeatureDataScopeAssignments(
 	normalized := make([]request.RoleFeatureDataScopeAssignment, 0, len(assignments))
 	indexByCode := make(map[string]int, len(assignments))
 	for _, assignment := range assignments {
-		if !core.IsSupportedDataScopeResource(assignment.ResourceCode) {
-			return nil, fmt.Errorf("不支持的数据权限资源: %s", assignment.ResourceCode)
-		}
-		if err := validateRoleDataScope(assignment.DataScope, assignment.DeptIds); err != nil {
+		if err := validateRoleFeatureDataScope(assignment.ResourceCode, assignment.DataScope, assignment.DeptIds); err != nil {
 			return nil, err
 		}
 
@@ -584,6 +606,52 @@ func normalizeRoleFeatureDataScopeAssignments(
 	}
 
 	return normalized, nil
+}
+
+func normalizePersistedRoleFeatureDataScopeAssignmentsTx(
+	tx *gorm.DB,
+	roleID uint,
+	assignments []request.RoleFeatureDataScopeAssignment,
+) ([]request.RoleFeatureDataScopeAssignment, error) {
+	filteredAssignments := make([]request.RoleFeatureDataScopeAssignment, 0, len(assignments))
+	for _, assignment := range assignments {
+		if !core.IsSupportedDataScopeResource(assignment.ResourceCode) {
+			continue
+		}
+		filteredAssignments = append(filteredAssignments, assignment)
+	}
+
+	normalizedAssignments, err := normalizeRoleFeatureDataScopeAssignments(filteredAssignments)
+	if err != nil {
+		return nil, err
+	}
+
+	var existingScopes []model.SysRoleDataScope
+	if err := tx.Preload("Depts").Where("role_id = ?", roleID).Find(&existingScopes).Error; err != nil {
+		return nil, err
+	}
+
+	preservedUnknownScopes := make([]request.RoleFeatureDataScopeAssignment, 0)
+	for _, scope := range existingScopes {
+		if core.IsSupportedDataScopeResource(scope.ResourceCode) {
+			continue
+		}
+		preservedUnknownScopes = append(preservedUnknownScopes, request.RoleFeatureDataScopeAssignment{
+			ResourceCode: scope.ResourceCode,
+			DataScope:    scope.DataScope,
+			DeptIds:      extractDeptIDs(scope.Depts),
+		})
+	}
+
+	return append(normalizedAssignments, preservedUnknownScopes...), nil
+}
+
+func extractDeptIDs(depts []model.SysDept) []uint {
+	ids := make([]uint, 0, len(depts))
+	for _, dept := range depts {
+		ids = append(ids, dept.ID)
+	}
+	return ids
 }
 
 func replaceRoleFeatureScopeCustomDepts(

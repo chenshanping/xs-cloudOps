@@ -12,3 +12,8 @@
 - `server/service/ai/`
 - `server/service/auth/`
 - `server/service/user/`
+
+常用单项运行命令：
+
+- 角色权限 smoke 测试：`server\scripts\test_role_permission_smoke.bat`
+- 跨平台等价命令：`go test -run TestRolePermissionSmoke -count=1 ./tests`

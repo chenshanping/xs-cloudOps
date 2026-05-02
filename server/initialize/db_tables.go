@@ -132,6 +132,7 @@ func initDefaultData() {
 		{Path: "/api/v1/roles", Method: "POST", Group: "角色管理", Description: "创建角色"},
 		{Path: "/api/v1/roles/:id", Method: "PUT", Group: "角色管理", Description: "更新角色"},
 		{Path: "/api/v1/roles/:id", Method: "DELETE", Group: "角色管理", Description: "删除角色"},
+		{Path: "/api/v1/roles/data-scope-resources", Method: "GET", Group: "角色管理", Description: "数据权限资源列表"},
 		{Path: "/api/v1/roles/:id/menus", Method: "PUT", Group: "角色管理", Description: "分配菜单"},
 		{Path: "/api/v1/roles/:id/apis", Method: "PUT", Group: "角色管理", Description: "分配API"},
 		{Path: "/api/v1/roles/:id/data-scopes", Method: "PUT", Group: "角色管理", Description: "分配数据权限"},
@@ -320,6 +321,13 @@ func ensureBuiltInData() {
 		Description: "批量重置密码",
 		NeedAuth:    true,
 	}, "/api/v1/users/:id/password", "PUT")
+	ensureApiAccessInheritedFrom(model.SysApi{
+		Path:        "/api/v1/roles/data-scope-resources",
+		Method:      "GET",
+		Group:       "角色管理",
+		Description: "数据权限资源列表",
+		NeedAuth:    true,
+	}, "/api/v1/roles/:id/apis", "PUT")
 	ensureApiAccessInheritedFrom(model.SysApi{
 		Path:        "/api/v1/roles/:id/data-scopes",
 		Method:      "PUT",

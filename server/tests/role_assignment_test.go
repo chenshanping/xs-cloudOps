@@ -696,11 +696,11 @@ func TestRoleServiceSavePermissionsRollsBackOnInvalidDataScope(t *testing.T) {
 		MenuIds:      []uint{},
 		DirectApiIds: []uint{},
 		Scopes: []request.RoleFeatureDataScopeAssignment{
-			{ResourceCode: "not-supported", DataScope: model.DataScopeAll},
+			{ResourceCode: "system:dept-management", DataScope: model.DataScopeSelf},
 		},
 	})
 	if err == nil {
-		t.Fatalf("expected SavePermissions to fail for unsupported data scope resource")
+		t.Fatalf("expected SavePermissions to fail for unsupported resource data scope combination")
 	}
 
 	var roleMenuCount int64

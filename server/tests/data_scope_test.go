@@ -100,6 +100,24 @@ func createRoleFeatureScopeTables(t *testing.T, db *gorm.DB) {
 	}
 }
 
+func createCasbinRuleTable(t *testing.T, db *gorm.DB) {
+	t.Helper()
+
+	statement := `CREATE TABLE IF NOT EXISTS casbin_rule (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		ptype TEXT,
+		v0 TEXT,
+		v1 TEXT,
+		v2 TEXT,
+		v3 TEXT,
+		v4 TEXT,
+		v5 TEXT
+	)`
+	if err := db.Exec(statement).Error; err != nil {
+		t.Fatalf("create casbin_rule table failed: %v", err)
+	}
+}
+
 func ensureSysUserCreatedByColumn(t *testing.T, db *gorm.DB) {
 	t.Helper()
 
@@ -1203,6 +1221,78 @@ func TestRoleServiceAssignDataScopesReplacesExistingOverrides(t *testing.T) {
 	}
 	if len(scope.Depts) != 1 || scope.Depts[0].ID != deptB.ID {
 		t.Fatalf("feature scope depts = %+v, want deptB only", scope.Depts)
+	}
+}
+
+func TestRoleServiceSavePermissionsPreservesUnknownFeatureDataScopes(t *testing.T) {
+	db := setupDataScopeTestDB(t)
+	createRoleFeatureScopeTables(t, db)
+	createCasbinRuleTable(t, db)
+
+	root := model.SysDept{Name: "平台", ParentID: 0, Ancestors: "0", Sort: 1, Status: 1}
+	if err := db.Create(&root).Error; err != nil {
+		t.Fatalf("create root: %v", err)
+	}
+	deptA := model.SysDept{Name: "研发部", ParentID: root.ID, Ancestors: fmt.Sprintf("0,%d", root.ID), Sort: 1, Status: 1}
+	if err := db.Create(&deptA).Error; err != nil {
+		t.Fatalf("create deptA: %v", err)
+	}
+	deptB := model.SysDept{Name: "市场部", ParentID: root.ID, Ancestors: fmt.Sprintf("0,%d", root.ID), Sort: 2, Status: 1}
+	if err := db.Create(&deptB).Error; err != nil {
+		t.Fatalf("create deptB: %v", err)
+	}
+
+	role := model.SysRole{Name: "角色C", Code: "role-feature-save", DataScope: model.DataScopeAll, Status: 1}
+	if err := db.Create(&role).Error; err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+
+	insertRoleFeatureScope(t, db, role.ID, "system:user-management", model.DataScopeCustom, deptA.ID)
+	insertRoleFeatureScope(t, db, role.ID, "legacy:archived-resource", model.DataScopeSelf)
+
+	if err := Role.SavePermissions(role.ID, &request.SaveRolePermissionsRequest{
+		Scopes: []request.RoleFeatureDataScopeAssignment{
+			{
+				ResourceCode: "system:user-management",
+				DataScope:    model.DataScopeCustom,
+				DeptIds:      []uint{deptB.ID},
+			},
+			{
+				ResourceCode: "legacy:archived-resource",
+				DataScope:    model.DataScopeSelf,
+			},
+		},
+	}); err != nil {
+		t.Fatalf("SavePermissions error: %v", err)
+	}
+
+	detail, err := Role.GetRole(role.ID)
+	if err != nil {
+		t.Fatalf("GetRole error: %v", err)
+	}
+	if len(detail.FeatureDataScopes) != 2 {
+		t.Fatalf("feature data scope len = %d, want 2", len(detail.FeatureDataScopes))
+	}
+
+	scopeMap := make(map[string]model.SysRoleDataScope, len(detail.FeatureDataScopes))
+	for _, scope := range detail.FeatureDataScopes {
+		scopeMap[scope.ResourceCode] = scope
+	}
+
+	known := scopeMap["system:user-management"]
+	if known.DataScope != model.DataScopeCustom {
+		t.Fatalf("known scope data_scope = %d, want %d", known.DataScope, model.DataScopeCustom)
+	}
+	if len(known.Depts) != 1 || known.Depts[0].ID != deptB.ID {
+		t.Fatalf("known scope depts = %+v, want deptB only", known.Depts)
+	}
+
+	unknown, ok := scopeMap["legacy:archived-resource"]
+	if !ok {
+		t.Fatalf("expected legacy unknown scope to be preserved")
+	}
+	if unknown.DataScope != model.DataScopeSelf {
+		t.Fatalf("unknown scope data_scope = %d, want %d", unknown.DataScope, model.DataScopeSelf)
 	}
 }
 

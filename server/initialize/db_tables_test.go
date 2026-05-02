@@ -935,6 +935,70 @@ func TestEnsureBuiltInDataAddsRolePermissionSaveApiWithoutOverwritingCustomizedM
 	}
 }
 
+func TestEnsureBuiltInDataAddsRoleDataScopeResourceApiAndInheritsRoleAccess(t *testing.T) {
+	db := setupInitializeTestDB(t)
+
+	role := model.SysRole{
+		Name:   "角色管理员",
+		Code:   "role_manager",
+		Status: 1,
+	}
+	if err := db.Create(&role).Error; err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+
+	sourceAPI := model.SysApi{
+		Path:        "/api/v1/roles/:id/apis",
+		Method:      "PUT",
+		Group:       "角色管理",
+		Description: "分配API",
+		NeedAuth:    true,
+	}
+	if err := db.Create(&sourceAPI).Error; err != nil {
+		t.Fatalf("create source api: %v", err)
+	}
+	if err := db.Exec("INSERT INTO sys_role_api (sys_role_id, sys_api_id) VALUES (?, ?)", role.ID, sourceAPI.ID).Error; err != nil {
+		t.Fatalf("bind source api: %v", err)
+	}
+
+	customAPI := model.SysApi{
+		Path:        "/api/v1/roles/data-scope-resources",
+		Method:      "GET",
+		Group:       "自定义角色分组",
+		Description: "保留已有数据权限资源描述",
+		NeedAuth:    false,
+	}
+	if err := db.Create(&customAPI).Error; err != nil {
+		t.Fatalf("create custom target api: %v", err)
+	}
+
+	ensureBuiltInData()
+
+	var updated model.SysApi
+	if err := db.First(&updated, customAPI.ID).Error; err != nil {
+		t.Fatalf("reload target api: %v", err)
+	}
+	if updated.Group != customAPI.Group {
+		t.Fatalf("target api group overwritten = %s, want %s", updated.Group, customAPI.Group)
+	}
+	if updated.Description != customAPI.Description {
+		t.Fatalf("target api description overwritten = %s, want %s", updated.Description, customAPI.Description)
+	}
+	if updated.NeedAuth != customAPI.NeedAuth {
+		t.Fatalf("target api need_auth overwritten = %t, want %t", updated.NeedAuth, customAPI.NeedAuth)
+	}
+
+	var relationCount int64
+	if err := db.Table("sys_role_api").
+		Where("sys_role_id = ? AND sys_api_id = ?", role.ID, customAPI.ID).
+		Count(&relationCount).Error; err != nil {
+		t.Fatalf("count target api relation: %v", err)
+	}
+	if relationCount != 1 {
+		t.Fatalf("target api relation count = %d, want 1", relationCount)
+	}
+}
+
 func TestEnsureBuiltInDataCreatesDefaultAIProvidersOnlyWhenBothSourcesMissing(t *testing.T) {
 	db := setupInitializeTestDB(t)
 
