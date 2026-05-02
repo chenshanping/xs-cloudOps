@@ -17,13 +17,14 @@ go-base/
 │   ├── main.go
 │   ├── go.mod
 │   ├── config.yaml
+│   ├── config-test.yaml
 │   ├── rbac_model.conf
+│   └── sql/         # 增量升级脚本（仅升级已有环境时按需执行）
 └── web/             # 前端 Vite 项目
-│   ├── src/
-│   ├── index.html
-│   ├── package.json
-│   └── vite.config.ts
-└── go_rbac_admin.sql   # 数据库初始化脚本
+    ├── src/
+    ├── index.html
+    ├── package.json
+    └── vite.config.ts
 ```
 
 ### 2. 后端打包步骤（本地）
@@ -43,9 +44,9 @@ GOOS=linux GOARCH=amd64 go build -o server main.go
 需要上传到服务器的文件：
 
 - `server` （编译后的可执行文件）
-- `config.yaml` （配置文件）
+- `config-test.yaml` （测试环境配置文件，可按需改名）
 - `rbac_model.conf` （Casbin 权限模型配置）
-- `sql/` （数据库初始化脚本目录）
+- `sql/` （可选，已有环境升级时按需执行的增量脚本）
 
 ### 3. 前端打包步骤（本地）
 
@@ -71,16 +72,14 @@ npm run build:test
 ```
 /opt/go-base/server/
 ├── server          # 编译好的二进制文件
-├── config-test.yaml        # 测试环境配置文件
-├── rbac_model.conf         # Casbin 权限模型
-└── sql/                    # 数据库初始化脚本（可选）
-    ├── product.sql
-    └── product_type.sql
+├── config-test.yaml   # 测试环境配置文件
+├── rbac_model.conf    # Casbin 权限模型
+└── sql/               # 可选：已有环境升级时按需执行的增量脚本
 ```
 
 #### 4.2 准备测试环境配置文件
 
-创建 `config-test.yaml`，配置测试环境的 MySQL 和 Redis 连接信息：
+可以直接复制仓库中的 `server/config-test.yaml` 到服务器，再按测试环境修改 MySQL 和 Redis 连接信息：
 
 ```yaml
 server:
@@ -120,12 +119,17 @@ log:
 
 #### 4.3 初始化数据库
 
-通过 1Panel 数据库管理或命令行执行 SQL 脚本：
+先在 MySQL 中创建业务库，例如 `go_rbac_admin`。
 
-```bash
-mysql -h MySQL地址 -P 3306 -u root -p数据库密码 go_rbac_admin < /opt/go-base/server/sql/product.sql
-mysql -h MySQL地址 -P 3306 -u root -p数据库密码 go_rbac_admin < /opt/go-base/server/sql/product_type.sql
-```
+首次启动后端时，程序会自动完成以下动作：
+
+- 自动建表和补齐缺失字段
+- 自动写入内置菜单、API、配置等基础数据
+- 当库里还没有用户时，自动创建默认管理员账号
+
+因此，新测试环境不需要再手工导入旧的初始化 SQL。
+
+如果你是在已有环境上升级，才需要按版本变更执行 `server/sql/` 目录中的对应增量脚本。
 
 #### 4.4 通过 1Panel 运行环境部署
 
@@ -182,12 +186,13 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
-    # API 反向代理到后端
+    # API 反向代理到后端，注意 proxy_pass 末尾不要加 /
     location /api/ {
-        proxy_pass http://127.0.0.1:8080/;
+        proxy_pass http://127.0.0.1:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 ```
@@ -330,12 +335,18 @@ docker compose down
 docker compose restart server
 ```
 
-重新拉起单个服务并带重建：
+重新拉起后端并重建：
 
 ```bash
 docker compose up -d --build server
-docker compose up -d --build web
+docker compose restart web
 ```
+
+说明：
+
+- `web/nginx.conf` 当前通过 `proxy_pass http://server:9000;` 转发到后端
+- 如果后端容器被重建，建议同时重启一次 `web`，避免 Nginx 仍持有旧的上游解析结果
+- 如果前端资源或 Nginx 配置有变更，再单独执行 `docker compose up -d --build web`
 
 ### 8. 本工作树实际验证结果
 
@@ -383,7 +394,7 @@ curl http://127.0.0.1:9000/api/v1/health
 
 ### 1. 端口冲突
 
-如果端口被占用，修改 `docker-compose.yml` 或 `config.yaml` 中的端口映射。
+如果端口被占用，修改 `docker-compose.yml` 的宿主机端口映射，或修改 Docker 镜像内使用的 `server/config.docker.yaml`。
 
 ### 2. 数据库连接失败
 
