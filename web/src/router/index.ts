@@ -73,6 +73,12 @@ const constantRoutes: RouteRecordRaw[] = [
     meta: { title: '重置密码' }
   },
   {
+    path: '/no-permission',
+    name: 'NoPermission',
+    component: () => import('@/views/error/no-permission.vue'),
+    meta: { title: '等待分配权限' }
+  },
+  {
     path: '/',
     name: 'Layout',
     component: () => import('@/layouts/BasicLayout.vue'),
@@ -257,6 +263,20 @@ router.beforeEach(async (to, from, next) => {
     next()
     return
   }
+
+  // 无权限等待页：已登录才能访问，有菜单则跳回后台
+  if (to.path === '/no-permission') {
+    if (!userStore.token) {
+      next('/login')
+      return
+    }
+    if (userStore.menus && userStore.menus.length > 0) {
+      next('/dashboard')
+      return
+    }
+    next()
+    return
+  }
   
   // 前台路由处理
   if (isFrontRoute) {
@@ -302,11 +322,16 @@ router.beforeEach(async (to, from, next) => {
       // 添加动态路由
       addDynamicRoutes(userStore.menus)
       console.log(userStore)
-      // 检查是否有后台菜单权限（普通用户没有菜单，重定向到前台）
+      // 检查是否有后台菜单权限（普通用户没有菜单，按前台模式引导）
       if (!userStore.menus || userStore.menus.length === 0) {
         const frontMode = configStore.get('front_mode')
-        // 根据前台模式决定跳转目标
-        next(frontMode === 'profile' ? '/front/profile' : '/front')
+        if (frontMode === 'none') {
+          next('/no-permission')
+        } else if (frontMode === 'profile') {
+          next('/front/profile')
+        } else {
+          next('/front')
+        }
         return
       }
       
@@ -332,7 +357,13 @@ router.beforeEach(async (to, from, next) => {
   // 已加载用户信息，检查后台权限
   if (!userStore.menus || userStore.menus.length === 0) {
     const frontMode = configStore.get('front_mode')
-    next(frontMode === 'profile' ? '/front/profile' : '/front')
+    if (frontMode === 'none') {
+      next('/no-permission')
+    } else if (frontMode === 'profile') {
+      next('/front/profile')
+    } else {
+      next('/front')
+    }
     return
   }
 

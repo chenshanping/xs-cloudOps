@@ -21,9 +21,10 @@
           <a-radio-group v-model:value="basicForm.front_mode">
             <a-radio value="full">完整前台</a-radio>
             <a-radio value="profile">仅个人中心</a-radio>
+            <a-radio value="none">无前台</a-radio>
           </a-radio-group>
           <div class="form-tip">
-            完整前台: 显示全部前台页面；仅个人中心: 只显示个人资料页面
+            完整前台: 显示全部前台页面；仅个人中心: 只显示个人资料页面；无前台: 纯后台模式，未分配菜单的用户将看到等待页
           </div>
         </a-form-item>
 

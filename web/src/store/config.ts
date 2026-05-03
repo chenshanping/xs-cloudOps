@@ -22,7 +22,7 @@ export const PUBLIC_CONFIG_KEYS = [
   // 注册相关配置
   'enable_register',
   // 前台模式配置
-  'front_mode',  // 'full': 完整前台, 'profile': 仅个人中心(用于身份认证)
+  'front_mode',  // 'full': 完整前台, 'profile': 仅个人中心, 'none': 无前台(纯后台模式)
   'user_profile_button_visible',
 ] as const
 
@@ -90,7 +90,7 @@ const DEFAULT_CONFIG: Record<string, string> = {
   register_email_verify: '0',
   frontend_url: 'http://localhost:5173',
   slider_captcha_bg: '',
-  // 前台模式: 'full' = 完整前台, 'profile' = 仅个人中心
+  // 前台模式: 'full' = 完整前台, 'profile' = 仅个人中心, 'none' = 无前台(纯后台)
   front_mode: 'full',
   user_profile_button_visible: 'false',
   user_default_password: '123456',
