@@ -41,7 +41,7 @@ import { useUiStore } from '@/store/ui'
 import { useUserStore } from '@/store/user'
 import type { Menu } from '@/types'
 import {
-  filterEnabledMenus,
+  filterVisibleMenus,
   findMenuTrail,
   firstNavigablePath,
   getMixedSidebarMenus,
@@ -64,7 +64,7 @@ const sidebarTitle = computed(() => {
   return uiStore.layout.mode === 'mixed' ? `${base}` : `${base}后台`
 })
 
-const normalizedMenus = computed(() => filterEnabledMenus(userStore.menus || []))
+const normalizedMenus = computed(() => filterVisibleMenus(userStore.menus || []))
 
 const currentMenus = computed(() => {
   if (uiStore.layout.mode === 'mixed') {

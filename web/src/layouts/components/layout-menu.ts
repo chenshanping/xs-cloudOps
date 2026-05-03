@@ -17,6 +17,16 @@ export function filterEnabledMenus(menus: Menu[] = []): Menu[] {
     }))
 }
 
+export function filterVisibleMenus(menus: Menu[] = []): Menu[] {
+  return menus
+    .filter((menu) => menu.status === 1 && menu.hidden !== 1)
+    .map((menu) => ({
+      ...menu,
+      path: normalizePath(menu.path),
+      children: filterVisibleMenus(menu.children || []),
+    }))
+}
+
 export function findMenuTrail(menus: Menu[], path: string): Menu[] {
   for (const menu of menus) {
     const menuPath = normalizePath(menu.path)

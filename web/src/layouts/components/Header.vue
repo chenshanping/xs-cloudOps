@@ -109,6 +109,7 @@ import { useUiStore } from '@/store/ui'
 import { useUserStore } from '@/store/user'
 import {
   filterEnabledMenus,
+  filterVisibleMenus,
   findMenuTrail,
   firstNavigablePath,
   getBreadcrumbs,
@@ -128,6 +129,7 @@ const configStore = useConfigStore()
 const uiStore = useUiStore()
 
 const normalizedMenus = computed(() => filterEnabledMenus(userStore.menus || []))
+const visibleMenus = computed(() => filterVisibleMenus(userStore.menus || []))
 
 const breadcrumbs = computed<BreadcrumbItem[]>(() => {
   const items: BreadcrumbItem[] = [{ path: '/dashboard', title: '首页' }]
@@ -175,7 +177,7 @@ const buildTopMenuChildren = (menus: typeof normalizedMenus.value[number]['child
 }
 
 const topMenuItems = computed<ItemType[]>(() => {
-  return normalizedMenus.value.map((menu) => {
+  return visibleMenus.value.map((menu) => {
     const icon = menu.icon ? () => h(MenuIcon, { icon: menu.icon }) : undefined
 
     if (menu.type === 1 && menu.children?.length) {
@@ -223,7 +225,7 @@ const handleTopMenuClick = ({ key }: MenuInfo) => {
     return
   }
 
-  const target = normalizedMenus.value.find((menu) => String(menu.id) === String(key))
+  const target = visibleMenus.value.find((menu) => String(menu.id) === String(key))
   if (!target) {
     return
   }

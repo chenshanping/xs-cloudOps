@@ -166,7 +166,7 @@ Upgrade scripts must:
 
 ### SQL Script Authoring Rules
 
-- Any change under `server/sql/` must use the `sql-upgrade-guardrails` skill before writing or modifying the script.
+- Any change under `server/sql/` must use the `/sql-upgrade-guardrails` workflow before writing or modifying the script.
 - Treat this repository as `Oracle MySQL` by default, not MariaDB. Do not assume MySQL supports MariaDB DDL syntax.
 - **No foreign key constraints in DDL.** Do not add `FOREIGN KEY` or `REFERENCES` clauses in `CREATE TABLE` or `ALTER TABLE` statements. Use plain columns with indexes for cross-table references. Enforce referential integrity in application code only.
 - Before editing an incremental SQL script, inspect the baseline snapshot `go-base.sql` and the nearest related upgrade scripts.
