@@ -297,8 +297,18 @@ router.beforeEach(async (to, from, next) => {
       }
     }
 
-    // 检查前台模式：如果是 profile 模式，只允许访问个人中心
+    // 检查前台模式
     const frontMode = configStore.get('front_mode')
+    if (frontMode === 'none') {
+      // 无前台模式：所有前台路由不可访问
+      if (userStore.token) {
+        // 已登录用户：有菜单回后台，无菜单去等待页
+        next(userStore.menus && userStore.menus.length > 0 ? '/dashboard' : '/no-permission')
+      } else {
+        next('/login')
+      }
+      return
+    }
     if (frontMode === 'profile' && to.name !== 'FrontProfile') {
       // profile 模式下，其他前台页面重定向到个人中心
       next('/front/profile')
