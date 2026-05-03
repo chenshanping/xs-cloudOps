@@ -1,7 +1,0 @@
-- [x] 1. Add OpenSpec delta for admin user controls covering config-driven single/batch password reset, tree expand controls, red unassigned tags, and selection-reset behavior.
-- [x] 2. Add failing backend tests for config-driven single reset fallback, batch reset success, and out-of-scope batch reset rejection.
-- [x] 3. Implement backend request/router/api/service changes for config-driven single reset and new batch reset endpoint.
-- [x] 4. Add initialization and SQL upgrade metadata for `user_default_password`, batch reset permission/menu/API, and inherited role/Casbin grants.
-- [x] 5. Update frontend config store and system config page with `user_default_password` password input and 12-character alphanumeric generator.
-- [x] 6. Update user management page and API wrappers for controlled tree expansion, expand/collapse actions, red unassigned tags, single/batch reset confirmations, and selection clearing.
-- [x] 7. Run `cd server && go test ./...` and `cd web && npm run build`, plus `cd web && npm run typecheck` if the environment allows it, and record any known toolchain blocker explicitly.

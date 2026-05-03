@@ -1,5 +1,0 @@
-- [x] 1. Add OpenSpec delta for secure public config access covering anonymous allowlisted reads, no login-state escalation on the public endpoint, and continued private config reads through existing protected APIs.
-- [x] 2. Add failing backend API tests for `POST /api/v1/configs/keys` public-key reads, sensitive-key denial, valid-token no-escalation, and private config API permission checks.
-- [x] 3. Implement backend `public_config_keys` allowlist resolution, hard-sensitive deny protection, and public-endpoint filtering without changing existing private config CRUD routes.
-- [x] 4. Split frontend config key loading into public and admin groups, move full-config reads to the private config list path, and expose `public_config_keys` editing in the system config page.
-- [x] 5. Run `cd server && go test ./...` and `cd web && npm run build`, plus `cd web && npm run typecheck` or explicitly report the known existing typecheck blocker.
