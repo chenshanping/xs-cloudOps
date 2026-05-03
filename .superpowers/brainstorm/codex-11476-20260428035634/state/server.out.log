@@ -1,4 +1,0 @@
-{"type":"server-started","port":62361,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:62361","screen_dir":"E:\\go_project\\go-base\\.superpowers\\brainstorm\\codex-11476-20260428035634\\content","state_dir":"E:\\go_project\\go-base\\.superpowers\\brainstorm\\codex-11476-20260428035634\\state"}
-{"type":"screen-added","file":"E:\\go_project\\go-base\\.superpowers\\brainstorm\\codex-11476-20260428035634\\content\\ai-config-layout-options.html"}
-{"type":"screen-updated","file":"E:\\go_project\\go-base\\.superpowers\\brainstorm\\codex-11476-20260428035634\\content\\ai-config-layout-options.html"}
-{"type":"server-stopped","reason":"idle timeout"}

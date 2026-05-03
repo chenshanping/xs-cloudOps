@@ -47,7 +47,15 @@
         </template>
         <template v-if="column.key === 'action'">
           <a-button type="link" size="small" @click="handleEdit(record)" v-permission="'system:role:edit'">编辑</a-button>
-          <a-button type="link" size="small" @click="handleAssignPermissions(record)" v-permission="'system:role:assign'">分配权限</a-button>
+          <a-button
+            type="link"
+            size="small"
+            :disabled="permissionDrawerVisible && currentId === record.id"
+            @click="handleAssignPermissions(record)"
+            v-permission="'system:role:assign'"
+          >
+            分配权限
+          </a-button>
           <a-button
             v-if="getRoleUserCount(record) > 0"
             type="link"
@@ -145,7 +153,7 @@ const {
 }
 
 .role-users-count {
-  color: #262626;
+  color: var(--app-text-color, #262626);
   font-weight: 500;
 }
 

@@ -1,7 +1,0 @@
-interface:
-  display_name: "GoBase CRUD Rules"
-  short_description: "Gin/Gorm + Vue3 admin CRUD conventions for the current go-base workspace"
-  default_prompt: "Use $backend-crud-frontend to build or refactor a CRUD-style admin module in the current go-base workspace. Inspect live neighboring Go files, Vue files, router registration, permission helpers, and current module placement first; then keep new code aligned with server/api/v1, service, model, model/request, router/modules, web/src/api, web/src/views/system, and web/src/types. For frontend create, edit, and similar action surfaces, extract the popup or drawer content into components and default to drawers unless the user explicitly asks for another interaction pattern."
-
-policy:
-  allow_implicit_invocation: true

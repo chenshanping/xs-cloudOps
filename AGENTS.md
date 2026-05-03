@@ -19,7 +19,7 @@
 - Backend: `server/`
 - Frontend: `web/`
 - Specs and change management: `openspec/`
-- Local project skills: `.codex/skills/`
+- Local project workflows: `.windsurf/workflows/`
 - Superpowers design/plan docs: `docs/superpowers/`
 
 ## Current Persistent Decisions
@@ -128,6 +128,7 @@ Known caveat:
 - Keep business logic in services, not handlers.
 - Reuse existing response helpers, auth flow, cache invalidation, and permission refresh patterns.
 - Treat security-sensitive system config rules as backend-owned policy by default. If a config item changes anonymous exposure, auth boundaries, secret visibility, or other high-risk behavior, prefer code-defined allow/deny lists and reviewed deployment changes over admin-page runtime configuration.
+- **No database foreign keys.** Do not use GORM association tags that generate FK constraints (e.g. `gorm:"foreignKey:..."`). Keep referential integrity in application code. If a model needs to reference another table, store the ID column only and query the related record manually in the service layer. This avoids AutoMigrate FK failures when nullable/zero-value IDs exist.
 
 ## Built-In Bootstrap Rules
 
@@ -142,8 +143,32 @@ Known caveat:
 
 ## SQL Upgrade Rules
 
+### When An Upgrade Script Is Mandatory
+
+Any change that affects the **persisted state of existing installations** must ship a matching incremental SQL script under `server/sql/`, even when the change is made through Go code (GORM `AutoMigrate`, `initialize/` bootstrap, seed helpers). This includes but is not limited to:
+
+- Adding, renaming, or removing tables, columns, indexes, or unique constraints
+- Changing column types, defaults, nullability, or character sets
+- Changing built-in menu rows: `path`, `name`, `icon`, `sort`, `hidden`, `component`, `parent_id`, `permission`, `status`
+- Changing built-in API rows, permission rows, role-menu / role-api bindings
+- Changing built-in config rows: default value, display label, exposure flag, scope
+- Changing seed data that existing deployments have already received
+- Any data migration or backfill required by a behavior change
+
+Rule of thumb: **if the `initialize/` code uses a create-only pattern (`FirstOrCreate + Attrs`, `OnConflict DoNothing`, missing-field checks)**, then any change to the intended values for existing rows will NOT take effect on existing installs — an upgrade script is required to reconcile the drift.
+
+Upgrade scripts must:
+
+- Be idempotent and safe to rerun
+- Only update rows that actually need updating (use `WHERE` guards on the old value)
+- Be placed in `server/sql/` with a descriptive filename, e.g. `update_<feature>_<change>.sql`
+- Be referenced in the PR/commit description or task notes so operators know to run it
+
+### SQL Script Authoring Rules
+
 - Any change under `server/sql/` must use the `sql-upgrade-guardrails` skill before writing or modifying the script.
 - Treat this repository as `Oracle MySQL` by default, not MariaDB. Do not assume MySQL supports MariaDB DDL syntax.
+- **No foreign key constraints in DDL.** Do not add `FOREIGN KEY` or `REFERENCES` clauses in `CREATE TABLE` or `ALTER TABLE` statements. Use plain columns with indexes for cross-table references. Enforce referential integrity in application code only.
 - Before editing an incremental SQL script, inspect the baseline snapshot `go-base.sql` and the nearest related upgrade scripts.
 - Do not use unsupported MySQL incremental DDL patterns such as:
   - `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...`
@@ -164,10 +189,10 @@ Known caveat:
 
 ## Superpowers Conventions In This Repo
 
-- Local Superpowers skills live in `.codex/skills/`.
+- Workflow definitions live in `.windsurf/workflows/` and are invoked with slash commands (e.g. `/brainstorming`, `/writing-plans`, `/executing-plans`, `/openspec-propose`).
 - Brainstorm specs should be written to `docs/superpowers/specs/`.
 - Implementation plans should be written to `docs/superpowers/plans/`.
-- Prefer `subagent-driven-development` or `executing-plans` only after design and plan are approved.
+- Prefer `/executing-plans` only after design and plan are approved.
 
 ## Scope Discipline
 
@@ -183,5 +208,6 @@ Before declaring work complete, verify:
 - Code changes match the agreed scope
 - Verification commands were actually run
 - Any known blocker or existing unrelated failure is reported clearly
+- **If the change affects persisted DB state of existing installs** (schema, built-in menu/API/config/permission rows, seed data), confirm a matching SQL upgrade script exists under `server/sql/` and is reported to the user. Changes made only through Go `initialize/` code without an SQL script are considered incomplete for existing installations.
 - If `server/sql/` changed, report whether the upgrade script was verified for MySQL syntax and whether rerun idempotence was checked
 - If `server/initialize/` changed, report whether startup rerun behavior was verified and whether customized built-in data survives restart.
