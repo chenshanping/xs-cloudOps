@@ -52,9 +52,15 @@ type Casbin struct {
 }
 
 type Log struct {
-	Level     string `mapstructure:"level" yaml:"level"`
-	Format    string `mapstructure:"format" yaml:"format"`
-	Directory string `mapstructure:"directory" yaml:"directory"`
+	Level      string `mapstructure:"level" yaml:"level"`
+	Format     string `mapstructure:"format" yaml:"format"`
+	Directory  string `mapstructure:"directory" yaml:"directory"`
+	Filename   string `mapstructure:"filename" yaml:"filename"`
+	MaxSize    int    `mapstructure:"max_size" yaml:"max_size"`
+	MaxBackups int    `mapstructure:"max_backups" yaml:"max_backups"`
+	MaxAge     int    `mapstructure:"max_age" yaml:"max_age"`
+	Compress   bool   `mapstructure:"compress" yaml:"compress"`
+	Stdout     bool   `mapstructure:"stdout" yaml:"stdout"`
 }
 
 type AI struct {

@@ -7,14 +7,14 @@
 ## 技术栈
 
 ### 后端
-- Go 1.21+
+- Go 1.24+
 - Gin (Web框架)
 - GORM (ORM框架)
 - JWT (身份认证)
 - Casbin (权限控制)
 - MySQL 8.0+
 - Redis
-- Zap (日志)
+- Zap + Lumberjack (结构化日志 + 文件轮转，ELK 就绪)
 - Viper (配置管理)
 
 ### 前端
@@ -36,12 +36,13 @@
 - ✅ Casbin权限：基于Casbin的RBAC权限控制
 - ✅ 操作日志：记录用户操作日志
 - ✅ 登录日志：记录用户登录日志
+- ✅ 结构化日志：Zap JSON 日志 + Lumberjack 轮转，支持 Filebeat/ELK 采集
 
 ## 快速开始
 
 ### 前置要求
 
-- Go 1.21+
+- Go 1.24+
 - Node.js 18+
 - MySQL 8.0+
 - Redis
@@ -55,7 +56,7 @@ cd server
 go mod download
 
 # 修改配置
-# 编辑 config.yaml 配置MySQL和Redis连接信息
+# 编辑 config.yaml 配置MySQL、Redis连接和日志参数
 
 # 启动服务
 go run main.go
@@ -112,6 +113,26 @@ go-rbac-admin/
 │   └── package.json
 └── README.md
 ```
+
+## 日志配置
+
+日志同时输出到**文件（JSON 格式）**和**控制台**，文件日志可直接被 Filebeat 采集送入 ELK。
+
+```yaml
+log:
+  level: info           # 日志级别: debug, info, warn, error
+  format: console       # 控制台格式: console(人类可读), json
+  directory: ./logs     # 日志文件目录
+  filename: app.log     # 日志文件名
+  max_size: 100         # 单文件最大 MB
+  max_backups: 5        # 保留旧文件数量
+  max_age: 30           # 保留天数
+  compress: true        # 压缩旧日志
+  stdout: true          # 同时输出到控制台（容器部署建议开启）
+```
+
+- **传统部署**：Filebeat 指向 `./logs/app.log`，文件始终为 JSON 格式
+- **容器部署**：设 `format: json`，通过 Docker/K8s 日志驱动采集 stdout
 
 ## API文档
 
