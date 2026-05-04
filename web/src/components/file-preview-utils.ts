@@ -9,6 +9,9 @@ export type FilePreviewKind =
   | 'excel'
   | 'pptx'
   | 'text'
+  | 'code'
+  | 'markdown'
+  | 'epub'
   | 'unsupported'
 
 export type FilePreviewUnsupportedReason =
@@ -29,12 +32,21 @@ interface FilePreviewInput {
   name?: string
 }
 
-const imageExts = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'])
-const videoExts = new Set(['mp4', 'webm', 'ogg', 'avi', 'mov', 'wmv', 'flv', 'mkv'])
-const audioExts = new Set(['mp3', 'wav', 'ogg', 'aac', 'flac'])
-const textExts = new Set(['txt', 'md', 'json', 'xml', 'html', 'css', 'js', 'ts', 'vue', 'go', 'py', 'yaml', 'yml'])
-const officePreviewExts = new Set(['docx', 'xlsx', 'pptx'])
-const legacyOfficeExts = new Set(['doc', 'xls', 'ppt'])
+const imageExts = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico'])
+const videoExts = new Set(['mp4', 'webm', 'ogg', 'avi', 'mov', 'wmv', 'flv', 'mkv', 'mpeg'])
+const audioExts = new Set(['mp3', 'wav', 'ogg', 'aac', 'flac', 'wma'])
+const textExts = new Set(['txt'])
+const codeExts = new Set([
+  'html', 'css', 'less', 'scss', 'js', 'json', 'ts', 'vue',
+  'c', 'cpp', 'java', 'py', 'go', 'php', 'lua', 'rb', 'pl',
+  'swift', 'vb', 'cs', 'sh', 'rs', 'vim', 'log', 'lock',
+  'xml', 'mht', 'mhtml', 'mod', 'yaml', 'yml',
+])
+const markdownExts = new Set(['md'])
+const docxExts = new Set(['docx'])
+const excelExts = new Set(['xlsx', 'xls', 'csv', 'fods', 'ods', 'ots', 'xlsm', 'xlt', 'xltm'])
+const pptxExts = new Set(['pptx', 'ppt', 'fodp', 'odp', 'otp', 'pot', 'potm', 'potx', 'pps', 'ppsm', 'ppsx', 'pptm'])
+const legacyOfficeExts = new Set(['doc', 'docm', 'dot', 'dotm', 'dotx', 'fodt', 'odt', 'ott', 'rtf'])
 
 function normalizeExt(input: FilePreviewInput) {
   if (input.ext?.trim()) {
@@ -66,8 +78,14 @@ export function getFilePreviewDescriptor(input: FilePreviewInput): FilePreviewDe
   if (audioExts.has(ext) || mimeType.startsWith('audio/')) {
     return { kind: 'audio' }
   }
-  if (textExts.has(ext) || mimeType.startsWith('text/')) {
+  if (markdownExts.has(ext)) {
+    return { kind: 'markdown' }
+  }
+  if (textExts.has(ext)) {
     return { kind: 'text' }
+  }
+  if (codeExts.has(ext) || mimeType.startsWith('text/')) {
+    return { kind: 'code' }
   }
   if (ext === 'pdf' || mimeType === 'application/pdf') {
     if (size > FILE_PREVIEW_SIZE_LIMIT) {
@@ -75,20 +93,29 @@ export function getFilePreviewDescriptor(input: FilePreviewInput): FilePreviewDe
     }
     return { kind: 'pdf' }
   }
+  if (ext === 'epub') {
+    return { kind: 'epub' }
+  }
   if (legacyOfficeExts.has(ext)) {
     return { kind: 'unsupported', reason: 'legacy-office' }
   }
-  if (officePreviewExts.has(ext)) {
+  if (docxExts.has(ext)) {
     if (size > FILE_PREVIEW_SIZE_LIMIT) {
       return { kind: 'unsupported', reason: 'too-large' }
     }
-    if (ext === 'docx') {
-      return { kind: 'docx' }
-    }
-    if (ext === 'pptx') {
-      return { kind: 'pptx' }
+    return { kind: 'docx' }
+  }
+  if (excelExts.has(ext)) {
+    if (size > FILE_PREVIEW_SIZE_LIMIT) {
+      return { kind: 'unsupported', reason: 'too-large' }
     }
     return { kind: 'excel' }
+  }
+  if (pptxExts.has(ext)) {
+    if (size > FILE_PREVIEW_SIZE_LIMIT) {
+      return { kind: 'unsupported', reason: 'too-large' }
+    }
+    return { kind: 'pptx' }
   }
 
   return { kind: 'unsupported', reason: 'unknown' }
@@ -107,16 +134,3 @@ export function getUnsupportedPreviewMessage(descriptor: FilePreviewDescriptor) 
   }
 }
 
-export function getPreferredPreviewMimeType(descriptor: FilePreviewDescriptor, mimeType?: string) {
-  const normalizedMimeType = (mimeType || '').trim().toLowerCase()
-  if (descriptor.kind === 'pdf') {
-    return 'application/pdf'
-  }
-  if (normalizedMimeType) {
-    return normalizedMimeType
-  }
-  if (descriptor.kind === 'text') {
-    return 'text/plain'
-  }
-  return ''
-}

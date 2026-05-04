@@ -3,5 +3,5 @@ export function shouldRestoreMigrationTaskOnOpen(task) {
     return false
   }
 
-  return task.status === 'SCANNING' || task.status === 'RUNNING'
+  return task.status === 'SCANNING' || task.status === 'RUNNING' || task.status === 'SUCCESS' || task.status === 'FAILED'
 }

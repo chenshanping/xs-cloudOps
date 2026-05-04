@@ -1,6 +1,9 @@
 package model
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 // StorageType 存储类型
 type StorageType string
@@ -21,6 +24,37 @@ type StorageProfile struct {
 
 func (p StorageProfile) CacheKey() string {
 	return fmt.Sprintf("%s::%s", p.Type, p.Config)
+}
+
+// GetBucketName 从配置中提取桶名/路径标识
+func (p StorageProfile) GetBucketName() string {
+	if p.Config == "" {
+		return ""
+	}
+	var raw map[string]interface{}
+	if err := json.Unmarshal([]byte(p.Config), &raw); err != nil {
+		return ""
+	}
+	switch p.Type {
+	case StorageTypeAliyun:
+		if v, ok := raw["bucket_name"].(string); ok {
+			return v
+		}
+	case StorageTypeTencent:
+		if v, ok := raw["bucket"].(string); ok {
+			return v
+		}
+	case StorageTypeMinio:
+		if v, ok := raw["bucket_name"].(string); ok {
+			return v
+		}
+	case StorageTypeLocal:
+		if v, ok := raw["base_path"].(string); ok {
+			return v
+		}
+		return "uploads"
+	}
+	return ""
 }
 
 // LegacyStorageRecord 仅用于兼容历史 sys_storage 表数据迁移

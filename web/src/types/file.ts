@@ -143,6 +143,7 @@ export interface FileMigrationRequest {
   ids?: number[]
   source_storage_type: string
   target_storage_type: string
+  source_config?: string
   filters?: FileMigrationFilters
 }
 

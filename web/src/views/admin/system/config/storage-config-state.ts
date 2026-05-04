@@ -59,7 +59,7 @@ function normalizeStorageType(value?: string): StorageType {
   return 'local'
 }
 
-function parseStorageConfig(type: StorageType, rawValue?: string): StorageConfigDraft {
+export function parseStorageConfig(type: StorageType, rawValue?: string): StorageConfigDraft {
   let parsed: StorageConfigDraft = {}
   if (rawValue) {
     try {
@@ -95,6 +95,30 @@ export function changeActiveStorageType(state: StorageDraftsState, storageType: 
   return {
     ...state,
     activeType: normalizeStorageType(storageType),
+  }
+}
+
+export function getStorageBucketLabel(type: StorageType, configJSON?: string): string {
+  let config: Record<string, any> = {}
+  if (configJSON) {
+    try {
+      config = JSON.parse(configJSON)
+    } catch {
+      config = {}
+    }
+  }
+
+  switch (type) {
+    case 'aliyun':
+      return config.bucket_name || ''
+    case 'tencent':
+      return config.bucket || ''
+    case 'minio':
+      return config.bucket_name || ''
+    case 'local':
+      return config.base_path || 'uploads'
+    default:
+      return ''
   }
 }
 

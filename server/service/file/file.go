@@ -157,16 +157,17 @@ func (s *FileService) resolveFileStorage(file model.SysFile) (*model.StorageProf
 func (s *FileService) createFileRecord(filename, key, url, md5 string, fileSize int64, uploaderID uint, storage *model.StorageProfile) *model.SysFile {
 	ext := strings.TrimPrefix(filepath.Ext(filename), ".")
 	return &model.SysFile{
-		Name:        filename,
-		Path:        key,
-		URL:         url,
-		Size:        fileSize,
-		Ext:         ext,
-		MimeType:    getMimeType(ext),
-		MD5:         md5,
-		StorageType: string(storage.Type),
-		UploaderID:  uploaderID,
-		Status:      1,
+		Name:          filename,
+		Path:          key,
+		URL:           url,
+		Size:          fileSize,
+		Ext:           ext,
+		MimeType:      getMimeType(ext),
+		MD5:           md5,
+		StorageType:   string(storage.Type),
+		StorageBucket: storage.GetBucketName(),
+		UploaderID:    uploaderID,
+		Status:        1,
 	}
 }
 
@@ -618,8 +619,9 @@ func (s *FileService) buildFileMigrationCandidates(req modelrequest.FileMigratio
 	if targetStorageType == "" {
 		return nil, errors.New("请选择目标存储")
 	}
-	if sourceStorageType == targetStorageType {
-		return nil, errors.New("源存储和目标存储不能相同")
+	sameTypeMode := sourceStorageType == targetStorageType
+	if sameTypeMode && strings.TrimSpace(req.SourceConfig) == "" {
+		return nil, errors.New("同类型迁移需要提供源存储配置")
 	}
 	if !s.isSupportedMigrationStorageType(sourceStorageType) {
 		return nil, fmt.Errorf("不支持的源存储类型: %s", sourceStorageType)
@@ -639,6 +641,18 @@ func (s *FileService) buildFileMigrationCandidates(req modelrequest.FileMigratio
 	targetClient, err := oss.GetClient(targetStorage)
 	if err != nil {
 		return nil, fmt.Errorf("创建目标存储客户端失败: %v", err)
+	}
+
+	var sourceConfigOverride *model.StorageProfile
+	if sameTypeMode {
+		profile, err := storagesvc.Default.BuildStorageProfile(sourceStorageType, req.SourceConfig)
+		if err != nil {
+			return nil, fmt.Errorf("解析源存储配置失败: %v", err)
+		}
+		if profile.GetBucketName() == targetStorage.GetBucketName() {
+			return nil, errors.New("源桶与目标桶相同，无需迁移")
+		}
+		sourceConfigOverride = profile
 	}
 
 	files, err := s.collectFilesForMigration(req, scope, sourceStorageType)
@@ -700,15 +714,20 @@ func (s *FileService) buildFileMigrationCandidates(req modelrequest.FileMigratio
 			continue
 		}
 
-		sourceStorage, err := s.resolveFileStorage(file)
-		if err != nil {
-			candidate.skipMessage = fmt.Sprintf("解析源存储失败: %v", err)
-			candidates = append(candidates, candidate)
-			continue
+		var sourceStorage *model.StorageProfile
+		if sourceConfigOverride != nil {
+			sourceStorage = sourceConfigOverride
+		} else {
+			sourceStorage, err = s.resolveFileStorage(file)
+			if err != nil {
+				candidate.skipMessage = fmt.Sprintf("解析源存储失败: %v", err)
+				candidates = append(candidates, candidate)
+				continue
+			}
 		}
 		candidate.sourceStorage = sourceStorage
 
-		if sourceStorage.Type == targetStorageType {
+		if !sameTypeMode && sourceStorage.Type == targetStorageType {
 			candidate.skipMessage = "文件已在目标存储，无需迁移"
 			candidates = append(candidates, candidate)
 			continue
@@ -919,8 +938,9 @@ func (s *FileService) executeFileMigrationCandidate(candidate fileMigrationCandi
 		}
 
 		updateData := map[string]interface{}{
-			"storage_type": string(candidate.targetStorage.Type),
-			"url":          candidate.targetURL,
+			"storage_type":   string(candidate.targetStorage.Type),
+			"storage_bucket": candidate.targetStorage.GetBucketName(),
+			"url":            candidate.targetURL,
 		}
 
 		result := updateQuery.Updates(updateData)
@@ -930,6 +950,17 @@ func (s *FileService) executeFileMigrationCandidate(candidate fileMigrationCandi
 		if result.RowsAffected == 0 {
 			return errors.New("文件记录已变化，请刷新后重试")
 		}
+
+		// 同步更新引用了该文件的系统配置 URL
+		fileIDStr := strconv.FormatUint(uint64(candidate.file.ID), 10)
+		for fileIDKey, urlKey := range configsvc.ImageFileIDToURLKeyMap() {
+			var cfg model.SysConfig
+			if err := tx.Where("`key` = ? AND `value` = ?", fileIDKey, fileIDStr).First(&cfg).Error; err != nil {
+				continue
+			}
+			tx.Model(&model.SysConfig{}).Where("`key` = ?", urlKey).Update("value", candidate.targetURL)
+		}
+
 		return nil
 	})
 	if updateErr != nil {

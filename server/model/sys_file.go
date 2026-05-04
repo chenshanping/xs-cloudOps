@@ -11,6 +11,7 @@ type SysFile struct {
 	MimeType       string `json:"mime_type" gorm:"size:100;comment:MIME类型"`
 	MD5            string `json:"md5" gorm:"size:32;index;comment:文件MD5"`
 	StorageType    string `json:"storage_type" gorm:"size:20;index;comment:存储类型快照"`
+	StorageBucket  string `json:"storage_bucket" gorm:"size:100;comment:存储桶/路径快照"`
 	UploaderID     uint   `json:"uploader_id" gorm:"comment:上传者ID"`
 	Status         int    `json:"status" gorm:"default:1;comment:状态 0删除 1正常"`
 	ReferenceCount int64  `json:"reference_count" gorm:"-:all"`

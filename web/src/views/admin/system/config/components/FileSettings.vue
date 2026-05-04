@@ -116,7 +116,17 @@
       <template #footer>
         <a-space>
           <a-button @click="configVisible = false">关闭</a-button>
-          <a-button :loading="storageTesting" @click="handleTestStorage">测试连接</a-button>
+          <a-button
+            v-if="storageType !== 'local'"
+            :loading="storageTesting"
+            :class="{ 'validated-btn': storageValidated }"
+            @click="handleTestStorage"
+          >
+            <template v-if="storageValidated">
+              <CheckCircleOutlined /> 已验证
+            </template>
+            <template v-else>测试连接</template>
+          </a-button>
           <a-button type="primary" :loading="storageSaving" @click="handleStorageSave">保存配置</a-button>
         </a-space>
       </template>
@@ -127,6 +137,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import { CheckCircleOutlined } from '@ant-design/icons-vue'
 import { useConfigStore } from '@/store/config'
 import { testStorageConfig } from '@/api/config'
 import type { StorageType } from '@/types/storage'
@@ -148,6 +159,7 @@ const configVisible = ref(false)
 const saving = ref(false)
 const storageSaving = ref(false)
 const storageTesting = ref(false)
+const storageValidated = ref(false)
 
 const storageState = reactive(createStorageDraftsState({
   storage_type: configStore.get('storage_type'),
@@ -173,7 +185,12 @@ const storageTypeExtra = '这里仅影响后续新上传文件的默认存储位
 
 const handleStorageTypeChange = (value: StorageType) => {
   storageType.value = value
+  storageValidated.value = false
 }
+
+watch(storageConfig, () => {
+  storageValidated.value = false
+}, { deep: true })
 
 const getFileSettingsState = () => ({
   file_delete_mode: fileDeleteMode.value,
@@ -247,8 +264,10 @@ const handleTestStorage = async () => {
       type: storageType.value,
       config: JSON.stringify(storageConfig.value),
     })
+    storageValidated.value = true
     message.success('连接测试成功')
   } catch (error: any) {
+    storageValidated.value = false
     message.error(error?.message || '连接测试失败')
   } finally {
     storageTesting.value = false
@@ -256,6 +275,32 @@ const handleTestStorage = async () => {
 }
 
 const handleStorageSave = async () => {
+  if (storageType.value === 'local') {
+    await doStorageSave()
+    return
+  }
+
+  if (!storageValidated.value) {
+    storageTesting.value = true
+    try {
+      await testStorageConfig({
+        type: storageType.value,
+        config: JSON.stringify(storageConfig.value),
+      })
+      storageValidated.value = true
+    } catch (error: any) {
+      storageValidated.value = false
+      message.error(error?.message || '连接验证失败，请检查配置后重试')
+      return
+    } finally {
+      storageTesting.value = false
+    }
+  }
+
+  await doStorageSave()
+}
+
+const doStorageSave = async () => {
   storageSaving.value = true
   try {
     await configStore.updateConfigs(buildFullSavePayload())
@@ -291,5 +336,10 @@ defineExpose({
   margin-top: 4px;
   font-size: 12px;
   color: #999;
+}
+
+.validated-btn {
+  color: #52c41a;
+  border-color: #b7eb8f;
 }
 </style>

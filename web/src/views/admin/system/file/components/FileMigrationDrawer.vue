@@ -25,7 +25,7 @@
           <a-select
             v-model:value="form.sourceStorageType"
             placeholder="请选择源存储"
-            :options="storageTypeOptions"
+            :options="storageOptionsWithBucket"
           />
         </a-form-item>
         <a-form-item
@@ -35,10 +35,76 @@
           <a-select
             v-model:value="form.targetStorageType"
             placeholder="请选择目标存储"
-            :options="storageTypeOptions"
+            :options="storageOptionsWithBucket"
           />
         </a-form-item>
       </a-form>
+
+      <a-card v-if="sameStorageSelected && form.sourceStorageType !== 'local'" size="small" title="源存储配置（旧桶）" style="margin-bottom: 12px">
+        <a-form layout="vertical">
+          <a-form-item label="配置来源">
+            <a-radio-group v-model:value="sourceConfigMode" option-type="button" button-style="solid">
+              <a-radio-button value="system">使用系统配置</a-radio-button>
+              <a-radio-button value="custom">手动填写</a-radio-button>
+            </a-radio-group>
+            <div v-if="sourceConfigMode === 'system'" style="margin-top: 6px; font-size: 12px; color: #64748b">
+              已加载系统配置的连接信息（AK/SK/Endpoint 等），桶名已清空，请填写旧桶名称。
+              <template v-if="targetBucketLabel">当前目标桶：<strong>{{ targetBucketLabel }}</strong></template>
+            </div>
+          </a-form-item>
+          <template v-if="form.sourceStorageType === 'aliyun'">
+            <a-form-item label="Endpoint">
+              <a-input v-model:value="sourceConfig.endpoint" placeholder="如：oss-cn-hangzhou.aliyuncs.com" />
+            </a-form-item>
+            <a-form-item label="AccessKey ID">
+              <a-input v-model:value="sourceConfig.access_key_id" />
+            </a-form-item>
+            <a-form-item label="AccessKey Secret">
+              <a-input-password v-model:value="sourceConfig.access_key_secret" />
+            </a-form-item>
+            <a-form-item label="Bucket（旧桶）" :extra="targetBucketLabel ? `目标桶：${targetBucketLabel}，请填写不同的旧桶名` : ''">
+              <a-input v-model:value="sourceConfig.bucket_name" placeholder="请输入旧桶名称" />
+            </a-form-item>
+            <a-form-item label="Region">
+              <a-input v-model:value="sourceConfig.region" placeholder="如：cn-hangzhou" />
+            </a-form-item>
+          </template>
+          <template v-else-if="form.sourceStorageType === 'tencent'">
+            <a-form-item label="Region">
+              <a-input v-model:value="sourceConfig.region" placeholder="如：ap-guangzhou" />
+            </a-form-item>
+            <a-form-item label="SecretId">
+              <a-input v-model:value="sourceConfig.secret_id" />
+            </a-form-item>
+            <a-form-item label="SecretKey">
+              <a-input-password v-model:value="sourceConfig.secret_key" />
+            </a-form-item>
+            <a-form-item label="Bucket（旧桶）" :extra="targetBucketLabel ? `目标桶：${targetBucketLabel}，请填写不同的旧桶名` : ''">
+              <a-input v-model:value="sourceConfig.bucket" placeholder="请输入旧桶名称" />
+            </a-form-item>
+            <a-form-item label="AppID">
+              <a-input v-model:value="sourceConfig.app_id" />
+            </a-form-item>
+          </template>
+          <template v-else-if="form.sourceStorageType === 'minio'">
+            <a-form-item label="Endpoint">
+              <a-input v-model:value="sourceConfig.endpoint" placeholder="如：127.0.0.1:9000" />
+            </a-form-item>
+            <a-form-item label="AccessKey ID">
+              <a-input v-model:value="sourceConfig.access_key_id" />
+            </a-form-item>
+            <a-form-item label="SecretAccessKey">
+              <a-input-password v-model:value="sourceConfig.secret_access_key" />
+            </a-form-item>
+            <a-form-item label="Bucket（旧桶）" :extra="targetBucketLabel ? `目标桶：${targetBucketLabel}，请填写不同的旧桶名` : ''">
+              <a-input v-model:value="sourceConfig.bucket_name" placeholder="请输入旧桶名称" />
+            </a-form-item>
+            <a-form-item label="使用SSL">
+              <a-switch v-model:checked="sourceConfig.use_ssl" />
+            </a-form-item>
+          </template>
+        </a-form>
+      </a-card>
 
       <a-alert
         v-if="selectionAlert"
@@ -70,7 +136,7 @@
           <div class="task-panel__header">
             <a-tag :color="taskTagColor">{{ taskStatusLabel }}</a-tag>
             <span class="task-panel__meta">
-              {{ getStorageLabel(taskStatus.source_storage_type) }} → {{ getStorageLabel(taskStatus.target_storage_type) }}
+              {{ getSourceStorageLabel(taskStatus.source_storage_type) }} → {{ getStorageLabel(taskStatus.target_storage_type) }}
             </span>
           </div>
           <div v-if="taskStatus.current_file_name" class="task-panel__current">
@@ -146,7 +212,7 @@
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'storage'">
               <a-space>
-                <a-tag>{{ getStorageLabel(record.source_storage_type) }}</a-tag>
+                <a-tag>{{ getSourceStorageLabel(record.source_storage_type) }}</a-tag>
                 <span>→</span>
                 <a-tag color="blue">{{ getStorageLabel(record.target_storage_type) }}</a-tag>
               </a-space>
@@ -179,8 +245,11 @@ import type {
   FileMigrationScope,
   FileMigrationTaskStatus,
 } from '@/types/file'
+import type { StorageType } from '@/types/storage'
 import { storageTypeOptions } from '@/types/storage'
 import { formatFileSize } from '@/utils/upload'
+import { useConfigStore } from '@/store/config'
+import { getDefaultStorageConfig, getStorageBucketLabel, parseStorageConfig, STORAGE_CONFIG_KEY_MAP } from '@/views/admin/system/config/storage-config-state'
 import { shouldRestoreMigrationTaskOnOpen } from './file-migration-task-state.js'
 
 const props = defineProps<{
@@ -199,6 +268,8 @@ const emit = defineEmits<{
   success: []
 }>()
 
+const configStore = useConfigStore()
+
 const previewLoading = ref(false)
 const executeLoading = ref(false)
 const result = ref<FileMigrationResult | null>(null)
@@ -213,8 +284,71 @@ const form = reactive({
   targetStorageType: '',
 })
 
+const sourceConfigMode = ref<'system' | 'custom'>('system')
+const sourceConfig = reactive<Record<string, any>>({})
+
+const getBucketFieldKey = (type: string): string => {
+  if (type === 'tencent') return 'bucket'
+  if (type === 'local') return 'base_path'
+  return 'bucket_name'
+}
+
+const targetBucketLabel = computed(() => {
+  if (!form.targetStorageType) return ''
+  const configKey = STORAGE_CONFIG_KEY_MAP[form.targetStorageType as StorageType]
+  const configJSON = configKey ? configStore.get(configKey) : ''
+  return getStorageBucketLabel(form.targetStorageType as StorageType, configJSON)
+})
+
+const fillSourceConfigFromSystem = async (type: string) => {
+  Object.keys(sourceConfig).forEach((key) => delete sourceConfig[key])
+  if (!type) return
+  await configStore.loadConfigs(false, 'all')
+  const configKey = STORAGE_CONFIG_KEY_MAP[type as StorageType]
+  const configJSON = configKey ? configStore.get(configKey) : ''
+  const parsed = parseStorageConfig(type as StorageType, configJSON)
+  Object.assign(sourceConfig, parsed)
+  // 清空桶名字段，迫使用户填写旧桶名
+  const bucketKey = getBucketFieldKey(type)
+  sourceConfig[bucketKey] = ''
+}
+
+const fillSourceConfigEmpty = (type: string) => {
+  Object.keys(sourceConfig).forEach((key) => delete sourceConfig[key])
+  if (!type) return
+  Object.assign(sourceConfig, getDefaultStorageConfig(type as StorageType))
+}
+
+watch(
+  () => form.sourceStorageType,
+  (type) => {
+    sourceConfigMode.value = 'system'
+    fillSourceConfigFromSystem(type)
+  },
+)
+
+watch(sourceConfigMode, (mode) => {
+  if (mode === 'system') {
+    fillSourceConfigFromSystem(form.sourceStorageType)
+  } else {
+    fillSourceConfigEmpty(form.sourceStorageType)
+  }
+})
+
 const hasActiveFilters = computed(() =>
   !!props.currentFilters.name || !!props.currentFilters.ext || props.currentFilters.referenced === true
+)
+
+const storageOptionsWithBucket = computed(() =>
+  storageTypeOptions.map((opt) => {
+    const configKey = STORAGE_CONFIG_KEY_MAP[opt.value as StorageType]
+    const configJSON = configKey ? configStore.get(configKey) : ''
+    const bucket = getStorageBucketLabel(opt.value as StorageType, configJSON)
+    return {
+      ...opt,
+      label: bucket ? `${opt.label} (${bucket})` : opt.label,
+    }
+  })
 )
 
 const scopeOptions = computed(() => [
@@ -238,9 +372,6 @@ const canPreview = computed(() => {
     return false
   }
   if (!form.sourceStorageType || !form.targetStorageType) {
-    return false
-  }
-  if (form.sourceStorageType === form.targetStorageType) {
     return false
   }
   if (form.scope === 'selected') {
@@ -278,9 +409,9 @@ const selectionAlert = computed(() => {
 
   if (sameStorageSelected.value) {
     return {
-      type: 'warning',
-      message: '源存储与目标存储相同，无需迁移',
-      description: '请选择不同的源存储和目标存储；文件迁移只会搬运历史文件，不会修改系统当前的默认上传存储配置。',
+      type: 'info',
+      message: '同类型跃桶迁移',
+      description: '源存储与目标存储类型相同，请在下方填写旧桶的连接信息，系统会从旧桶读取文件并写入当前配置的桶。',
     }
   }
 
@@ -410,6 +541,7 @@ watch(
       resetState()
       return
     }
+    await configStore.loadConfigs(false, 'all')
     await fetchCurrentTask()
   }
 )
@@ -438,7 +570,25 @@ onBeforeUnmount(() => {
 })
 
 const getStorageLabel = (value: string) => {
-  return storageTypeOptions.find((item) => item.value === value)?.label || value || '-'
+  const typeLabel = storageTypeOptions.find((item) => item.value === value)?.label || value || '-'
+  const configKey = STORAGE_CONFIG_KEY_MAP[value as StorageType]
+  const configJSON = configKey ? configStore.get(configKey) : ''
+  const bucket = getStorageBucketLabel(value as StorageType, configJSON)
+  return bucket ? `${typeLabel} (${bucket})` : typeLabel
+}
+
+const sourceBucketFromConfig = computed(() => {
+  if (!sameStorageSelected.value || !form.sourceStorageType) return ''
+  const bucketKey = getBucketFieldKey(form.sourceStorageType)
+  return sourceConfig[bucketKey] || ''
+})
+
+const getSourceStorageLabel = (value: string) => {
+  if (sameStorageSelected.value && sourceBucketFromConfig.value) {
+    const typeLabel = storageTypeOptions.find((item) => item.value === value)?.label || value || '-'
+    return `${typeLabel} (${sourceBucketFromConfig.value})`
+  }
+  return getStorageLabel(value)
 }
 
 const getActionLabel = (action: string) => {
@@ -492,6 +642,10 @@ const buildPayload = (): FileMigrationRequest => {
     target_storage_type: form.targetStorageType,
   }
 
+  if (sameStorageSelected.value) {
+    payload.source_config = JSON.stringify(sourceConfig)
+  }
+
   if (form.scope === 'selected') {
     payload.ids = props.selectedIds
   }
@@ -508,9 +662,6 @@ const buildPayload = (): FileMigrationRequest => {
 }
 
 const getInvalidMigrationWarning = () => {
-  if (sameStorageSelected.value) {
-    return '源存储与目标存储相同，无需迁移'
-  }
   return '请先完善迁移范围和源/目标存储'
 }
 
@@ -633,6 +784,8 @@ const resetState = () => {
   form.scope = 'all'
   form.sourceStorageType = ''
   form.targetStorageType = ''
+  sourceConfigMode.value = 'system'
+  Object.keys(sourceConfig).forEach((key) => delete sourceConfig[key])
   result.value = null
   taskStatus.value = null
   watchTaskId.value = ''

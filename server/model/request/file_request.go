@@ -5,6 +5,7 @@ type FileMigrationRequest struct {
 	IDs               []uint               `json:"ids"`
 	SourceStorageType string               `json:"source_storage_type" binding:"required"`
 	TargetStorageType string               `json:"target_storage_type" binding:"required"`
+	SourceConfig      string               `json:"source_config"`
 	Filters           FileMigrationFilters `json:"filters"`
 }
 

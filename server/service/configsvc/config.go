@@ -126,6 +126,16 @@ func ImageFileReferenceConfigKeys() []string {
 	}
 }
 
+// ImageFileIDToURLKeyMap 返回 file_id 配置键 → URL 配置键的映射。
+// 迁移文件后需要同步更新 URL 配置键的值。
+func ImageFileIDToURLKeyMap() map[string]string {
+	return map[string]string{
+		SysLogoFileIDConfigKey:      "sys_logo",
+		RegisterLogoFileIDConfigKey: "register_logo",
+		LoginBGImageFileIDConfigKey: "login_bg_image",
+	}
+}
+
 func ImageFileReferenceLabel(key string) string {
 	if label, ok := imageFileReferenceConfigLabels[key]; ok {
 		return label
