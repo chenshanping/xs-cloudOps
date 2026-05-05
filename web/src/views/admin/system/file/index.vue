@@ -27,8 +27,8 @@
                   </a-select-option>
                 </a-select>
               </a-form-item>
-              <a-form-item label="仅看已引用">
-                <a-switch v-model:checked="searchForm.referencedOnly" />
+              <a-form-item label="仅看未引用">
+                <a-switch v-model:checked="searchForm.unreferencedOnly" />
               </a-form-item>
             </template>
 
@@ -155,7 +155,7 @@ const migrationVisible = ref(false)
 const searchForm = reactive({
   name: '',
   ext: '',
-  referencedOnly: false,
+  unreferencedOnly: false,
 })
 
 const pagination = reactive({
@@ -191,7 +191,7 @@ const columns = [
 const currentFilters = computed(() => ({
   name: searchForm.name,
   ext: searchForm.ext,
-  referenced: searchForm.referencedOnly ? true : undefined,
+  referenced: searchForm.unreferencedOnly ? false : undefined,
 }))
 
 const getFileTypeInfo = (ext: string) => {
@@ -249,7 +249,7 @@ const fetchList = async () => {
       page_size: pagination.pageSize,
       name: searchForm.name,
       ext: searchForm.ext,
-      referenced: searchForm.referencedOnly ? true : undefined,
+      referenced: searchForm.unreferencedOnly ? false : undefined,
     })
     fileList.value = res.data.list
     pagination.total = res.data.total

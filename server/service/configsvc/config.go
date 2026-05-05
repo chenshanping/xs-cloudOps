@@ -17,15 +17,17 @@ var Default = &ConfigService{}
 const PublicConfigKeysConfigKey = "public_config_keys"
 
 const (
-	SysLogoFileIDConfigKey      = "sys_logo_file_id"
-	RegisterLogoFileIDConfigKey = "register_logo_file_id"
-	LoginBGImageFileIDConfigKey = "login_bg_image_file_id"
+	SysLogoFileIDConfigKey          = "sys_logo_file_id"
+	RegisterLogoFileIDConfigKey     = "register_logo_file_id"
+	LoginBGImageFileIDConfigKey     = "login_bg_image_file_id"
+	SliderCaptchaBgFileIDConfigKey  = "slider_captcha_bg_file_id"
 )
 
 var imageFileReferenceConfigLabels = map[string]string{
-	SysLogoFileIDConfigKey:      "系统 Logo",
-	RegisterLogoFileIDConfigKey: "注册默认头像",
-	LoginBGImageFileIDConfigKey: "登录页背景图",
+	SysLogoFileIDConfigKey:         "系统 Logo",
+	RegisterLogoFileIDConfigKey:    "注册默认头像",
+	LoginBGImageFileIDConfigKey:    "登录页背景图",
+	SliderCaptchaBgFileIDConfigKey: "滑动验证码背景",
 }
 
 // defaultPublicConfigKeys 定义匿名接口 /api/v1/configs/keys 默认允许返回的配置键。
@@ -123,6 +125,7 @@ func ImageFileReferenceConfigKeys() []string {
 		SysLogoFileIDConfigKey,
 		RegisterLogoFileIDConfigKey,
 		LoginBGImageFileIDConfigKey,
+		SliderCaptchaBgFileIDConfigKey,
 	}
 }
 
@@ -130,9 +133,10 @@ func ImageFileReferenceConfigKeys() []string {
 // 迁移文件后需要同步更新 URL 配置键的值。
 func ImageFileIDToURLKeyMap() map[string]string {
 	return map[string]string{
-		SysLogoFileIDConfigKey:      "sys_logo",
-		RegisterLogoFileIDConfigKey: "register_logo",
-		LoginBGImageFileIDConfigKey: "login_bg_image",
+		SysLogoFileIDConfigKey:         "sys_logo",
+		RegisterLogoFileIDConfigKey:    "register_logo",
+		LoginBGImageFileIDConfigKey:    "login_bg_image",
+		SliderCaptchaBgFileIDConfigKey: "slider_captcha_bg",
 	}
 }
 

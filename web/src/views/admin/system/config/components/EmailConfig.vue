@@ -30,6 +30,7 @@
       <a-form-item label="滑动验证码背景" v-if="formData.login_captcha_type === 'slider'">
         <ImageUpload 
           v-model="formData.slider_captcha_bg" 
+          v-model:fileId="sliderCaptchaBgFileId"
           :width="280" 
           :height="160" 
           :max-size="2*1024*1024"
@@ -156,7 +157,13 @@ const formData = reactive({
   login_lock_time: parseInt(configStore.get('login_lock_time')) || 15,
   register_email_verify: configStore.get('register_email_verify') || '0',
   frontend_url: configStore.get('frontend_url') || 'http://localhost:5173',
-  slider_captcha_bg: configStore.get('slider_captcha_bg') || ''
+  slider_captcha_bg: configStore.get('slider_captcha_bg') || '',
+  slider_captcha_bg_file_id: configStore.get('slider_captcha_bg_file_id') || '0'
+})
+
+const sliderCaptchaBgFileId = computed({
+  get: () => Number(formData.slider_captcha_bg_file_id) || 0,
+  set: (val) => { formData.slider_captcha_bg_file_id = String(val || 0) }
 })
 
 // 开关状态转换
@@ -183,6 +190,7 @@ const getConfigState = () => ({
   register_email_verify: formData.register_email_verify,
   frontend_url: formData.frontend_url,
   slider_captcha_bg: formData.slider_captcha_bg,
+  slider_captcha_bg_file_id: formData.slider_captcha_bg_file_id,
 })
 
 const applyConfigState = (state: ReturnType<typeof getConfigState>) => {
@@ -198,6 +206,7 @@ const applyConfigState = (state: ReturnType<typeof getConfigState>) => {
   formData.register_email_verify = state.register_email_verify
   formData.frontend_url = state.frontend_url
   formData.slider_captcha_bg = state.slider_captcha_bg
+  formData.slider_captcha_bg_file_id = state.slider_captcha_bg_file_id
 }
 
 const baselineSnapshot = ref(createSnapshot(getConfigState()))
@@ -255,6 +264,7 @@ const handleReset = () => {
   formData.register_email_verify = '0'
   formData.frontend_url = 'http://localhost:5173'
   formData.slider_captcha_bg = ''
+  formData.slider_captcha_bg_file_id = '0'
 }
 
 // 测试邮件

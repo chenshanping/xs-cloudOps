@@ -42,6 +42,7 @@ export const ADMIN_CONFIG_KEYS = [
   'register_email_verify',
   'frontend_url',
   'slider_captcha_bg',
+  'slider_captcha_bg_file_id',
   'user_default_password',
   'public_config_keys',
   'file_delete_mode',
@@ -90,6 +91,7 @@ const DEFAULT_CONFIG: Record<string, string> = {
   register_email_verify: '0',
   frontend_url: 'http://localhost:5173',
   slider_captcha_bg: '',
+  slider_captcha_bg_file_id: '0',
   // 前台模式: 'full' = 完整前台, 'profile' = 仅个人中心, 'none' = 无前台(纯后台)
   front_mode: 'full',
   user_profile_button_visible: 'false',
