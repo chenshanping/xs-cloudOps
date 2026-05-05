@@ -68,6 +68,19 @@ Use the full OpenSpec workflow for:
 
 If the user explicitly says `直接做`, prefer direct implementation unless the change is clearly high risk.
 
+## Workflow Auto-Trigger Rules
+
+When the user's request matches one of these patterns, **automatically read the corresponding workflow file and follow its Steps** without the user needing to type the slash command:
+
+| Trigger condition | Workflow to read and follow |
+|---|---|
+| Creating/modifying backend API + frontend page, CRUD module, new admin page, adding buttons/actions, menu/permission work | `.windsurf/workflows/backend-crud-frontend.md` |
+| Writing or modifying SQL upgrade scripts under `server/sql/` | `.windsurf/workflows/sql-upgrade-guardrails.md` |
+
+- Read the workflow file with the `read_file` tool, then follow its `## Steps` sequentially.
+- If the user says "直接做" or the task is trivially small (one-line fix, typo, style tweak), skip the workflow and implement directly.
+- When in doubt, follow the workflow — it is cheaper to follow steps than to miss permissions or bootstrap.
+
 ## Required Workflow For Non-Trivial Work
 
 1. Read the relevant code and neighboring modules first. Do not invent structure from memory.
