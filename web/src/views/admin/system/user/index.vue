@@ -29,6 +29,7 @@
           :loading="loading"
           :pagination="pagination"
           row-key="id"
+          :scroll="{ x: 1400 }"
           :row-selection="{ selectedRowKeys, onChange: onSelectChange }"
           @search="handleSearch"
           @reset="handleReset"
@@ -101,6 +102,42 @@
                 <DeleteOutlined /> 批量删除
                 <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
               </a-button>
+              <a-upload
+                v-permission="'system:user:import'"
+                :show-upload-list="false"
+                :before-upload="handleImportUpload"
+                :disabled="!hasDeptSelected"
+                accept=".xlsx,.xls"
+              >
+                <a-tooltip :title="hasDeptSelected ? '' : '请先选择部门'">
+                  <a-button :loading="importLoading" :disabled="!hasDeptSelected">
+                    <UploadOutlined /> 导入
+                  </a-button>
+                </a-tooltip>
+              </a-upload>
+              <a-dropdown v-permission="'system:user:import'">
+                <a-button>
+                  <DownloadOutlined /> 下载
+                </a-button>
+                <template #overlay>
+                  <a-menu @click="handleDownloadMenuClick">
+                    <a-menu-item key="template">导入模板</a-menu-item>
+                  </a-menu>
+                </template>
+              </a-dropdown>
+              <a-dropdown v-permission="'system:user:export'" :disabled="!hasDeptSelected">
+                <a-tooltip :title="hasDeptSelected ? '' : '请先选择部门'">
+                  <a-button :loading="exportLoading" :disabled="!hasDeptSelected">
+                    <DownloadOutlined /> 导出 <DownOutlined />
+                  </a-button>
+                </a-tooltip>
+                <template #overlay>
+                  <a-menu @click="handleExportMenuClick">
+                    <a-menu-item key="all">导出全部</a-menu-item>
+                    <a-menu-item key="selected" :disabled="selectedRowKeys.length === 0">导出选中 ({{ selectedRowKeys.length }})</a-menu-item>
+                  </a-menu>
+                </template>
+              </a-dropdown>
             </a-space>
           </template>
 
@@ -172,6 +209,11 @@
       :user="profilesUser"
       :profiles="userProfiles"
     />
+
+    <ImportResultModal
+      v-model:open="importResultVisible"
+      :result="importResult"
+    />
   </div>
 </template>
 
@@ -179,11 +221,12 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { h } from 'vue'
 import { Empty, message, Modal } from 'ant-design-vue'
-import { ExclamationCircleOutlined, PlusOutlined, UserOutlined, DownOutlined, DeleteOutlined } from '@ant-design/icons-vue'
+import { ExclamationCircleOutlined, PlusOutlined, UserOutlined, DownOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons-vue'
 import { createVNode } from 'vue'
 import ProTable from '@/components/ProTable.vue'
 import UserFormDrawer from './components/UserFormDrawer.vue'
 import UserProfilesDrawer from './components/UserProfilesDrawer.vue'
+import ImportResultModal from './components/ImportResultModal.vue'
 import { getDictDataByType } from '@/api/dict'
 import {
   getUserList,
@@ -197,7 +240,11 @@ import {
   resetPassword,
   forceUserOffline,
   getUserProfilesById,
-  type UserProfile
+  downloadUserImportTemplate,
+  importUsers,
+  exportUsers,
+  type UserProfile,
+  type ImportResult
 } from '@/api/user'
 import { getRoleList } from '@/api/role'
 import { getManageableDeptTree } from '@/api/dept'
@@ -252,6 +299,13 @@ const profilesVisible = ref(false)
 const profilesLoading = ref(false)
 const profilesUser = ref<User | null>(null)
 const userProfiles = ref<UserProfile[]>([])
+const importLoading = ref(false)
+const exportLoading = ref(false)
+const importResultVisible = ref(false)
+const importResult = ref<ImportResult | null>(null)
+
+const currentDeptId = computed(() => getSelectedDeptId())
+const hasDeptSelected = computed(() => currentDeptId.value !== undefined)
 
 const showProfileButton = computed(() => {
   const value = configStore.get('user_profile_button_visible')
@@ -290,15 +344,15 @@ const selectedTreeKeys = computed(() => [selectedTreeKey.value])
 
 const columns = useTableColumns(
   [
-    { title: '头像', key: 'avatar', width: 80 },
-    { title: '用户名', dataIndex: 'username', key: 'username' },
-    { title: '昵称', dataIndex: 'nickname', key: 'nickname' },
-    { title: '性别', key: 'gender', width: 90 },
-    { title: '邮箱', dataIndex: 'email', key: 'email' },
-    { title: '所属部门', key: 'dept' },
-    { title: '状态', key: 'status' },
-    { title: '角色', key: 'roles' },
-    { title: '创建时间', key: 'created_at' }
+    { title: '头像', key: 'avatar', width: 70 },
+    { title: '用户名', dataIndex: 'username', key: 'username', width: 120 },
+    { title: '昵称', dataIndex: 'nickname', key: 'nickname', width: 100 },
+    { title: '性别', key: 'gender', width: 70 },
+    { title: '邮箱', dataIndex: 'email', key: 'email', width: 180 },
+    { title: '所属部门', key: 'dept', width: 120 },
+    { title: '状态', key: 'status', width: 80 },
+    { title: '角色', key: 'roles', width: 140 },
+    { title: '创建时间', key: 'created_at', width: 160 }
   ],
   { title: '操作', key: 'action', width: 200, fixed: 'right' },
   ['system:user:edit', 'system:user:delete', 'system:user:resetPwd', 'system:user:forceOffline']
@@ -765,6 +819,80 @@ const handleViewProfiles = async (record: User) => {
     userProfiles.value = []
   } finally {
     profilesLoading.value = false
+  }
+}
+
+const handleImportUpload = (file: File) => {
+  if (!currentDeptId.value) {
+    message.warning('请先选择部门再导入')
+    return false
+  }
+  importLoading.value = true
+  importUsers(file, currentDeptId.value)
+    .then(res => {
+      importResult.value = res.data
+      importResultVisible.value = true
+      if (res.data.success_count > 0) {
+        Promise.all([fetchDeptTree(), fetchData()])
+      }
+    })
+    .catch(() => {
+      // handled by interceptor
+    })
+    .finally(() => {
+      importLoading.value = false
+    })
+  return false
+}
+
+const currentDeptName = computed(() => {
+  const id = currentDeptId.value
+  if (!id) return ''
+  const dept = findDeptById(deptTree.value, id)
+  return dept?.name || ''
+})
+
+const handleDownloadMenuClick = async (info: { key: string }) => {
+  if (info.key === 'template') {
+    try {
+      const res = await downloadUserImportTemplate(currentDeptId.value)
+      const blob = new Blob([res as any], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      const prefix = currentDeptName.value ? currentDeptName.value + '_' : ''
+      link.download = prefix + '用户导入模板.xlsx'
+      link.click()
+      window.URL.revokeObjectURL(url)
+    } catch {
+      message.error('下载模板失败')
+    }
+  }
+}
+
+const handleExportMenuClick = async (info: { key: string }) => {
+  const deptId = currentDeptId.value
+  if (!deptId) return
+
+  const ids = info.key === 'selected' ? [...selectedRowKeys.value] : undefined
+  if (info.key === 'selected' && (!ids || ids.length === 0)) return
+
+  exportLoading.value = true
+  try {
+    const res = await exportUsers(deptId, ids)
+    const blob = new Blob([res as any], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    const prefix = currentDeptName.value ? currentDeptName.value + '_' : ''
+    link.download = prefix + '用户导出.xlsx'
+    link.click()
+    window.URL.revokeObjectURL(url)
+    message.success('导出成功')
+  } catch {
+    message.error('导出失败')
+  } finally {
+    exportLoading.value = false
   }
 }
 

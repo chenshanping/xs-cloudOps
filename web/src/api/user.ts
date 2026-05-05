@@ -81,6 +81,44 @@ export function forceUserOffline(id: number) {
   return request.post(`/users/${id}/offline`)
 }
 
+// 下载用户导入模板
+export function downloadUserImportTemplate(deptId?: number) {
+  return request.get('/users/import-template', { params: { dept_id: deptId }, responseType: 'blob' })
+}
+
+// 导入用户
+export interface ImportError {
+  row: number
+  column: string
+  value: string
+  message: string
+}
+
+export interface ImportResult {
+  total_count: number
+  success_count: number
+  failed_count: number
+  errors: ImportError[]
+}
+
+export function importUsers(file: File, deptId: number) {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('dept_id', String(deptId))
+  return request.post<any, ApiResponse<ImportResult>>('/users/import', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}
+
+// 导出用户
+export function exportUsers(deptId: number, ids?: number[]) {
+  const params: Record<string, any> = { dept_id: deptId }
+  if (ids && ids.length > 0) {
+    params.ids = ids.join(',')
+  }
+  return request.get('/users/export', { params, responseType: 'blob' })
+}
+
 // 字段配置
 export interface FieldConfig {
   key: string      // 字段名

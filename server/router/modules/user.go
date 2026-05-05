@@ -52,4 +52,9 @@ func (m *UserModule) RegisterPrivateRoutes(rg *gin.RouterGroup) {
 		registry.WithAuth(), registry.WithRequest(request.BatchResetPasswordRequest{}))
 	R(rg, "POST", "/users/:id/offline", m.Name(), "强制下线", v1.User.ForceOffline, registry.WithAuth())
 	R(rg, "GET", "/users/:id/profiles", m.Name(), "用户身份", v1.User.GetUserProfilesById, registry.WithAuth())
+
+	// 导入导出
+	R(rg, "GET", "/users/import-template", m.Name(), "下载导入模板", v1.User.GetUserImportTemplate, registry.WithAuth())
+	R(rg, "POST", "/users/import", m.Name(), "导入用户", v1.User.ImportUsers, registry.WithAuth())
+	R(rg, "GET", "/users/export", m.Name(), "导出用户", v1.User.ExportUsers, registry.WithAuth())
 }

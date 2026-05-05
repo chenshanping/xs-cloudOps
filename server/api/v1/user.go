@@ -1,7 +1,10 @@
 package v1
 
 import (
+	"io"
+	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -357,4 +360,97 @@ func (a *UserApi) GetUserProfilesById(c *gin.Context) {
 
 	profiles := global.Profiles.GetUserProfiles(uint(id), userRoles)
 	response.OkWithData(c, profiles)
+}
+
+// 下载用户导入模板
+func (a *UserApi) GetUserImportTemplate(c *gin.Context) {
+	deptID := uint(0)
+	if v := c.Query("dept_id"); v != "" {
+		if id, err := strconv.ParseUint(v, 10, 64); err == nil {
+			deptID = uint(id)
+		}
+	}
+
+	buf, filename, err := service.User.GetImportTemplate(deptID)
+	if err != nil {
+		response.Fail(c, "生成模板失败")
+		return
+	}
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", "attachment; filename="+filename)
+	c.Data(http.StatusOK, "application/octet-stream", buf)
+}
+
+// 导入用户
+func (a *UserApi) ImportUsers(c *gin.Context) {
+	file, _, err := c.Request.FormFile("file")
+	if err != nil {
+		response.BadRequest(c, "请上传文件")
+		return
+	}
+	defer file.Close()
+
+	fileData, err := io.ReadAll(file)
+	if err != nil {
+		response.Fail(c, "读取文件失败")
+		return
+	}
+
+	if len(fileData) > 10*1024*1024 {
+		response.BadRequest(c, "文件大小不能超过10MB")
+		return
+	}
+
+	deptID := uint(0)
+	if v := c.Request.FormValue("dept_id"); v != "" {
+		if id, err := strconv.ParseUint(v, 10, 64); err == nil {
+			deptID = uint(id)
+		}
+	}
+	if deptID == 0 {
+		response.BadRequest(c, "请先选择部门再导入")
+		return
+	}
+
+	operatorID := middleware.GetUserID(c)
+	result, err := service.User.ImportUsers(operatorID, deptID, fileData)
+	if err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+
+	response.OkWithData(c, result)
+}
+
+// 导出用户
+func (a *UserApi) ExportUsers(c *gin.Context) {
+	deptID := uint(0)
+	if v := c.Query("dept_id"); v != "" {
+		if id, err := strconv.ParseUint(v, 10, 64); err == nil {
+			deptID = uint(id)
+		}
+	}
+	if deptID == 0 {
+		response.BadRequest(c, "请先选择部门再导出")
+		return
+	}
+
+	var userIDs []uint
+	if v := c.Query("ids"); v != "" {
+		for _, s := range strings.Split(v, ",") {
+			if id, err := strconv.ParseUint(strings.TrimSpace(s), 10, 64); err == nil && id > 0 {
+				userIDs = append(userIDs, uint(id))
+			}
+		}
+	}
+
+	operatorID := middleware.GetUserID(c)
+	buf, filename, err := service.User.ExportUsers(operatorID, deptID, userIDs)
+	if err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", "attachment; filename="+filename)
+	c.Data(http.StatusOK, "application/octet-stream", buf)
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/xuri/excelize/v2"
@@ -57,7 +58,7 @@ func (e *ExcelExporter) SetHeadersWithComments(headers []string, comments []stri
 }
 
 // AddDataValidation 为指定列添加下拉数据验证
-func (e *ExcelExporter) AddDataValidation(colIndex int, options []string, startRow, endRow int) error {
+func (e *ExcelExporter) AddDataValidation(colIndex int, options []string, startRow int, endRow int) error {
 	if len(options) == 0 {
 		return nil
 	}
@@ -219,4 +220,187 @@ func ParseCellValue(value string, fieldType string) (interface{}, error) {
 	default:
 		return value, nil
 	}
+}
+
+// ==================== 通用导入校验框架 ====================
+
+// ImportField 导入字段定义
+type ImportField struct {
+	Header   string                            // 期望的表头名称
+	Key      string                            // 字段键名
+	Required bool                              // 是否必填
+	Type     string                            // 数据类型: string/int/uint/float64/time.Time
+	MaxLen   int                               // 最大长度（仅string有效，0=不限）
+	Enum     []string                          // 枚举值（可选，为空则不校验枚举）
+	Validate func(value string, row int) error // 自定义校验函数（可选）
+}
+
+// ImportError 导入错误详情
+type ImportError struct {
+	Row     int    `json:"row"`     // Excel行号（从2开始，1是表头）
+	Column  string `json:"column"`  // 列名（表头名称）
+	Value   string `json:"value"`   // 原始值
+	Message string `json:"message"` // 错误描述
+}
+
+// ImportResult 导入校验结果
+type ImportResult struct {
+	TotalCount   int                      `json:"total_count"`   // 总行数
+	SuccessCount int                      `json:"success_count"` // 成功条数
+	FailedCount  int                      `json:"failed_count"`  // 失败条数
+	Errors       []ImportError            `json:"errors"`        // 错误详情列表
+	Data         []map[string]interface{} `json:"-"`             // 解析后的有效数据
+}
+
+// ValidateHeaders 校验表头是否与字段定义匹配
+func ValidateHeaders(actual []string, fields []ImportField) error {
+	expected := make([]string, len(fields))
+	for i, f := range fields {
+		expected[i] = f.Header
+	}
+
+	if len(actual) < len(expected) {
+		return fmt.Errorf("表头列数不匹配，期望 %d 列，实际 %d 列。请下载最新导入模板", len(expected), len(actual))
+	}
+
+	var mismatched []string
+	for i, exp := range expected {
+		got := strings.TrimSpace(actual[i])
+		if got != exp {
+			mismatched = append(mismatched, fmt.Sprintf("第%d列期望【%s】实际【%s】", i+1, exp, got))
+		}
+	}
+
+	if len(mismatched) > 0 {
+		return fmt.Errorf("表头不匹配: %s。请下载最新导入模板", strings.Join(mismatched, "；"))
+	}
+	return nil
+}
+
+// ValidateImport 通用导入校验：校验表头 + 逐行校验数据
+func ValidateImport(importer *ExcelImporter, fields []ImportField) (*ImportResult, error) {
+	result := &ImportResult{}
+
+	// 1. 获取并校验表头
+	headers, err := importer.GetHeaders()
+	if err != nil {
+		return nil, fmt.Errorf("读取表头失败: %w", err)
+	}
+	if err := ValidateHeaders(headers, fields); err != nil {
+		return nil, err
+	}
+
+	// 2. 获取数据行
+	rows, err := importer.GetRows()
+	if err != nil {
+		return nil, fmt.Errorf("读取数据失败: %w", err)
+	}
+	if len(rows) == 0 {
+		return nil, fmt.Errorf("导入文件中没有数据行")
+	}
+
+	result.TotalCount = len(rows)
+
+	// 3. 逐行校验
+	for i, row := range rows {
+		rowNum := i + 2 // Excel行号（第1行是表头）
+		rowData := make(map[string]interface{})
+		rowValid := true
+
+		for j, field := range fields {
+			value := ""
+			if j < len(row) {
+				value = strings.TrimSpace(row[j])
+			}
+
+			// 必填检查
+			if field.Required && value == "" {
+				result.Errors = append(result.Errors, ImportError{
+					Row:     rowNum,
+					Column:  field.Header,
+					Value:   value,
+					Message: fmt.Sprintf("【%s】不能为空", field.Header),
+				})
+				rowValid = false
+				continue
+			}
+
+			// 空值跳过后续校验
+			if value == "" {
+				rowData[field.Key] = nil
+				continue
+			}
+
+			// 最大长度检查
+			if field.MaxLen > 0 && len([]rune(value)) > field.MaxLen {
+				result.Errors = append(result.Errors, ImportError{
+					Row:     rowNum,
+					Column:  field.Header,
+					Value:   value,
+					Message: fmt.Sprintf("【%s】长度不能超过%d个字符", field.Header, field.MaxLen),
+				})
+				rowValid = false
+				continue
+			}
+
+			// 枚举检查
+			if len(field.Enum) > 0 {
+				found := false
+				for _, e := range field.Enum {
+					if value == e {
+						found = true
+						break
+					}
+				}
+				if !found {
+					result.Errors = append(result.Errors, ImportError{
+						Row:     rowNum,
+						Column:  field.Header,
+						Value:   value,
+						Message: fmt.Sprintf("【%s】值无效，可选值: %s", field.Header, strings.Join(field.Enum, "/")),
+					})
+					rowValid = false
+					continue
+				}
+			}
+
+			// 类型检查
+			parsed, parseErr := ParseCellValue(value, field.Type)
+			if parseErr != nil {
+				result.Errors = append(result.Errors, ImportError{
+					Row:     rowNum,
+					Column:  field.Header,
+					Value:   value,
+					Message: fmt.Sprintf("【%s】格式错误: %s", field.Header, parseErr.Error()),
+				})
+				rowValid = false
+				continue
+			}
+
+			// 自定义校验
+			if field.Validate != nil {
+				if vErr := field.Validate(value, rowNum); vErr != nil {
+					result.Errors = append(result.Errors, ImportError{
+						Row:     rowNum,
+						Column:  field.Header,
+						Value:   value,
+						Message: vErr.Error(),
+					})
+					rowValid = false
+					continue
+				}
+			}
+
+			rowData[field.Key] = parsed
+		}
+
+		if rowValid {
+			result.Data = append(result.Data, rowData)
+			result.SuccessCount++
+		} else {
+			result.FailedCount++
+		}
+	}
+
+	return result, nil
 }

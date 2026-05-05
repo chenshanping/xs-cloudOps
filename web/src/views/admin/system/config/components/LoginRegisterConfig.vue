@@ -137,9 +137,11 @@
             <div class="feature-card-header">
               <a-select 
                 v-model:value="feature.icon" 
-                style="width: 100px"
+                style="width: 120px"
                 size="small"
                 placeholder="图标"
+                show-search
+                :filter-option="filterIconOption"
               >
                 <a-select-option v-for="icon in iconOptions" :key="icon.value" :value="icon.value">
                   <component :is="getIconComponent(icon.value)" /> {{ icon.label }}
@@ -218,7 +220,23 @@ import {
   RocketOutlined,
   SettingOutlined,
   CloudOutlined,
-  TeamOutlined
+  TeamOutlined,
+  GlobalOutlined,
+  DashboardOutlined,
+  DatabaseOutlined,
+  ApiOutlined,
+  BulbOutlined,
+  BookOutlined,
+  FileProtectOutlined,
+  SolutionOutlined,
+  ExperimentOutlined,
+  FundOutlined,
+  ApartmentOutlined,
+  ScheduleOutlined,
+  MobileOutlined,
+  LikeOutlined,
+  StarOutlined,
+  CrownOutlined
 } from '@ant-design/icons-vue'
 import ImageUpload from '@/components/ImageUpload.vue'
 import { cloneFromSnapshot, createSnapshot, isSnapshotDirty } from '../config-tab-guard'
@@ -243,7 +261,23 @@ const iconOptions = [
   { value: 'RocketOutlined', label: '火箭' },
   { value: 'SettingOutlined', label: '设置' },
   { value: 'CloudOutlined', label: '云' },
-  { value: 'TeamOutlined', label: '团队' }
+  { value: 'TeamOutlined', label: '团队' },
+  { value: 'GlobalOutlined', label: '全球' },
+  { value: 'DashboardOutlined', label: '仪表盘' },
+  { value: 'DatabaseOutlined', label: '数据库' },
+  { value: 'ApiOutlined', label: '接口' },
+  { value: 'BulbOutlined', label: '灯泡' },
+  { value: 'BookOutlined', label: '书本' },
+  { value: 'FileProtectOutlined', label: '文件' },
+  { value: 'SolutionOutlined', label: '方案' },
+  { value: 'ExperimentOutlined', label: '实验' },
+  { value: 'FundOutlined', label: '趋势' },
+  { value: 'ApartmentOutlined', label: '组织' },
+  { value: 'ScheduleOutlined', label: '日程' },
+  { value: 'MobileOutlined', label: '手机' },
+  { value: 'LikeOutlined', label: '点赞' },
+  { value: 'StarOutlined', label: '星标' },
+  { value: 'CrownOutlined', label: '皇冠' }
 ]
 
 // 图标映射
@@ -255,10 +289,31 @@ const iconMap: Record<string, any> = {
   RocketOutlined,
   SettingOutlined,
   CloudOutlined,
-  TeamOutlined
+  TeamOutlined,
+  GlobalOutlined,
+  DashboardOutlined,
+  DatabaseOutlined,
+  ApiOutlined,
+  BulbOutlined,
+  BookOutlined,
+  FileProtectOutlined,
+  SolutionOutlined,
+  ExperimentOutlined,
+  FundOutlined,
+  ApartmentOutlined,
+  ScheduleOutlined,
+  MobileOutlined,
+  LikeOutlined,
+  StarOutlined,
+  CrownOutlined
 }
 
 const getIconComponent = (name: string) => iconMap[name] || CheckCircleOutlined
+
+const filterIconOption = (input: string, option: any) => {
+  const label = iconOptions.find(i => i.value === option.value)?.label || ''
+  return label.includes(input) || option.value.toLowerCase().includes(input.toLowerCase())
+}
 
 // 登录页相关配置键
 const LOGIN_CONFIG_KEYS = [

@@ -41,7 +41,23 @@ import {
   RocketOutlined,
   SettingOutlined,
   CloudOutlined,
-  TeamOutlined
+  TeamOutlined,
+  GlobalOutlined,
+  DashboardOutlined,
+  DatabaseOutlined,
+  ApiOutlined,
+  BulbOutlined,
+  BookOutlined,
+  FileProtectOutlined,
+  SolutionOutlined,
+  ExperimentOutlined,
+  FundOutlined,
+  ApartmentOutlined,
+  ScheduleOutlined,
+  MobileOutlined,
+  LikeOutlined,
+  StarOutlined,
+  CrownOutlined
 } from '@ant-design/icons-vue'
 import { getCaptchaConfig } from '@/api/captcha'
 import { useConfigStore } from '@/store/config'
@@ -85,7 +101,23 @@ const iconMap: Record<string, any> = {
   RocketOutlined,
   SettingOutlined,
   CloudOutlined,
-  TeamOutlined
+  TeamOutlined,
+  GlobalOutlined,
+  DashboardOutlined,
+  DatabaseOutlined,
+  ApiOutlined,
+  BulbOutlined,
+  BookOutlined,
+  FileProtectOutlined,
+  SolutionOutlined,
+  ExperimentOutlined,
+  FundOutlined,
+  ApartmentOutlined,
+  ScheduleOutlined,
+  MobileOutlined,
+  LikeOutlined,
+  StarOutlined,
+  CrownOutlined
 }
 
 const getIcon = (iconName: string) => {

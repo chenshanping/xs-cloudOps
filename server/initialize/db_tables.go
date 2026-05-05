@@ -343,6 +343,7 @@ func ensureBuiltInData() {
 		NeedAuth:    true,
 	}, "/api/v1/roles/:id/apis", "PUT")
 	ensureUserOperationMenus()
+	ensureUserImportExportMenus()
 }
 
 func ensureGenderDictData() {
@@ -1246,6 +1247,78 @@ func ensureUserOperationMenus() {
 		}
 		grantMenuToRolesWithPermission(menu.ID, sourcePermission)
 	}
+}
+
+func ensureUserImportExportMenus() {
+	var userMenu model.SysMenu
+	if err := global.DB.Where("permission = ? AND type = ?", "system:user:list", 2).First(&userMenu).Error; err != nil {
+		global.Log.Errorf("查询用户管理菜单失败(导入导出): %v", err)
+		return
+	}
+
+	menuDefinitions := []model.SysMenu{
+		{
+			ParentID:   userMenu.ID,
+			Name:       "导入用户",
+			Sort:       8,
+			Type:       3,
+			Permission: "system:user:import",
+			Status:     1,
+			Hidden:     0,
+		},
+		{
+			ParentID:   userMenu.ID,
+			Name:       "导出用户",
+			Sort:       9,
+			Type:       3,
+			Permission: "system:user:export",
+			Status:     1,
+			Hidden:     0,
+		},
+	}
+
+	for _, definition := range menuDefinitions {
+		menu := definition
+		if err := global.DB.
+			Where("permission = ?", menu.Permission).
+			Attrs(model.SysMenu{
+				ParentID:  menu.ParentID,
+				Name:      menu.Name,
+				Sort:      menu.Sort,
+				Type:      menu.Type,
+				Status:    menu.Status,
+				Hidden:    menu.Hidden,
+			}).
+			FirstOrCreate(&menu).Error; err != nil {
+			global.Log.Errorf("补齐用户导入导出按钮失败(%s): %v", definition.Permission, err)
+			continue
+		}
+
+		grantMenuToRolesWithPermission(menu.ID, "system:user:list")
+	}
+
+	// 补齐导入导出API访问权限
+	ensureApiAccessInheritedFrom(model.SysApi{
+		Path:        "/api/v1/users/import-template",
+		Method:      "GET",
+		Group:       "用户管理",
+		Description: "下载导入模板",
+		NeedAuth:    true,
+	}, "/api/v1/users", "GET")
+	ensureApiAccessInheritedFrom(model.SysApi{
+		Path:        "/api/v1/users/import",
+		Method:      "POST",
+		Group:       "用户管理",
+		Description: "导入用户",
+		NeedAuth:    true,
+	}, "/api/v1/users", "POST")
+	ensureApiAccessInheritedFrom(model.SysApi{
+		Path:        "/api/v1/users/export",
+		Method:      "GET",
+		Group:       "用户管理",
+		Description: "导出用户",
+		NeedAuth:    true,
+	}, "/api/v1/users", "GET")
 }
 
 func cleanupStorageBuiltInData() {
