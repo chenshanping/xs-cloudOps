@@ -970,10 +970,6 @@ func (s *FileService) executeFileMigrationCandidate(candidate fileMigrationCandi
 		return "", updateErr
 	}
 
-	if err := sourceClient.Delete(ctx, path); err != nil {
-		return fmt.Sprintf("迁移成功，但源文件清理失败: %v", err), nil
-	}
-
 	return "", nil
 }
 
