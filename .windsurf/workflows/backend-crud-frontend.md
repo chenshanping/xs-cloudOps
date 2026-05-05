@@ -110,6 +110,46 @@ Register in `server/initialize/db_tables.go`:
 - Use `grantMenuToRolesWithPermission` to inherit from parent list permission
 - Use `ensureApiAccessInheritedFrom` for API Casbin policies
 
+## Menu & API Bootstrap (MANDATORY for new modules)
+
+Every new module MUST register its menus and APIs in `server/initialize/db_tables.go`. Two separate paths:
+
+### 1. Fresh Install (`initDefaultData`)
+
+Add root menu + sub-menus + all API entries to the existing block:
+
+```go
+// 根菜单
+xxxMgmt := model.SysMenu{ParentID: 0, Name: "XXX管理", Path: "/xxx", Component: "Layout", Icon: "...", Sort: N, Type: 1, Permission: "xxx", Status: 1}
+global.DB.Create(&xxxMgmt)
+
+xxxMenus := []model.SysMenu{
+    {ParentID: xxxMgmt.ID, Name: "子菜单", Path: "/xxx/sub", Component: "xxx/sub/index", Icon: "...", Sort: 1, Type: 2, Permission: "xxx:sub:list", Status: 1},
+}
+global.DB.Create(&xxxMenus)
+// Include in allMenus and adminRole association
+```
+
+Add all module APIs to the `apis` slice so they get created and assigned to the admin role + Casbin policies.
+
+### 2. Existing Install Upgrade (`ensureBuiltInData`)
+
+Create an `ensureXxxMenus()` function following the `ensureAIToolMenus` pattern:
+
+- Root menu: `FirstOrCreate` by `permission`
+- Sub-menus: `FirstOrCreate` by `permission`, using `Attrs` for create-only fields
+- Call `grantMenusToRoleCodes(menuIDs, []string{"admin", "system_admin"})`
+- API entries: loop + `ensureApiAccessForRoleCodes(api, []string{"admin", "system_admin"})`
+- Call the function from `ensureBuiltInData()`
+
+### Key Rules
+
+- **Never skip either path** — fresh installs use `initDefaultData`, upgrades use `ensureBuiltInData`
+- Use `FirstOrCreate + Attrs` pattern — only create if missing, never overwrite existing customizations
+- Menu `Permission` field is the unique key for dedup
+- API `Path + Method` pair is the unique key for dedup
+- Always grant to `admin` + `system_admin` role codes
+
 ### Frontend: API Functions
 
 ```ts
@@ -144,19 +184,29 @@ Reuse `ImportResultModal.vue` — props: `open: boolean`, `result: ImportResult 
 
 ### New Module Checklist
 
-1. [ ] `server/service/<module>/<module>_excel.go` — headers, fields, template/import/export functions
-2. [ ] API handlers in `server/api/v1/<module>.go`
-3. [ ] Routes in `server/router/modules/<module>.go`
-4. [ ] Permissions in `server/initialize/db_tables.go`
-5. [ ] API functions in `web/src/api/<module>.ts`
-6. [ ] Toolbar buttons + handlers in Vue page
-7. [ ] Reuse `ImportResultModal` for error display
-8. [ ] Verify `go build ./...` + `npm run build`
+1. [ ] Models in `server/model/<module>.go`
+2. [ ] Request types in `server/model/request/<module>_request.go`
+3. [ ] Services in `server/service/<module>/`
+4. [ ] API handlers in `server/api/v1/<module>.go`
+5. [ ] Routes in `server/router/modules/<module>.go`
+6. [ ] Register service singleton in `server/service/service.go`
+7. [ ] AutoMigrate models in `server/initialize/db_tables.go` → `InitDBTables()`
+8. [ ] **Menu bootstrap (fresh)**: add menus to `initDefaultData()`, include in admin role association
+9. [ ] **Menu bootstrap (upgrade)**: add `ensureXxxMenus()` to `ensureBuiltInData()`
+10. [ ] **API bootstrap (fresh)**: add API entries to `initDefaultData()` apis slice
+11. [ ] **API bootstrap (upgrade)**: add `ensureApiAccessForRoleCodes` calls in `ensureXxxMenus()`
+12. [ ] Frontend API in `web/src/api/<module>.ts`
+13. [ ] Frontend view resolver: add prefix to `ADMIN_VIEW_PREFIXES` in `router/view-resolver.ts` if needed
+14. [ ] Frontend pages in `web/src/views/admin/<module>/`
+15. [ ] (Optional) Excel import/export: `server/service/<module>/<module>_excel.go`
+16. [ ] Verify `go build ./...` + `npm run build`
 
 ## Self-Check
 
 - Did I inspect a real neighboring module first?
 - Did I follow current flat-file backend structure?
+- Did I register menus in BOTH `initDefaultData` (fresh) AND `ensureBuiltInData` (upgrade)?
+- Did I register APIs in BOTH `initDefaultData` (fresh) AND `ensureXxxMenus` (upgrade)?
 - Did I reuse ProTable, permission helpers, shared components?
 - Did I keep interactions usable (no placeholder-only buttons)?
 - Did I verify dark mode for touched surfaces?
