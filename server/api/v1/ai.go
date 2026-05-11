@@ -399,6 +399,103 @@ func (a *AIApi) FetchProviderModels(c *gin.Context) {
 	response.OkWithData(c, response.AIProviderModelsFetchResponse{Models: models})
 }
 
+// AdminListAIUsers 管理员视角分页查询有 AI 对话记录的用户列表（page 分页）
+func (a *AIApi) AdminListAIUsers(c *gin.Context) {
+	var req request.AdminAIUserListRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	input := service.AdminAIUserListInput{
+		Page:     req.Page,
+		PageSize: req.PageSize,
+		Keyword:  req.Keyword,
+	}.Normalize()
+
+	items, total, err := service.AI.AdminListAIUsers(input)
+	if err != nil {
+		response.Fail(c, "获取用户列表失败")
+		return
+	}
+
+	response.OkWithPage(c, items, total, input.Page, input.PageSize)
+}
+
+// AdminListConversations 管理员视角分页查询所有对话（cursor 分页）
+func (a *AIApi) AdminListConversations(c *gin.Context) {
+	var req request.AdminConversationListRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	items, nextCursor, hasMore, err := service.AI.AdminListConversations(service.AdminConversationListInput{
+		CursorInput: service.CursorInput{
+			Cursor: req.Cursor,
+			Limit:  req.Limit,
+		},
+		UserID:  req.UserID,
+		Keyword: req.Keyword,
+	})
+	if err != nil {
+		response.Fail(c, "获取对话列表失败")
+		return
+	}
+
+	response.OkWithData(c, gin.H{
+		"list":        items,
+		"next_cursor": nextCursor,
+		"has_more":    hasMore,
+	})
+}
+
+// AdminListMessages 管理员视角分页查询某对话的消息（cursor 分页）
+func (a *AIApi) AdminListMessages(c *gin.Context) {
+	conversationID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	var req request.AdminMessageListRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	messages, nextCursor, hasMore, err := service.AI.AdminListMessages(uint(conversationID), service.CursorInput{
+		Cursor: req.Cursor,
+		Limit:  req.Limit,
+	})
+	if err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+
+	response.OkWithData(c, gin.H{
+		"list":        messages,
+		"next_cursor": nextCursor,
+		"has_more":    hasMore,
+	})
+}
+
+// AdminDeleteConversation 管理员删除任意对话
+func (a *AIApi) AdminDeleteConversation(c *gin.Context) {
+	conversationID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	if err := service.AI.AdminDeleteConversation(uint(conversationID)); err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+
+	response.OkWithMessage(c, "删除成功")
+}
+
 func (a *AIApi) GetAdminConfig(c *gin.Context) {
 	cfg, err := service.AI.GetAdminConfig()
 	if err != nil {

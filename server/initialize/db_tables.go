@@ -909,9 +909,22 @@ func ensureAIToolMenus() {
 			Status:     1,
 			Hidden:     0,
 		},
+		{
+			ParentID:   aiToolsMenu.ID,
+			Name:       "对话历史",
+			Path:       "/ai/history",
+			Component:  "ai/history/index",
+			Icon:       "history",
+			Sort:       3,
+			Type:       2,
+			Permission: "ai:history:list",
+			Status:     1,
+			Hidden:     0,
+		},
 	}
 
 	menuIDs := []uint{aiToolsMenu.ID}
+	var historyMenuID uint
 	for _, definition := range menuDefinitions {
 		menu := definition
 		if err := global.DB.
@@ -932,6 +945,51 @@ func ensureAIToolMenus() {
 			continue
 		}
 		menuIDs = append(menuIDs, menu.ID)
+		if definition.Permission == "ai:history:list" {
+			historyMenuID = menu.ID
+		}
+	}
+
+	// AI对话历史按钮权限（Type=3）
+	if historyMenuID > 0 {
+		buttonDefinitions := []model.SysMenu{
+			{
+				ParentID:   historyMenuID,
+				Name:       "查看消息",
+				Sort:       1,
+				Type:       3,
+				Permission: "ai:history:view",
+				Status:     1,
+				Hidden:     0,
+			},
+			{
+				ParentID:   historyMenuID,
+				Name:       "删除对话",
+				Sort:       2,
+				Type:       3,
+				Permission: "ai:history:delete",
+				Status:     1,
+				Hidden:     0,
+			},
+		}
+		for _, definition := range buttonDefinitions {
+			menu := definition
+			if err := global.DB.
+				Where("permission = ?", menu.Permission).
+				Attrs(model.SysMenu{
+					ParentID: menu.ParentID,
+					Name:     menu.Name,
+					Sort:     menu.Sort,
+					Type:     menu.Type,
+					Status:   menu.Status,
+					Hidden:   menu.Hidden,
+				}).
+				FirstOrCreate(&menu).Error; err != nil {
+				global.Log.Errorf("补齐AI对话历史按钮失败(%s): %v", definition.Permission, err)
+				continue
+			}
+			menuIDs = append(menuIDs, menu.ID)
+		}
 	}
 
 	grantMenusToRoleCodes(menuIDs, []string{"admin", "system_admin"})
@@ -1063,6 +1121,10 @@ func ensureAIApiAccess() {
 		{Path: "/api/v1/ai/config", Method: "PUT", Group: "AI配置", Description: "保存AI配置", NeedAuth: true},
 		{Path: "/api/v1/ai/test", Method: "POST", Group: "AI配置", Description: "测试AI配置", NeedAuth: true},
 		{Path: "/api/v1/ai/providers/models/fetch", Method: "POST", Group: "AI配置", Description: "拉取平台模型列表", NeedAuth: true},
+		{Path: "/api/v1/ai/admin/users", Method: "GET", Group: "AI对话历史", Description: "AI活跃用户列表", NeedAuth: true},
+		{Path: "/api/v1/ai/admin/conversations", Method: "GET", Group: "AI对话历史", Description: "对话历史列表", NeedAuth: true},
+		{Path: "/api/v1/ai/admin/conversations/:id/messages", Method: "GET", Group: "AI对话历史", Description: "对话历史消息", NeedAuth: true},
+		{Path: "/api/v1/ai/admin/conversations/:id", Method: "DELETE", Group: "AI对话历史", Description: "删除历史对话", NeedAuth: true},
 	}
 
 	for _, definition := range apiDefinitions {

@@ -15,6 +15,7 @@ func init() {
 type AIModule struct{}
 
 const aiConfigGroup = "AI配置"
+const aiHistoryGroup = "AI对话历史"
 
 func (m *AIModule) Name() string {
 	return "AI对话"
@@ -46,6 +47,15 @@ func (m *AIModule) RegisterPrivateRoutes(rg *gin.RouterGroup) {
 		registry.WithAuth(), registry.WithRequest(request.AIChatRequest{}))
 	R(rg, "POST", "/ai/chat/stream", m.Name(), "AI流式对话", v1.AI.ChatStream,
 		registry.WithAuth(), registry.WithRequest(request.AIChatRequest{}))
+
+	// AI对话历史（管理员视角）
+	R(rg, "GET", "/ai/admin/users", aiHistoryGroup, "AI活跃用户列表", v1.AI.AdminListAIUsers,
+		registry.WithAuth(), registry.WithRequest(request.AdminAIUserListRequest{}))
+	R(rg, "GET", "/ai/admin/conversations", aiHistoryGroup, "对话历史列表", v1.AI.AdminListConversations,
+		registry.WithAuth(), registry.WithRequest(request.AdminConversationListRequest{}))
+	R(rg, "GET", "/ai/admin/conversations/:id/messages", aiHistoryGroup, "对话历史消息", v1.AI.AdminListMessages,
+		registry.WithAuth(), registry.WithRequest(request.AdminMessageListRequest{}))
+	R(rg, "DELETE", "/ai/admin/conversations/:id", aiHistoryGroup, "删除历史对话", v1.AI.AdminDeleteConversation, registry.WithAuth())
 
 	// AI配置
 	R(rg, "GET", "/ai/config", aiConfigGroup, "获取AI配置", v1.AI.GetAdminConfig, registry.WithAuth())

@@ -36,6 +36,52 @@ export interface BatchDeleteConversationResult {
   failed_msgs: string[]
 }
 
+// AI对话历史（管理员视角）
+export interface AdminAIUserItem {
+  id: number
+  username: string
+  nickname: string
+  conversation_count: number
+  last_active_at: string
+}
+
+export interface AdminAIUserListParams {
+  page?: number
+  page_size?: number
+  keyword?: string
+}
+
+export interface AdminConversationItem {
+  id: number
+  user_id: number
+  username: string
+  nickname: string
+  title: string
+  model: string
+  message_count: number
+  created_at: string
+  updated_at: string
+  context_cleared_at?: string
+}
+
+export interface CursorListResult<T> {
+  list: T[]
+  next_cursor: number
+  has_more: boolean
+}
+
+export interface AdminConversationListParams {
+  cursor?: number
+  limit?: number
+  user_id?: number
+  keyword?: string
+}
+
+export interface AdminMessageListParams {
+  cursor?: number
+  limit?: number
+}
+
 export interface AIModelConfig {
   id: string
   name: string
@@ -142,6 +188,26 @@ export function deleteConversation(id: number) {
 
 export function deleteConversations(ids: number[]) {
   return request.delete<any, ApiResponse<BatchDeleteConversationResult>>('/ai/conversations/batch', { data: { ids } })
+}
+
+// 管理员: AI 活跃用户列表
+export function getAdminAIUsers(params: AdminAIUserListParams) {
+  return request.get<any, ApiResponse<PageResponse<AdminAIUserItem>>>('/ai/admin/users', { params })
+}
+
+// 管理员: 对话历史列表
+export function getAdminConversations(params: AdminConversationListParams) {
+  return request.get<any, ApiResponse<CursorListResult<AdminConversationItem>>>('/ai/admin/conversations', { params })
+}
+
+// 管理员: 对话历史消息
+export function getAdminMessages(conversationId: number, params: AdminMessageListParams) {
+  return request.get<any, ApiResponse<CursorListResult<AIMessage>>>(`/ai/admin/conversations/${conversationId}/messages`, { params })
+}
+
+// 管理员: 删除历史对话
+export function deleteAdminConversation(id: number) {
+  return request.delete<any, ApiResponse>(`/ai/admin/conversations/${id}`)
 }
 
 export function getAIConfig() {

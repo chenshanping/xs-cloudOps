@@ -82,6 +82,11 @@ type CreateConversationInput = ai.CreateConversationInput
 type AIChatInput = ai.AIChatInput
 type AIProviderModelFetchError = ai.AIProviderModelFetchError
 type AIStreamEvent = ai.AIStreamEvent
+type CursorInput = ai.CursorInput
+type AdminConversationListInput = ai.AdminConversationListInput
+type AdminConversationItem = ai.AdminConversationItem
+type AdminAIUserListInput = ai.AdminAIUserListInput
+type AdminAIUserItem = ai.AdminAIUserItem
 
 func NewAIStreamAccumulator() *ai.AIStreamAccumulator {
 	return ai.NewAIStreamAccumulator()
