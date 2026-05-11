@@ -66,6 +66,12 @@ func (a *UserApi) GetUser(c *gin.Context) {
 	response.OkWithData(c, user)
 }
 
+// 获取用户默认密码（用于新增用户表单预填）
+func (a *UserApi) GetUserDefaultPassword(c *gin.Context) {
+	password := service.User.GetDefaultPassword()
+	response.OkWithData(c, gin.H{"password": password})
+}
+
 // 创建用户
 func (a *UserApi) CreateUser(c *gin.Context) {
 	var req request.CreateUserRequest

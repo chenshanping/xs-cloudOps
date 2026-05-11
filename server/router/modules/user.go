@@ -38,6 +38,7 @@ func (m *UserModule) RegisterPrivateRoutes(rg *gin.RouterGroup) {
 		registry.WithAuth(), registry.WithRequest(request.UserListRequest{}))
 	R(rg, "GET", "/users/options", m.Name(), "用户选项", v1.User.GetUserOptions, registry.WithAuth())
 	R(rg, "GET", "/users/:id", m.Name(), "用户详情", v1.User.GetUser, registry.WithAuth())
+	R(rg, "GET", "/users/default-password", m.Name(), "默认密码", v1.User.GetUserDefaultPassword, registry.WithAuth())
 	R(rg, "POST", "/users", m.Name(), "创建用户", v1.User.CreateUser,
 		registry.WithAuth(), registry.WithRequest(request.CreateUserRequest{}))
 	R(rg, "PUT", "/users/:id", m.Name(), "更新用户", v1.User.UpdateUser,

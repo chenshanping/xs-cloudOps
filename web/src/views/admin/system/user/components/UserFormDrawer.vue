@@ -148,7 +148,7 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const formState = reactive<UserFormValue>({
   username: '',
-  password: '123456',
+  password: '',
   nickname: '',
   gender: 0,
   email: '',
@@ -271,7 +271,7 @@ watch(
     const deptLabel = props.initialValue?.dept_label || findDeptOptionLabel(props.deptOptions, deptId)
     Object.assign(formState, {
       username: props.initialValue?.username ?? '',
-      password: props.initialValue?.password ?? '123456',
+      password: props.initialValue?.password ?? '',
       nickname: props.initialValue?.nickname ?? '',
       gender: props.initialValue?.gender ?? 0,
       email: props.initialValue?.email ?? '',

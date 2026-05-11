@@ -10,7 +10,7 @@ import (
 
 // ==================== 用户导入字段定义 ====================
 
-var userImportHeaders = []string{"账号", "性别", "邮箱", "手机号"}
+var userImportHeaders = []string{"账号", "用户名称", "性别", "邮箱", "手机号"}
 
 func userImportFields() []utils.ImportField {
 	return []utils.ImportField{
@@ -26,6 +26,12 @@ func userImportFields() []utils.ImportField {
 				}
 				return nil
 			},
+		},
+		{
+			Header: "用户名称",
+			Key:    "nickname",
+			Type:   "string",
+			MaxLen: 50,
 		},
 		{
 			Header: "性别",
@@ -72,12 +78,12 @@ func (s *UserService) GetImportTemplate(deptID uint) ([]byte, string, error) {
 	}
 
 	// 添加示例数据
-	if err := exporter.AddRow([]interface{}{"zhangsan", "男", "zhangsan@example.com", "13800138000"}); err != nil {
+	if err := exporter.AddRow([]interface{}{"zhangsan", "张三", "男", "zhangsan@example.com", "13800138000"}); err != nil {
 		return nil, "", err
 	}
 
-	// 性别下拉（第2列，索引1）
-	if err := exporter.AddDataValidation(1, []string{"男", "女"}, 2, 1000); err != nil {
+	// 性别下拉（第3列，索引2）
+	if err := exporter.AddDataValidation(2, []string{"男", "女"}, 2, 1000); err != nil {
 		return nil, "", err
 	}
 
@@ -195,6 +201,7 @@ func (s *UserService) ImportUsers(operatorID uint, deptID uint, fileData []byte)
 		user := model.SysUser{
 			Username:  username,
 			Password:  hashedPassword,
+			Nickname:  safeString(row["nickname"]),
 			Gender:    genderLabelToValue(safeString(row["gender"])),
 			Email:     safeString(row["email"]),
 			Phone:     safeString(row["phone"]),
@@ -260,7 +267,7 @@ func (s *UserService) ExportUsers(operatorID uint, deptID uint, userIDs []uint) 
 	}
 
 	exporter := utils.NewExcelExporter(sheetName)
-	headers := []string{"账号", "性别", "邮箱", "手机号"}
+	headers := []string{"账号", "用户名称", "性别", "邮箱", "手机号"}
 	if err := exporter.SetHeaders(headers); err != nil {
 		return nil, "", err
 	}
@@ -268,6 +275,7 @@ func (s *UserService) ExportUsers(operatorID uint, deptID uint, userIDs []uint) 
 	for _, u := range users {
 		row := []interface{}{
 			u.Username,
+			u.Nickname,
 			genderValueToLabel(u.Gender),
 			u.Email,
 			u.Phone,

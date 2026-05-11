@@ -602,6 +602,11 @@ func (s *UserService) BatchUpdateUserStatus(operatorID uint, req *request.BatchU
 	return nil
 }
 
+// GetDefaultPassword 返回系统配置的用户默认密码（供 API 层调用）
+func (s *UserService) GetDefaultPassword() string {
+	return s.managedUserDefaultPassword()
+}
+
 func (s *UserService) managedUserDefaultPassword() string {
 	config, err := configsvc.Default.GetConfigByKey(userDefaultPasswordConfigKey)
 	if err != nil {

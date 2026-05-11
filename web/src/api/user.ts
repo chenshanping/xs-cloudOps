@@ -22,6 +22,11 @@ export function createUser(data: any) {
   return request.post<any, ApiResponse>('/users', data)
 }
 
+// 获取用户默认密码（用于新增用户表单预填）
+export function getUserDefaultPassword() {
+  return request.get<any, ApiResponse<{ password: string }>>('/users/default-password')
+}
+
 // 更新用户
 export function updateUser(id: number, data: any) {
   return request.put<any, ApiResponse>(`/users/${id}`, data)

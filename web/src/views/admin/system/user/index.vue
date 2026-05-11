@@ -239,6 +239,7 @@ import {
   batchResetPassword,
   resetPassword,
   forceUserOffline,
+  getUserDefaultPassword,
   getUserProfilesById,
   downloadUserImportTemplate,
   importUsers,
@@ -500,16 +501,25 @@ const handleTreeExpand = (keys: string[]) => {
   expandedTreeKeys.value = keys
 }
 
-const handleAdd = () => {
+const handleAdd = async () => {
   const defaultDeptId = getDefaultDeptIdFromSelection()
   const defaultDept = defaultDeptId ? findDeptById(deptTree.value, defaultDeptId) : null
   const defaultAvatarUrl = defaultUserAvatarUrl.value || configStore.get('register_logo')
+  let defaultPassword = '123456'
+  try {
+    const res = await getUserDefaultPassword()
+    if (res?.data?.password) {
+      defaultPassword = res.data.password
+    }
+  } catch {
+    // 获取失败时使用兑底默认值
+  }
   isEdit.value = false
   currentId.value = 0
   drawerTitle.value = '新增用户'
   drawerInitialValue.value = {
     username: '',
-    password: '123456',
+    password: defaultPassword,
     nickname: '',
     gender: 0,
     email: '',

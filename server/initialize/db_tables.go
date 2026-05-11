@@ -315,6 +315,13 @@ func ensureBuiltInData() {
 		NeedAuth:    true,
 	}, "/api/v1/users/:id/status", "PUT")
 	ensureApiAccessInheritedFrom(model.SysApi{
+		Path:        "/api/v1/users/default-password",
+		Method:      "GET",
+		Group:       "用户管理",
+		Description: "默认密码",
+		NeedAuth:    true,
+	}, "/api/v1/users", "POST")
+	ensureApiAccessInheritedFrom(model.SysApi{
 		Path:        "/api/v1/users/batch-password",
 		Method:      "PUT",
 		Group:       "用户管理",
