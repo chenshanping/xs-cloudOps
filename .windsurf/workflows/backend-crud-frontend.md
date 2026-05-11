@@ -50,9 +50,11 @@ Follow these steps in order. Do not skip any step.
     - Pattern: `v-permission="'module:resource:action'"`
     - The permission keys MUST match the Type=3 menu Permission values from step 7
 
-12. **Frontend verify** — run:
-// turbo
-    `npm run build` (in `web/`)
+12. **Frontend verify** — lightweight checks (do NOT run `npm run build` — see Token Budget Rule in `AGENTS.md`):
+    - Read back edited files to confirm structure and imports.
+    - `grep_search` for new API paths / component names to confirm no broken references.
+    - `find_by_name` to confirm new files exist where expected.
+    - Hand off to user with a click-through list for the running dev server.
 
 13. **Self-check** — verify all items:
     - [ ] Menus registered in `ensureBuiltInData` (upgrade path)?
@@ -61,7 +63,7 @@ Follow these steps in order. Do not skip any step.
     - [ ] **`v-permission` added to EVERY action button in the frontend?**
     - [ ] **Permission keys match between backend Type=3 menus and frontend `v-permission`?**
     - [ ] No action button without `v-permission`?
-    - [ ] `go build` and `npm run build` both pass?
+    - [ ] `go build` passes?
 
 ## Rules
 

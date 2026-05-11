@@ -8,14 +8,18 @@ Verify tests → Present options → Execute choice → Clean up.
 
 ## Steps
 
-1. **Verify tests pass:**
-   ```bash
-   # Backend
-   cd server && go test ./...
-   # Frontend
-   cd web && npm run build
-   ```
-   If tests fail, STOP. Fix before proceeding.
+1. **Verify:**
+   - **Backend** (always run — fast and high-signal):
+     ```bash
+     cd server && go build ./...
+     ```
+     Run `go test ./...` only if the feature has test coverage or the user requests it.
+   - **Frontend** — do NOT run `npm run build` by default (see Token Budget Rule in `AGENTS.md`). Instead:
+     - Read back edited files to confirm structure.
+     - `grep_search` for broken references.
+     - Ask the user to click-through on the dev server.
+     - Only run `npm run build` if the user explicitly requests it.
+   If backend build fails, STOP. Fix before proceeding.
 
 2. **Present options:**
    1. Merge back to base branch locally
