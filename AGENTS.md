@@ -128,6 +128,55 @@ Known caveat:
 
 - `web` currently has an existing `vue-tsc` environment issue in some sessions. If `npm run typecheck` fails with the known toolchain string replacement error, report it explicitly and still run the strongest unaffected verification available, usually `npm run build` plus targeted checks.
 
+### Frontend Verification — Token Budget Rule (MANDATORY)
+
+**Do NOT run `npm run build` or `npm run typecheck` for verification purposes** in agent sessions. These commands take 1–2 minutes and dump hundreds of lines of asset listings into the chat, which wastes the user's token budget for negligible signal.
+
+Default frontend verification is **manual user click-through on the running dev server**. The agent's job is to:
+
+1. Write code that follows existing patterns (template, script setup, imports).
+2. Read the file back after editing to confirm structure.
+3. Run targeted static checks ONLY when needed:
+   - `grep_search` for the modified symbol/path to confirm no broken references.
+   - `find_by_name` to confirm new files exist where expected.
+4. Hand off to the user with a concise list of what to click and what to expect.
+
+The agent may run `npm run build` / `npm run typecheck` ONLY when:
+
+- The user explicitly asks for it (e.g. "跑一下 build" / "verify with typecheck").
+- A backend route/handler signature changed and silently broke a TS type — and only after the user agrees.
+- Final CI-style verification at the end of a feature branch, with the user's explicit approval.
+
+Backend tests (`go test ./...`, `go build ./...`) are NOT covered by this rule — they are fast and high-signal, keep running them.
+
+### Git Operations — Owned by User (MANDATORY)
+
+**The agent does NOT run `git add` / `git commit` / `git push` / `git reset` / `git checkout` / `git diff` / `git log` / `git status` in normal feature work.** Git operations are owned by the user.
+
+Why: long multi-line commit messages with full root-cause analysis routinely cost 600–1000 tokens each; PowerShell encoding pitfalls (BOM via `Out-File -Encoding utf8`, GBK mojibake on Chinese literals, single-quote escape errors) cause retry loops that waste another 500–1500 tokens with zero deliverable value. Over a multi-resource feature branch this adds up to ~15k tokens of pure overhead.
+
+The agent's job is to:
+
+1. Write / edit the code files (this is the actual deliverable).
+2. Run verification that is fast and high-signal:
+   - `go test ./service/k8s -run TestXxxService -count=1` for the resource just changed.
+   - `go build ./...` to catch handler / router / DTO type errors.
+   - Targeted `grep_search` / `find_by_name` for cross-file reference integrity.
+3. Hand off to the user with a concise summary of changed files + acceptance click list. The user decides commit boundaries, writes the commit message they want, and pushes.
+
+The agent may run git ONLY when:
+
+- The user explicitly asks (e.g. "帮我提交一下" / "push" / "commit this").
+- The user asks for branch / history inspection that requires `git log` / `git diff`.
+
+When the agent does run git on request:
+
+- Prefer one-line `git commit -m "title"` over multi-paragraph `-F message_file`.
+- Body, if needed, in 2–3 short ASCII bullets only; no Chinese in commit body to avoid PowerShell encoding loops.
+- Do NOT chain `git status` / `git log` after every commit; only inspect when scope is unclear.
+
+This rule supersedes any prior implicit "commit after each logical change" behavior.
+
 ## Frontend Rules
 
 - Follow existing layout, table, form, and permission patterns before introducing new UI structure.
@@ -142,6 +191,82 @@ Known caveat:
 - Reuse existing response helpers, auth flow, cache invalidation, and permission refresh patterns.
 - Treat security-sensitive system config rules as backend-owned policy by default. If a config item changes anonymous exposure, auth boundaries, secret visibility, or other high-risk behavior, prefer code-defined allow/deny lists and reviewed deployment changes over admin-page runtime configuration.
 - **No database foreign keys.** Do not use GORM association tags that generate FK constraints (e.g. `gorm:"foreignKey:..."`). Keep referential integrity in application code. If a model needs to reference another table, store the ID column only and query the related record manually in the service layer. This avoids AutoMigrate FK failures when nullable/zero-value IDs exist.
+- **Soft delete + unique index must be explicitly resolved.** Any model embedding `BaseModel` (or otherwise containing `gorm.DeletedAt`) that also declares any `uniqueIndex` / `uniqueIndex:xxx` field MUST pick a documented strategy. See `## GORM Soft Delete + Unique Index Rule` below. The default soft delete + single-column unique index combination silently breaks "delete then recreate same-name" workflows and must not be left implicit.
+
+## GORM Soft Delete + Unique Index Rule
+
+### Why This Rule Exists
+
+`BaseModel` embeds `gorm.DeletedAt`, so by default `db.Delete(&row)` performs a **soft delete** (sets `deleted_at = now()`, the row stays). A field marked with `uniqueIndex` becomes a **single-column** unique index that does NOT include `deleted_at`. Therefore a soft-deleted row continues to occupy the unique key, and any subsequent `INSERT` with the same value fails with `Duplicate entry`.
+
+Concrete failure mode actually hit in this repo (K8s cluster module): user registers cluster `prod`, deletes it, tries to register `prod` again, gets `集群名已存在` — because the original row is still physically present with `deleted_at` set.
+
+This pattern exists across many existing models (`SysUser.Username`, `SysRole.Code`, `SysDictType.Type`, `SysConfig.Key`, `CmdbHostMetric.HostID`, `CmdbHostAgent.HostID`, `AIProviderConfig.Name`, `K8sCluster.Name`, `K8sClusterCredential.ClusterID`, …). They all share this latent bug; only the K8s ones have been fixed so far.
+
+### When This Rule Applies
+
+A model triggers this rule when BOTH conditions are true:
+
+1. It embeds `BaseModel` or otherwise carries a `gorm.DeletedAt` field.
+2. It declares any field tagged with `uniqueIndex` or `uniqueIndex:<name>`.
+
+If both are true, the author MUST pick one of the strategies below and state the choice in the PR/commit description.
+
+### Allowed Strategies
+
+**Strategy A — Physical delete (default, prefer this).**
+
+- Service-layer `Delete` MUST use `db.Unscoped().Delete(...)` for both the main model and any soft-deletable related rows uniqueIndexed by foreign id (e.g. `K8sClusterCredential.ClusterID`).
+- Use this when: the entity has no audit/recovery requirement, OR delete must be semantically permanent (e.g. credential wiping, cache rows, ephemeral metadata).
+- Tradeoff: loses ability to "restore" a deleted row.
+
+**Strategy B — Composite unique index `(field, deleted_at)`.**
+
+- Change the tag to `uniqueIndex:uk_xxx;index:uk_xxx,priority:1` plus a second tagged `uniqueIndex:uk_xxx;index:uk_xxx,priority:2` on `deleted_at`, OR add a raw composite index in the SQL upgrade script and remove the single-column tag.
+- Use this when: audit trail of past entities matters AND you want to keep soft delete behavior.
+- MySQL allows multiple NULLs in a composite unique index, so multiple historic deleted rows coexist while only one live row (`deleted_at IS NULL`) is allowed.
+- Requires a matching SQL upgrade script (`server/sql/`) — index changes affect existing installations.
+
+**Strategy C — Revival on conflict in Create path.**
+
+- `Create` first looks up any soft-deleted row with the same unique value; if found, it physically removes the residue (or restores it) before inserting.
+- Use this rarely — it complicates Create logic. Prefer A or B.
+
+### Mandatory Test Coverage
+
+Every model that triggers this rule MUST include a service-layer test like:
+
+```
+TestXxxService_Delete_AllowsSameUniqueValueRecreate
+```
+
+The test must: create a row → delete it → create another row with the same unique field value → assert the second create succeeds. This single test is the regression gate; without it, future PRs can silently regress to the broken default.
+
+### Decision Record
+
+When adding a new model that triggers this rule, state the strategy in commit message or PR description, e.g.:
+
+```
+soft-delete-strategy: A (physical delete)
+```
+
+When auditing or fixing an existing model, the same record applies.
+
+### Existing Known-Affected Models (Audit Backlog)
+
+The following models currently use the broken default (single-column unique index + soft delete) but have NOT yet been fixed. They should be fixed lazily as bugs are reported, or proactively in a dedicated cleanup pass:
+
+- `SysUser.Username`
+- `SysRole.Code`
+- `SysDictType.Type`
+- `SysConfig.Key`
+- `CmdbHostMetric.HostID`
+- `CmdbHostAgent.HostID`
+- `AIProviderConfig.Name`
+
+(`K8sCluster.Name` and `K8sClusterCredential.ClusterID` are fixed via Strategy A.)
+
+Do not silently fix unrelated models when a user request is scoped to one feature; note them in PR review and let the user decide.
 
 ## Built-In Bootstrap Rules
 
