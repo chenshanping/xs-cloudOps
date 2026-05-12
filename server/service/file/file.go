@@ -3,12 +3,10 @@ package file
 import (
 	"context"
 	"crypto/md5"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -19,6 +17,7 @@ import (
 	modelrequest "server/model/request"
 	modelresponse "server/model/response"
 	"server/service/configsvc"
+	"server/service/filesvc"
 	"server/service/oss"
 	"server/service/storagesvc"
 )
@@ -183,86 +182,7 @@ func (s *FileService) getDeleteMode() string {
 }
 
 func (s *FileService) ensureFileNotReferenced(file model.SysFile) error {
-	var avatarCount int64
-	if err := global.DB.Model(&model.SysUser{}).Where("avatar_file_id = ?", file.ID).Count(&avatarCount).Error; err != nil {
-		return err
-	}
-	if avatarCount > 0 {
-		return errors.New("文件正在被引用：用户头像正在使用，无法删除")
-	}
-
-	if configLabel, err := s.findConfigFileReference(file.ID); err != nil {
-		return err
-	} else if configLabel != "" {
-		return fmt.Errorf("文件正在被引用：系统配置[%s]正在使用，无法删除", configLabel)
-	}
-
-	var messages []model.AIMessage
-	if err := global.DB.Select("id", "file_ids").Where("file_ids IS NOT NULL AND file_ids <> ''").Find(&messages).Error; err != nil {
-		return err
-	}
-	for _, msg := range messages {
-		var fileIDs []uint
-		if err := json.Unmarshal([]byte(msg.FileIDs), &fileIDs); err != nil {
-			continue
-		}
-		for _, fileID := range fileIDs {
-			if fileID == file.ID {
-				return errors.New("文件正在被引用：AI对话附件正在使用，无法删除")
-			}
-		}
-	}
-
-	return nil
-}
-
-func parseConfigFileID(rawValue string) (uint, bool) {
-	fileID, err := strconv.ParseUint(strings.TrimSpace(rawValue), 10, 64)
-	if err != nil || fileID == 0 {
-		return 0, false
-	}
-	return uint(fileID), true
-}
-
-func (s *FileService) findConfigFileReference(fileID uint) (string, error) {
-	var configs []model.SysConfig
-	if err := global.DB.Select("key", "value").
-		Where("`key` IN ? AND value IS NOT NULL AND value <> ''", configsvc.ImageFileReferenceConfigKeys()).
-		Find(&configs).Error; err != nil {
-		return "", err
-	}
-
-	for _, config := range configs {
-		boundFileID, ok := parseConfigFileID(config.Value)
-		if !ok || boundFileID != fileID {
-			continue
-		}
-		return configsvc.ImageFileReferenceLabel(config.Key), nil
-	}
-
-	return "", nil
-}
-
-func (s *FileService) addConfigFileReferenceCounts(fileIDSet map[uint]struct{}, referenceCounts map[uint]int64) error {
-	var configs []model.SysConfig
-	if err := global.DB.Select("key", "value").
-		Where("`key` IN ? AND value IS NOT NULL AND value <> ''", configsvc.ImageFileReferenceConfigKeys()).
-		Find(&configs).Error; err != nil {
-		return err
-	}
-
-	for _, config := range configs {
-		fileID, ok := parseConfigFileID(config.Value)
-		if !ok {
-			continue
-		}
-		if _, exists := fileIDSet[fileID]; !exists {
-			continue
-		}
-		referenceCounts[fileID]++
-	}
-
-	return nil
+	return filesvc.Reference.EnsureFileNotReferenced(global.DB, file.ID)
 }
 
 func (s *FileService) fillFileReferenceCounts(files []model.SysFile) error {
@@ -277,56 +197,7 @@ func (s *FileService) fillFileReferenceCounts(files []model.SysFile) error {
 }
 
 func (s *FileService) getFileReferenceCounts(fileIDs []uint) (map[uint]int64, error) {
-	referenceCounts := make(map[uint]int64, len(fileIDs))
-	if len(fileIDs) == 0 {
-		return referenceCounts, nil
-	}
-
-	fileIDSet := make(map[uint]struct{}, len(fileIDs))
-	for _, fileID := range fileIDs {
-		fileIDSet[fileID] = struct{}{}
-	}
-
-	var avatarCounts []fileReferenceCountRow
-	if err := global.DB.Model(&model.SysUser{}).
-		Select("avatar_file_id AS file_id, COUNT(*) AS count").
-		Where("avatar_file_id IN ?", fileIDs).
-		Group("avatar_file_id").
-		Scan(&avatarCounts).Error; err != nil {
-		return nil, err
-	}
-	for _, item := range avatarCounts {
-		referenceCounts[item.FileID] += item.Count
-	}
-
-	if err := s.addConfigFileReferenceCounts(fileIDSet, referenceCounts); err != nil {
-		return nil, err
-	}
-
-	var messages []model.AIMessage
-	if err := global.DB.Select("id", "file_ids").Where("file_ids IS NOT NULL AND file_ids <> ''").Find(&messages).Error; err != nil {
-		return nil, err
-	}
-	for _, msg := range messages {
-		var ids []uint
-		if err := json.Unmarshal([]byte(msg.FileIDs), &ids); err != nil {
-			continue
-		}
-
-		seenInMessage := make(map[uint]struct{}, len(ids))
-		for _, fileID := range ids {
-			if _, exists := fileIDSet[fileID]; !exists {
-				continue
-			}
-			if _, duplicated := seenInMessage[fileID]; duplicated {
-				continue
-			}
-			seenInMessage[fileID] = struct{}{}
-			referenceCounts[fileID]++
-		}
-	}
-
-	return referenceCounts, nil
+	return filesvc.Reference.GetReferenceCounts(global.DB, fileIDs)
 }
 
 func (s *FileService) cleanupChunkArtifacts(file model.SysFile) error {
@@ -951,16 +822,6 @@ func (s *FileService) executeFileMigrationCandidate(candidate fileMigrationCandi
 			return errors.New("文件记录已变化，请刷新后重试")
 		}
 
-		// 同步更新引用了该文件的系统配置 URL
-		fileIDStr := strconv.FormatUint(uint64(candidate.file.ID), 10)
-		for fileIDKey, urlKey := range configsvc.ImageFileIDToURLKeyMap() {
-			var cfg model.SysConfig
-			if err := tx.Where("`key` = ? AND `value` = ?", fileIDKey, fileIDStr).First(&cfg).Error; err != nil {
-				continue
-			}
-			tx.Model(&model.SysConfig{}).Where("`key` = ?", urlKey).Update("value", candidate.targetURL)
-		}
-
 		return nil
 	})
 	if updateErr != nil {
@@ -968,6 +829,10 @@ func (s *FileService) executeFileMigrationCandidate(candidate fileMigrationCandi
 			_ = targetClient.Delete(context.Background(), path)
 		}
 		return "", updateErr
+	}
+
+	if err := sourceClient.Delete(ctx, path); err != nil {
+		return fmt.Sprintf("已迁移到目标存储，但清理源文件失败: %v", err), nil
 	}
 
 	return "", nil

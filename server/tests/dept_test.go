@@ -272,14 +272,35 @@ func TestDeptServiceGetManageableDeptTreeWithDefaultsReturnsRegisterLogo(t *test
 		t.Fatalf("create operator: %v", err)
 	}
 
-	if err := db.Create(&model.SysConfig{
-		Name:      "注册默认头像",
-		Key:       "register_logo",
-		Value:     "https://cdn.example.com/register-default-avatar.png",
-		ValueType: "string",
-		Remark:    "用户管理新增默认头像",
-	}).Error; err != nil {
-		t.Fatalf("create config: %v", err)
+	file := model.SysFile{
+		Name:   "register-default-avatar.png",
+		Path:   "register-default-avatar.png",
+		URL:    "https://cdn.example.com/register-default-avatar.png",
+		Status: 1,
+	}
+	if err := db.Create(&file).Error; err != nil {
+		t.Fatalf("create avatar file: %v", err)
+	}
+
+	configs := []model.SysConfig{
+		{
+			Name:      "注册默认头像",
+			Key:       "register_logo",
+			Value:     "https://stale.example.com/register-default-avatar.png",
+			ValueType: "string",
+			Remark:    "用户管理新增默认头像",
+		},
+		{
+			Name:      "注册默认头像文件ID",
+			Key:       "register_logo_file_id",
+			Value:     "1",
+			ValueType: "string",
+			Remark:    "用户管理新增默认头像文件ID",
+		},
+	}
+	configs[1].Value = fmt.Sprintf("%d", file.ID)
+	if err := db.Create(&configs).Error; err != nil {
+		t.Fatalf("create configs: %v", err)
 	}
 
 	tree, unassignedCount, defaultAvatarURL, err := Dept.GetManageableDeptTreeWithDefaultsForResource(operator.ID, "system:user-management")

@@ -163,6 +163,9 @@ func TestDeleteFileRejectsReferencedAvatarFile(t *testing.T) {
 	if err := global.DB.Create(&user).Error; err != nil {
 		t.Fatalf("create user: %v", err)
 	}
+	if err := FileReference.BackfillFileReferences(); err != nil {
+		t.Fatalf("backfill file references: %v", err)
+	}
 
 	err := File.DeleteFile(file.ID)
 	if err == nil {
@@ -259,6 +262,9 @@ func TestDeleteFileRejectsReferencedAIMessageFile(t *testing.T) {
 	if err := global.DB.Create(&aiMessage).Error; err != nil {
 		t.Fatalf("create ai message: %v", err)
 	}
+	if err := FileReference.BackfillFileReferences(); err != nil {
+		t.Fatalf("backfill file references: %v", err)
+	}
 
 	err = File.DeleteFile(file.ID)
 	if err == nil {
@@ -293,6 +299,9 @@ func TestDeleteFileRejectsConfigReferencedFile(t *testing.T) {
 	}
 	if err := global.DB.Create(&config).Error; err != nil {
 		t.Fatalf("create config: %v", err)
+	}
+	if err := FileReference.BackfillFileReferences(); err != nil {
+		t.Fatalf("backfill file references: %v", err)
 	}
 
 	err := File.DeleteFile(file.ID)

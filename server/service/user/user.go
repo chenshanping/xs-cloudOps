@@ -17,6 +17,7 @@ import (
 	"server/model/request"
 	"server/service/configsvc"
 	"server/service/core"
+	"server/service/filesvc"
 	"server/utils"
 )
 
@@ -27,7 +28,6 @@ var Default = &UserService{}
 const (
 	userDefaultPasswordConfigKey = "user_default_password"
 	userDefaultPasswordFallback  = "123456"
-	registerLogoConfigKey        = "register_logo"
 	registerLogoFileIDConfigKey  = configsvc.RegisterLogoFileIDConfigKey
 )
 
@@ -161,31 +161,7 @@ func resolveConfigFileID(configKey string) (uint, error) {
 }
 
 func resolveRegisterLogoAvatarFileID() (uint, error) {
-	if fileID, err := resolveConfigFileID(registerLogoFileIDConfigKey); err != nil {
-		return 0, err
-	} else if fileID > 0 {
-		return fileID, nil
-	}
-
-	config, err := configsvc.Default.GetConfigByKey(registerLogoConfigKey)
-	if err != nil {
-		return 0, nil
-	}
-
-	logoURL := strings.TrimSpace(config.Value)
-	if logoURL == "" {
-		return 0, nil
-	}
-
-	var file model.SysFile
-	if err := global.DB.Where("url = ? AND status = ?", logoURL, 1).First(&file).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return 0, nil
-		}
-		return 0, err
-	}
-
-	return file.ID, nil
+	return resolveConfigFileID(registerLogoFileIDConfigKey)
 }
 
 func (s *UserService) GetUserOptions(operatorID uint) ([]map[string]interface{}, error) {
@@ -227,10 +203,12 @@ func (s *UserService) Login(username, password string) (*model.SysUser, error) {
 
 func (s *UserService) GetUserInfo(userID uint) (*model.SysUser, error) {
 	var user model.SysUser
-	if err := global.DB.Preload("Roles").Preload("Dept").Preload("AvatarFile").First(&user, userID).Error; err != nil {
+	if err := global.DB.Preload("Roles").Preload("Dept").First(&user, userID).Error; err != nil {
 		return nil, err
 	}
-	user.FillAvatarURL()
+	if err := core.FillUserAvatarURL(&user); err != nil {
+		return nil, err
+	}
 	return &user, nil
 }
 
@@ -280,12 +258,11 @@ func (s *UserService) GetUserList(operatorID uint, req *request.UserListRequest)
 	}
 
 	offset := req.GetOffset()
-	if err := db.Preload("Roles").Preload("Dept").Preload("AvatarFile").Offset(offset).Limit(req.PageSize).Order("id DESC").Find(&users).Error; err != nil {
+	if err := db.Preload("Roles").Preload("Dept").Offset(offset).Limit(req.PageSize).Order("id DESC").Find(&users).Error; err != nil {
 		return nil, 0, err
 	}
-
-	for i := range users {
-		users[i].FillAvatarURL()
+	if err := core.FillUserAvatarURLs(users); err != nil {
+		return nil, 0, err
 	}
 
 	return users, total, nil
@@ -363,6 +340,15 @@ func (s *UserService) CreateUser(operatorID uint, req *request.CreateUserRequest
 			}
 		}
 
+		if user.AvatarFileID > 0 {
+			if err := filesvc.Reference.ReplaceRefs(tx, "sys_user", user.ID, []filesvc.FileRef{{
+				FileID: user.AvatarFileID,
+				Field:  "avatar",
+			}}); err != nil {
+				return err
+			}
+		}
+
 		return nil
 	})
 }
@@ -425,9 +411,6 @@ func (s *UserService) UpdateUser(operatorID, id uint, req *request.UpdateUserReq
 				return errors.New("头像文件不存在")
 			}
 			updates["avatar_file_id"] = file.ID
-		} else if req.Avatar != "" {
-			updates["avatar"] = req.Avatar
-			updates["avatar_file_id"] = nil
 		}
 
 		if err := tx.Model(&model.SysUser{}).Where("id = ?", id).Updates(updates).Error; err != nil {
@@ -442,6 +425,15 @@ func (s *UserService) UpdateUser(operatorID, id uint, req *request.UpdateUserReq
 		}
 		if err := tx.Model(&targetUser).Association("Roles").Replace(roles); err != nil {
 			return err
+		}
+
+		if req.AvatarFileID > 0 {
+			if err := filesvc.Reference.ReplaceRefs(tx, "sys_user", id, []filesvc.FileRef{{
+				FileID: req.AvatarFileID,
+				Field:  "avatar",
+			}}); err != nil {
+				return err
+			}
 		}
 
 		return nil
@@ -494,6 +486,9 @@ func (s *UserService) deleteUserByID(id uint) error {
 	}
 
 	err := global.DB.Transaction(func(tx *gorm.DB) error {
+		if err := filesvc.Reference.ClearRefs(tx, "sys_user", user.ID); err != nil {
+			return err
+		}
 		if err := tx.Model(&user).Association("Roles").Clear(); err != nil {
 			return err
 		}
@@ -748,11 +743,20 @@ func (s *UserService) UpdateAvatar(id uint, fileID uint) error {
 		return errors.New("文件不存在")
 	}
 
-	err := global.DB.Model(&model.SysUser{}).
-		Where("id = ?", id).
-		Updates(map[string]interface{}{
-			"avatar_file_id": file.ID,
-		}).Error
+	err := global.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&model.SysUser{}).
+			Where("id = ?", id).
+			Updates(map[string]interface{}{
+				"avatar_file_id": file.ID,
+			}).Error; err != nil {
+			return err
+		}
+
+		return filesvc.Reference.ReplaceRefs(tx, "sys_user", id, []filesvc.FileRef{{
+			FileID: file.ID,
+			Field:  "avatar",
+		}})
+	})
 	if err == nil {
 		core.Default.ClearUserInfoCache(id)
 	}
@@ -802,6 +806,15 @@ func (s *UserService) Register(username, password, email string) error {
 		var role model.SysRole
 		if err := tx.Where("code = ?", "user").First(&role).Error; err == nil {
 			if err := tx.Model(&user).Association("Roles").Append(&role); err != nil {
+				return err
+			}
+		}
+
+		if user.AvatarFileID > 0 {
+			if err := filesvc.Reference.ReplaceRefs(tx, "sys_user", user.ID, []filesvc.FileRef{{
+				FileID: user.AvatarFileID,
+				Field:  "avatar",
+			}}); err != nil {
 				return err
 			}
 		}

@@ -303,7 +303,11 @@ const handleUpdateProfile = async () => {
   profileForm.phone = normalizeOptionalText(profileForm.phone)
   profileLoading.value = true
   try {
-    await updateProfile(profileForm)
+    await updateProfile({
+      nickname: profileForm.nickname,
+      email: profileForm.email,
+      phone: profileForm.phone
+    })
     message.success('更新成功')
     await userStore.getUserInfoAction()
   } finally {

@@ -1,5 +1,3 @@
-const ADMIN_VIEW_PREFIXES = ['system/', 'monitor/', 'ai/'] as const
-const ADMIN_ROOT_VIEWS = new Set(['dashboard', 'profile', 'ai'])
 const AUTH_ROOT_VIEWS = new Set([
   'login',
   'register',
@@ -32,31 +30,22 @@ export function resolveViewModulePath(componentPath: string) {
     return null
   }
 
+  // front/ 前缀 → views/front/
   if (normalized.startsWith('front/')) {
     return `../views/${appendVueSuffix(normalized)}`
   }
 
+  // auth 页面 → views/auth/
   if (AUTH_ROOT_VIEWS.has(normalized)) {
     return resolveAuthViewPath(normalized)
   }
-
   if (normalized.endsWith('/index')) {
     const rootView = normalized.slice(0, -'/index'.length)
     if (AUTH_ROOT_VIEWS.has(rootView)) {
       return resolveAuthViewPath(rootView)
     }
-    if (ADMIN_ROOT_VIEWS.has(rootView)) {
-      return resolveAdminViewPath(rootView)
-    }
   }
 
-  if (ADMIN_ROOT_VIEWS.has(normalized)) {
-    return resolveAdminViewPath(normalized)
-  }
-
-  if (ADMIN_VIEW_PREFIXES.some((prefix) => normalized.startsWith(prefix))) {
-    return resolveAdminViewPath(normalized)
-  }
-
-  return `../views/${appendVueSuffix(normalized)}`
+  // 其他所有组件 → views/admin/ (后台管理页面默认路径)
+  return resolveAdminViewPath(normalized)
 }

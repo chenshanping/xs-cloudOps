@@ -13,6 +13,7 @@ import (
 	"server/service/echart"
 	"server/service/email"
 	"server/service/file"
+	"server/service/filesvc"
 	"server/service/logsvc"
 	"server/service/menu"
 	"server/service/role"
@@ -22,21 +23,22 @@ import (
 
 // Service singletons
 var (
-	User    = user.Default
-	Dept    = dept.Default
-	Role    = role.Default
-	Menu    = menu.Default
-	Dict    = dict.Default
-	File    = file.Default
-	AI      = ai.Default
-	Config  = configsvc.Default
-	Storage = storagesvc.Default
-	Log     = logsvc.Default
-	Email   = email.Default
-	Cache   = core.Default
-	Echart  = echart.Default
-	Api     = apisvc.Default
-	Captcha = captcha.Default
+	User          = user.Default
+	Dept          = dept.Default
+	Role          = role.Default
+	Menu          = menu.Default
+	Dict          = dict.Default
+	File          = file.Default
+	FileReference = filesvc.Reference
+	AI            = ai.Default
+	Config        = configsvc.Default
+	Storage       = storagesvc.Default
+	Log           = logsvc.Default
+	Email         = email.Default
+	Cache         = core.Default
+	Echart        = echart.Default
+	Api           = apisvc.Default
+	Captcha       = captcha.Default
 )
 
 // Auth types
@@ -53,15 +55,16 @@ const (
 )
 
 const (
-	FileDeleteModeConfigKey      = file.FileDeleteModeConfigKey
-	FileDeleteModeLogical        = file.FileDeleteModeLogical
-	FileDeleteModePhysical       = file.FileDeleteModePhysical
-	PublicConfigKeysConfigKey    = configsvc.PublicConfigKeysConfigKey
-	SysLogoFileIDConfigKey       = configsvc.SysLogoFileIDConfigKey
-	RegisterLogoFileIDConfigKey  = configsvc.RegisterLogoFileIDConfigKey
-	LoginBGImageFileIDConfigKey  = configsvc.LoginBGImageFileIDConfigKey
-	StorageTypeConfigKey         = configsvc.StorageTypeConfigKey
-	LegacyStorageConfigConfigKey = configsvc.LegacyStorageConfigConfigKey
+	FileDeleteModeConfigKey        = file.FileDeleteModeConfigKey
+	FileDeleteModeLogical          = file.FileDeleteModeLogical
+	FileDeleteModePhysical         = file.FileDeleteModePhysical
+	PublicConfigKeysConfigKey      = configsvc.PublicConfigKeysConfigKey
+	SysLogoFileIDConfigKey         = configsvc.SysLogoFileIDConfigKey
+	RegisterLogoFileIDConfigKey    = configsvc.RegisterLogoFileIDConfigKey
+	LoginBGImageFileIDConfigKey    = configsvc.LoginBGImageFileIDConfigKey
+	SliderCaptchaBgFileIDConfigKey = configsvc.SliderCaptchaBgFileIDConfigKey
+	StorageTypeConfigKey           = configsvc.StorageTypeConfigKey
+	LegacyStorageConfigConfigKey   = configsvc.LegacyStorageConfigConfigKey
 )
 
 func DefaultPublicConfigKeys() []string {

@@ -99,6 +99,77 @@ Only use these icon names (registered in AuthLayout.vue + LoginRegisterConfig.vu
   4. icon: SafetyOutlined       title: 信息安全  desc: 患者隐私合规保障
 ```
 
+## Background Image Prompt
+
+After generating the config, also output **3 background image prompts** the user can paste into AI image generators (豆包 / MidJourney / DALL-E).
+
+### Prompt Rules
+
+- Style: match the system tone — tech/business/medical/education etc.
+- Color: derive from the system domain (e.g. blue-purple for tech, green for medical, warm for education).
+- Composition: **16:9**, leave one side (left or right) with dark/low-detail area for login form overlay.
+- Must include: `无文字`, `无水印`, `高清`.
+- Provide 3 variants:
+  1. **Abstract gradient** — safest, most versatile, geometric lines + particles.
+  2. **Scene-based** — relates to the system domain (city for business, hospital for medical, campus for education).
+  3. **Minimal texture** — frosted glass / mesh gradient / subtle pattern, ultra-clean.
+
+### Prompt Template
+
+Each prompt should follow this structure:
+
+> [场景/主体描述]，[色调描述]，[风格关键词]，适合作为后台管理系统登录页背景，16:9宽幅构图，[留白方向]侧留出空间放置登录表单，无文字，无水印，高清
+
+### Example (for 智慧医通)
+
+```
+方案A — 抽象科技流线:
+深蓝渐变背景，半透明几何网格线条从左下角扩散，带有微光粒子效果，右侧融入医疗元素的极简线条图标（心电图、听诊器），科技感、商务、简洁大气，适合作为后台管理系统登录页背景，16:9宽幅构图，左侧留白区域用于放置登录表单，无文字，无水印，高清
+
+方案B — 医疗场景:
+现代化医院大厅，柔和自然光，蓝绿色调，前景虚化，远处走廊延伸感，叠加半透明数据图表全息效果，适合后台系统登录页背景，16:9，左侧偏暗留出空间，无文字，无水印，高清
+
+方案C — 纯净渐变:
+深色渐变背景，从左侧深靛蓝过渡到右侧薄荷绿，表面布满细腻磨砂质感和稀疏微光粒子，左下角有淡色几何圆环装饰，极简高级，适合SaaS后台登录页背景，16:9，左侧大面积留白，无文字，无水印，高清
+```
+
+## Logo Prompt
+
+Also output **3 logo prompts** for AI image generation.
+
+### Prompt Rules
+
+- Must include: `无文字`, `透明背景`, `1:1`, `高清`, `矢量风格` or `扁平设计`.
+- Derive the icon concept from the system name and domain.
+- Provide 3 variants:
+  1. **Letter-based** — initials of the English name combined with domain symbol.
+  2. **Abstract symbol** — domain-related shapes merged into a geometric mark.
+  3. **Name-concept** — visual metaphor of the Chinese system name (e.g. "云商管家" → cloud + shop).
+
+### Prompt Template
+
+> 设计一个现代[风格]Logo，[主体描述]，[配色描述]，扁平化设计，透明背景，适合作为后台管理系统图标，1:1正方形，无文字，高清
+
+### Example (for 智慧医通 / MediFlow)
+
+```
+方案A — 字母组合:
+设计一个现代科技风格Logo，字母M和F组合（MediFlow缩写），融入十字医疗符号，渐变色从深蓝到薄荷绿，扁平化设计，透明背景，适合作为后台管理系统图标，1:1正方形，无文字，高清
+
+方案B — 抽象符号:
+极简Logo设计，心电图波形与数据节点融合成环形标识，线条流畅，蓝绿渐变配色，扁平矢量风格，透明背景，适合SaaS医疗管理平台，1:1正方形，无文字，高清
+
+方案C — 名称概念:
+极简Logo，一个圆润的灯泡造型内部融合十字医疗符号和连接线路，象征"智慧医通"，配色为靛蓝渐变到青色，扁平矢量，透明背景，1:1，无文字，高清
+```
+
+### Logo Usage Tips
+
+After generating, tell the user:
+- Export PNG with transparent background
+- Prepare two sizes: **128×128** (sidebar logo) and **32×32** (favicon)
+- If the generator adds unwanted text, retry with `纯图形，不要任何文字和字母` appended
+
 ## After Generation
 
 If the user confirms, help them update the system config:
@@ -115,4 +186,6 @@ If the user confirms, help them update the system config:
 ]
 ```
 4. Optionally update `sys_name` in **系统配置 → 基础设置**
-5. Save and preview the login page
+5. Upload the generated logo to **系统配置 → 基础设置 → 系统Logo**
+6. Upload the background image to **系统配置 → 登录与注册 → 登录背景图**
+7. Save and preview the login page

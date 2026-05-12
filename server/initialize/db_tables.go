@@ -27,6 +27,7 @@ func InitDBTables() {
 		&model.SysConfig{},
 		&model.AIProviderConfig{},
 		&model.SysFile{},
+		&model.SysFileReference{},
 		&model.SysFileChunk{},
 		// 数据字典
 		&model.SysDictType{},
@@ -49,6 +50,10 @@ func InitDBTables() {
 
 	// 补齐升级场景下缺失的内置配置和 API 权限元数据
 	ensureBuiltInData()
+
+	if err := service.FileReference.BackfillFileReferences(); err != nil {
+		global.Log.Errorf("补齐文件引用关系失败: %v", err)
+	}
 }
 
 func initDefaultData() {
@@ -220,6 +225,7 @@ func initDefaultConfigs() {
 		{Name: "系统Logo文件ID", Key: service.SysLogoFileIDConfigKey, Value: "", ValueType: "string", Remark: "系统Logo关联文件ID"},
 		{Name: "注册默认头像文件ID", Key: service.RegisterLogoFileIDConfigKey, Value: "", ValueType: "string", Remark: "注册默认头像关联文件ID"},
 		{Name: "登录页背景图文件ID", Key: service.LoginBGImageFileIDConfigKey, Value: "", ValueType: "string", Remark: "登录页背景图关联文件ID"},
+		{Name: "滑动验证码背景文件ID", Key: service.SliderCaptchaBgFileIDConfigKey, Value: "", ValueType: "string", Remark: "滑动验证码背景关联文件ID"},
 		{Name: "公开配置键", Key: service.PublicConfigKeysConfigKey, Value: service.DefaultPublicConfigKeysValue(), ValueType: "json", Remark: "允许匿名批量读取的配置键(JSON数组)，敏感键即使写入也不会公开"},
 		{Name: "前台模式", Key: "front_mode", Value: "full", ValueType: "string", Remark: "前台模式: full=完整前台, profile=仅个人中心(用于身份认证)"},
 		{Name: "用户身份按钮显示", Key: "user_profile_button_visible", Value: "false", ValueType: "string", Remark: "后台用户管理列表是否显示身份按钮"},
@@ -279,6 +285,13 @@ func ensureBuiltInData() {
 		Value:     "false",
 		ValueType: "string",
 		Remark:    "后台用户管理列表是否显示身份按钮",
+	})
+	ensureConfigExists(model.SysConfig{
+		Name:      "滑动验证码背景文件ID",
+		Key:       service.SliderCaptchaBgFileIDConfigKey,
+		Value:     "",
+		ValueType: "string",
+		Remark:    "滑动验证码背景关联文件ID",
 	})
 	ensureConfigExists(model.SysConfig{
 		Name:      "用户默认密码",
@@ -1351,12 +1364,12 @@ func ensureUserImportExportMenus() {
 		if err := global.DB.
 			Where("permission = ?", menu.Permission).
 			Attrs(model.SysMenu{
-				ParentID:  menu.ParentID,
-				Name:      menu.Name,
-				Sort:      menu.Sort,
-				Type:      menu.Type,
-				Status:    menu.Status,
-				Hidden:    menu.Hidden,
+				ParentID: menu.ParentID,
+				Name:     menu.Name,
+				Sort:     menu.Sort,
+				Type:     menu.Type,
+				Status:   menu.Status,
+				Hidden:   menu.Hidden,
 			}).
 			FirstOrCreate(&menu).Error; err != nil {
 			global.Log.Errorf("补齐用户导入导出按钮失败(%s): %v", definition.Permission, err)

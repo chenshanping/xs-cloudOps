@@ -8,9 +8,12 @@ import (
 	"io"
 	"time"
 
+	"gorm.io/gorm"
+
 	"server/global"
 	"server/model"
 	"server/service/core"
+	"server/service/filesvc"
 )
 
 func (s *AIService) GetModels() ([]ModelInfo, error) {
@@ -101,11 +104,15 @@ func (s *AIService) DeleteConversation(conversationID uint, userID uint) error {
 		return errors.New("对话不存在")
 	}
 
-	if err := global.DB.Where("conversation_id = ?", conversationID).Delete(&model.AIMessage{}).Error; err != nil {
-		return err
-	}
-
-	return global.DB.Delete(&conversation).Error
+	return global.DB.Transaction(func(tx *gorm.DB) error {
+		if err := s.clearConversationMessageFileRefs(tx, conversationID); err != nil {
+			return err
+		}
+		if err := tx.Where("conversation_id = ?", conversationID).Delete(&model.AIMessage{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&conversation).Error
+	})
 }
 
 func (s *AIService) BatchDeleteConversations(userID uint, ids []uint) (int, []string) {
@@ -155,7 +162,12 @@ func (s *AIService) Chat(userID uint, input AIChatInput) (*model.AIMessage, erro
 		Content:        input.Message,
 		FileIDs:        s.encodeFileIDs(input.FileIDs),
 	}
-	if err := global.DB.Create(userMessage).Error; err != nil {
+	if err := global.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(userMessage).Error; err != nil {
+			return err
+		}
+		return s.registerMessageFileRefs(tx, userMessage.ID, input.FileIDs)
+	}); err != nil {
 		return nil, err
 	}
 
@@ -242,7 +254,12 @@ func (s *AIService) ChatStream(userID uint, input AIChatInput) (
 			Content:        input.Message,
 			FileIDs:        s.encodeFileIDs(input.FileIDs),
 		}
-		if err := global.DB.Create(userMessage).Error; err != nil {
+		if err := global.DB.Transaction(func(tx *gorm.DB) error {
+			if err := tx.Create(userMessage).Error; err != nil {
+				return err
+			}
+			return s.registerMessageFileRefs(tx, userMessage.ID, input.FileIDs)
+		}); err != nil {
 			return 0, nil, false, "", err
 		}
 
@@ -315,7 +332,12 @@ func (s *AIService) ClearMessages(conversationID uint, userID uint) error {
 		return errors.New("对话不存在")
 	}
 
-	return global.DB.Where("conversation_id = ?", conversationID).Delete(&model.AIMessage{}).Error
+	return global.DB.Transaction(func(tx *gorm.DB) error {
+		if err := s.clearConversationMessageFileRefs(tx, conversationID); err != nil {
+			return err
+		}
+		return tx.Where("conversation_id = ?", conversationID).Delete(&model.AIMessage{}).Error
+	})
 }
 
 func (s *AIService) ClearContext(conversationID uint, userID uint) error {
@@ -339,7 +361,12 @@ func (s *AIService) DeleteMessage(messageID uint, userID uint) error {
 		return errors.New("无权限删除此消息")
 	}
 
-	return global.DB.Delete(&message).Error
+	return global.DB.Transaction(func(tx *gorm.DB) error {
+		if err := filesvc.Reference.ClearRefs(tx, "ai_message", message.ID); err != nil {
+			return err
+		}
+		return tx.Delete(&message).Error
+	})
 }
 
 func (s *AIService) GetConversation(conversationID uint, userID uint) (*model.AIConversation, error) {
@@ -348,4 +375,31 @@ func (s *AIService) GetConversation(conversationID uint, userID uint) (*model.AI
 		return nil, errors.New("对话不存在")
 	}
 	return &conversation, nil
+}
+
+func (s *AIService) registerMessageFileRefs(tx *gorm.DB, messageID uint, fileIDs []uint) error {
+	refs := make([]filesvc.FileRef, 0, len(fileIDs))
+	for _, fileID := range fileIDs {
+		refs = append(refs, filesvc.FileRef{
+			FileID: fileID,
+			Field:  "attachment",
+		})
+	}
+	return filesvc.Reference.ReplaceRefs(tx, "ai_message", messageID, refs)
+}
+
+func (s *AIService) clearConversationMessageFileRefs(tx *gorm.DB, conversationID uint) error {
+	var messageIDs []uint
+	if err := tx.Model(&model.AIMessage{}).
+		Where("conversation_id = ?", conversationID).
+		Pluck("id", &messageIDs).Error; err != nil {
+		return err
+	}
+
+	for _, messageID := range messageIDs {
+		if err := filesvc.Reference.ClearRefs(tx, "ai_message", messageID); err != nil {
+			return err
+		}
+	}
+	return nil
 }

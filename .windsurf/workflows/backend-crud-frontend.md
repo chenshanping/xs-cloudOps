@@ -17,8 +17,12 @@ Follow these steps in order. Do not skip any step.
    - `server/initialize/db_tables.go` (for menu + button bootstrap pattern, search `ensureExamMenus`)
 
 2. **Backend model + request** — create or update model in `server/model/<module>.go`, request types in `server/model/request/<module>_request.go`.
+   - Business tables that reference uploads MUST store `xxx_file_id` / `xxx_file_ids`, not uploaded URL columns.
 
 3. **Backend service** — create or update service in `server/service/<module>/`. Business logic in service, not handlers.
+   - Service `Create` / `Update` paths that bind uploaded files MUST call `filesvc.Reference.ReplaceRefs(...)`.
+   - Service `Delete` / `Clear` paths that remove business data MUST call `filesvc.Reference.ClearRefs(...)`.
+   - Do NOT add module-specific scans/checks to `server/service/file/file.go`.
 
 4. **Backend API handlers** — create or update in `server/api/v1/<module>.go`. Use `response.BadRequest`, `response.Fail`, `response.OkWithData`, `response.OkWithPage`.
 
@@ -91,6 +95,7 @@ Follow these steps in order. Do not skip any step.
 - Default create/edit flows to Drawer (not Modal)
 - Reuse shared components: `AvatarUpload`, `ImageUpload`, `FileUpload`, `FilePreview`
 - Support dark mode: use `useUiStore().isDark` and semantic CSS variables
+- Upload components should keep preview URLs in local UI state; API payloads should submit only file IDs.
 
 ### v-permission Pattern
 

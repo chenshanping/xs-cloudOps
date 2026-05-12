@@ -21,7 +21,7 @@ func setupUserServiceTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("open sqlite db: %v", err)
 	}
 
-	if err := db.AutoMigrate(&model.SysConfig{}, &model.SysFile{}, &model.SysRole{}, &model.SysUser{}); err != nil {
+	if err := db.AutoMigrate(&model.SysConfig{}, &model.SysFile{}, &model.SysFileReference{}, &model.SysRole{}, &model.SysUser{}); err != nil {
 		t.Fatalf("auto migrate user service models: %v", err)
 	}
 
@@ -57,6 +57,14 @@ func TestDeleteUserByIDClearsAvatarFileReferenceBeforeSoftDelete(t *testing.T) {
 	if err := global.DB.Create(&user).Error; err != nil {
 		t.Fatalf("create user: %v", err)
 	}
+	if err := global.DB.Create(&model.SysFileReference{
+		FileID:   file.ID,
+		RefTable: "sys_user",
+		RefID:    user.ID,
+		RefField: "avatar",
+	}).Error; err != nil {
+		t.Fatalf("create user file ref: %v", err)
+	}
 
 	if err := Default.deleteUserByID(user.ID); err != nil {
 		t.Fatalf("deleteUserByID error: %v", err)
@@ -78,6 +86,16 @@ func TestDeleteUserByIDClearsAvatarFileReferenceBeforeSoftDelete(t *testing.T) {
 	}
 	if !strings.Contains(deleted.Username, "_deleted_") {
 		t.Fatalf("deleted username = %q, want suffixed deleted username", deleted.Username)
+	}
+
+	var refCount int64
+	if err := global.DB.Model(&model.SysFileReference{}).
+		Where("ref_table = ? AND ref_id = ?", "sys_user", user.ID).
+		Count(&refCount).Error; err != nil {
+		t.Fatalf("count user file refs: %v", err)
+	}
+	if refCount != 0 {
+		t.Fatalf("expected user file refs to be cleared, got %d", refCount)
 	}
 }
 

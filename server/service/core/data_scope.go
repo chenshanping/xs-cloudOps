@@ -294,7 +294,7 @@ func EnsureUserManageableForResource(
 	}
 
 	var user model.SysUser
-	query := global.DB.Preload("Roles").Preload("Dept").Preload("AvatarFile").Model(&model.SysUser{}).Where("sys_user.id = ?", targetUserID)
+	query := global.DB.Preload("Roles").Preload("Dept").Model(&model.SysUser{}).Where("sys_user.id = ?", targetUserID)
 	query = ApplyUserDataScope(query, scope, "sys_user")
 	if err := query.First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -303,7 +303,9 @@ func EnsureUserManageableForResource(
 		return nil, err
 	}
 
-	user.FillAvatarURL()
+	if err := FillUserAvatarURL(&user); err != nil {
+		return nil, err
+	}
 	return &user, nil
 }
 

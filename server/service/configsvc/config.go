@@ -2,11 +2,17 @@ package configsvc
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
+	"sort"
 	"strings"
+
+	"gorm.io/gorm"
 
 	"server/config"
 	"server/global"
 	"server/model"
+	"server/service/filesvc"
 	"server/service/oss"
 )
 
@@ -17,10 +23,10 @@ var Default = &ConfigService{}
 const PublicConfigKeysConfigKey = "public_config_keys"
 
 const (
-	SysLogoFileIDConfigKey          = "sys_logo_file_id"
-	RegisterLogoFileIDConfigKey     = "register_logo_file_id"
-	LoginBGImageFileIDConfigKey     = "login_bg_image_file_id"
-	SliderCaptchaBgFileIDConfigKey  = "slider_captcha_bg_file_id"
+	SysLogoFileIDConfigKey         = "sys_logo_file_id"
+	RegisterLogoFileIDConfigKey    = "register_logo_file_id"
+	LoginBGImageFileIDConfigKey    = "login_bg_image_file_id"
+	SliderCaptchaBgFileIDConfigKey = "slider_captcha_bg_file_id"
 )
 
 var imageFileReferenceConfigLabels = map[string]string{
@@ -80,32 +86,59 @@ func (s *ConfigService) GetConfigList(key string) ([]model.SysConfig, error) {
 	if key != "" {
 		db = db.Where("`key` LIKE ?", "%"+key+"%")
 	}
-	err := db.Order("id asc").Find(&configs).Error
-	return configs, err
+	if err := db.Order("id asc").Find(&configs).Error; err != nil {
+		return nil, err
+	}
+	return s.resolveConfigList(configs)
 }
 
 // GetConfigByKey 根据key获取配置
 func (s *ConfigService) GetConfigByKey(key string) (*model.SysConfig, error) {
-	var config model.SysConfig
-	err := global.DB.Where("`key` = ?", key).First(&config).Error
+	requestKeys := []string{key}
+	if fileIDKey, ok := ImageURLToFileIDKeyMap()[key]; ok {
+		requestKeys = append(requestKeys, fileIDKey)
+	}
+
+	configs, err := s.GetConfigsByKeys(requestKeys)
 	if err != nil {
 		return nil, err
+	}
+	config, ok := configs[key]
+	if !ok {
+		return nil, gorm.ErrRecordNotFound
 	}
 	return &config, nil
 }
 
 // GetConfigsByKeys 批量获取配置
 func (s *ConfigService) GetConfigsByKeys(keys []string) (map[string]model.SysConfig, error) {
+	normalizedKeys := normalizeConfigKeys(keys)
+	queryKeys := expandConfigQueryKeys(normalizedKeys)
+	if len(queryKeys) == 0 {
+		return map[string]model.SysConfig{}, nil
+	}
+
 	var configs []model.SysConfig
-	err := global.DB.Where("`key` IN ?", keys).Find(&configs).Error
-	if err != nil {
+	if err := global.DB.Where("`key` IN ?", queryKeys).Find(&configs).Error; err != nil {
 		return nil, err
 	}
-	result := make(map[string]model.SysConfig)
+
+	result := make(map[string]model.SysConfig, len(configs))
 	for _, c := range configs {
 		result[c.Key] = c
 	}
-	return result, nil
+	result, err := s.ResolveImageConfigURLs(result)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make(map[string]model.SysConfig, len(normalizedKeys))
+	for _, key := range normalizedKeys {
+		if config, ok := result[key]; ok {
+			filtered[key] = config
+		}
+	}
+	return filtered, nil
 }
 
 func DefaultPublicConfigKeys() []string {
@@ -138,6 +171,14 @@ func ImageFileIDToURLKeyMap() map[string]string {
 		LoginBGImageFileIDConfigKey:    "login_bg_image",
 		SliderCaptchaBgFileIDConfigKey: "slider_captcha_bg",
 	}
+}
+
+func ImageURLToFileIDKeyMap() map[string]string {
+	result := make(map[string]string, len(ImageFileIDToURLKeyMap()))
+	for fileIDKey, urlKey := range ImageFileIDToURLKeyMap() {
+		result[urlKey] = fileIDKey
+	}
+	return result
 }
 
 func ImageFileReferenceLabel(key string) string {
@@ -235,27 +276,33 @@ func (s *ConfigService) UpdateConfigByKey(key string, value string) error {
 
 // BatchUpdateConfigs 批量更新配置（不存在则创建）
 func (s *ConfigService) BatchUpdateConfigs(configs map[string]string) error {
-	tx := global.DB.Begin()
-	for key, value := range configs {
-		var config model.SysConfig
-		err := tx.Where("`key` = ?", key).First(&config).Error
-		if err != nil {
-			config = model.SysConfig{
-				Key:   key,
-				Value: value,
-			}
-			if err := tx.Create(&config).Error; err != nil {
-				tx.Rollback()
+	if err := global.DB.Transaction(func(tx *gorm.DB) error {
+		updatedConfigs := make(map[string]model.SysConfig, len(configs))
+		for key, value := range configs {
+			var config model.SysConfig
+			err := tx.Where("`key` = ?", key).First(&config).Error
+			switch {
+			case errors.Is(err, gorm.ErrRecordNotFound):
+				config = model.SysConfig{
+					Key:   key,
+					Value: value,
+				}
+				if err := tx.Create(&config).Error; err != nil {
+					return err
+				}
+			case err != nil:
 				return err
+			default:
+				if err := tx.Model(&config).Update("value", value).Error; err != nil {
+					return err
+				}
+				config.Value = value
 			}
-		} else {
-			if err := tx.Model(&config).Update("value", value).Error; err != nil {
-				tx.Rollback()
-				return err
-			}
+			updatedConfigs[key] = config
 		}
-	}
-	if err := tx.Commit().Error; err != nil {
+
+		return s.syncConfigImageFileRefs(tx, updatedConfigs)
+	}); err != nil {
 		return err
 	}
 
@@ -267,6 +314,176 @@ func (s *ConfigService) BatchUpdateConfigs(configs map[string]string) error {
 	}
 
 	return nil
+}
+
+func (s *ConfigService) ResolveImageConfigURLs(configs map[string]model.SysConfig) (map[string]model.SysConfig, error) {
+	resolved := make(map[string]model.SysConfig, len(configs)+len(ImageFileIDToURLKeyMap()))
+	for key, config := range configs {
+		resolved[key] = config
+	}
+
+	fileIDByKey := make(map[string]uint, len(ImageFileIDToURLKeyMap()))
+	fileIDs := make([]uint, 0, len(ImageFileIDToURLKeyMap()))
+	for fileIDKey := range ImageFileIDToURLKeyMap() {
+		config, ok := resolved[fileIDKey]
+		if !ok {
+			continue
+		}
+		fileID, ok := parseConfigFileID(config.Value)
+		if !ok {
+			continue
+		}
+		fileIDByKey[fileIDKey] = fileID
+		fileIDs = append(fileIDs, fileID)
+	}
+
+	fileURLMap := make(map[uint]string, len(fileIDs))
+	if len(fileIDs) > 0 {
+		var files []model.SysFile
+		if err := global.DB.Select("id", "url").Where("id IN ? AND status = ?", deduplicateUint(fileIDs), 1).Find(&files).Error; err != nil {
+			return nil, err
+		}
+		for _, file := range files {
+			fileURLMap[file.ID] = file.URL
+		}
+	}
+
+	for fileIDKey, urlKey := range ImageFileIDToURLKeyMap() {
+		derived := resolved[urlKey]
+		derived.Key = urlKey
+		derived.Value = ""
+		if fileID, ok := fileIDByKey[fileIDKey]; ok {
+			derived.Value = fileURLMap[fileID]
+		}
+		resolved[urlKey] = derived
+	}
+
+	return resolved, nil
+}
+
+func (s *ConfigService) resolveConfigList(configs []model.SysConfig) ([]model.SysConfig, error) {
+	configMap := make(map[string]model.SysConfig, len(configs))
+	for _, config := range configs {
+		configMap[config.Key] = config
+	}
+
+	resolved, err := s.ResolveImageConfigURLs(configMap)
+	if err != nil {
+		return nil, err
+	}
+
+	existingKeys := make(map[string]struct{}, len(configs))
+	for i := range configs {
+		configs[i] = resolved[configs[i].Key]
+		existingKeys[configs[i].Key] = struct{}{}
+	}
+
+	urlKeys := make([]string, 0, len(ImageURLToFileIDKeyMap()))
+	for urlKey := range ImageURLToFileIDKeyMap() {
+		urlKeys = append(urlKeys, urlKey)
+	}
+	sort.Strings(urlKeys)
+	for _, urlKey := range urlKeys {
+		if _, exists := existingKeys[urlKey]; exists {
+			continue
+		}
+		if config, ok := resolved[urlKey]; ok {
+			configs = append(configs, config)
+		}
+	}
+
+	return configs, nil
+}
+
+func (s *ConfigService) syncConfigImageFileRefs(tx *gorm.DB, updatedConfigs map[string]model.SysConfig) error {
+	for _, fileIDKey := range ImageFileReferenceConfigKeys() {
+		config, ok := updatedConfigs[fileIDKey]
+		if !ok {
+			continue
+		}
+
+		fileID, ok := parseConfigFileID(config.Value)
+		if !ok {
+			if err := filesvc.Reference.ClearRefs(tx, "sys_config", config.ID); err != nil {
+				return err
+			}
+			continue
+		}
+
+		var file model.SysFile
+		if err := tx.Select("id").Where("id = ? AND status = ?", fileID, 1).First(&file).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("%s文件不存在", ImageFileReferenceLabel(fileIDKey))
+			}
+			return err
+		}
+
+		if err := filesvc.Reference.ReplaceRefs(tx, "sys_config", config.ID, []filesvc.FileRef{{
+			FileID: file.ID,
+			Field:  config.Key,
+		}}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func expandConfigQueryKeys(keys []string) []string {
+	result := append([]string(nil), keys...)
+	urlToFileID := ImageURLToFileIDKeyMap()
+	seen := buildConfigKeySet(result)
+	for _, key := range keys {
+		fileIDKey, ok := urlToFileID[key]
+		if !ok {
+			continue
+		}
+		if _, exists := seen[fileIDKey]; exists {
+			continue
+		}
+		result = append(result, fileIDKey)
+		seen[fileIDKey] = struct{}{}
+	}
+	return result
+}
+
+func parseConfigFileID(rawValue string) (uint, bool) {
+	rawValue = strings.TrimSpace(rawValue)
+	if rawValue == "" || rawValue == "0" {
+		return 0, false
+	}
+
+	var fileID uint
+	for _, ch := range rawValue {
+		if ch < '0' || ch > '9' {
+			return 0, false
+		}
+		fileID = fileID*10 + uint(ch-'0')
+	}
+	if fileID == 0 {
+		return 0, false
+	}
+	return fileID, true
+}
+
+func deduplicateUint(values []uint) []uint {
+	if len(values) == 0 {
+		return nil
+	}
+	seen := make(map[uint]struct{}, len(values))
+	result := make([]uint, 0, len(values))
+	for _, value := range values {
+		if value == 0 {
+			continue
+		}
+		if _, exists := seen[value]; exists {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i] < result[j] })
+	return result
 }
 
 // DeleteConfig 删除配置

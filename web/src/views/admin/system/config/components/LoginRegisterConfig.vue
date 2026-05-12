@@ -471,6 +471,9 @@ const save = async () => {
   try {
     const configs: Record<string, string> = {}
     for (const [key, value] of Object.entries(getConfigState())) {
+      if (key === 'register_logo' || key === 'login_bg_image') {
+        continue
+      }
       if (FILE_ID_CONFIG_KEYS.has(key)) {
         configs[key] = Number(value) > 0 ? String(value) : ''
         continue
@@ -478,6 +481,7 @@ const save = async () => {
       configs[key] = typeof value === 'number' ? String(value) : value
     }
     await configStore.updateConfigs(configs)
+    await configStore.loadConfigs(true, 'all')
     baselineSnapshot.value = createSnapshot(getConfigState())
     message.success('配置保存成功')
     return true

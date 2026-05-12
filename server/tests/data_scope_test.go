@@ -56,6 +56,7 @@ func setupDataScopeTestDB(t *testing.T) *gorm.DB {
 
 	if err := db.AutoMigrate(
 		&model.SysFile{},
+		&model.SysFileReference{},
 		&model.SysConfig{},
 		&model.SysDept{},
 		&model.SysRole{},
@@ -2173,13 +2174,23 @@ func TestUserServiceCreateUserFallsBackToRegisterLogoAvatar(t *testing.T) {
 		t.Fatalf("create file: %v", err)
 	}
 
-	if err := db.Create(&model.SysConfig{
-		Name:      "注册默认头像",
-		Key:       "register_logo",
-		Value:     file.URL,
-		ValueType: "string",
-		Remark:    "新增用户默认头像",
-	}).Error; err != nil {
+	configs := []model.SysConfig{
+		{
+			Name:      "注册默认头像",
+			Key:       "register_logo",
+			Value:     "https://stale.example.com/register-avatar.png",
+			ValueType: "string",
+			Remark:    "新增用户默认头像",
+		},
+		{
+			Name:      "注册默认头像文件ID",
+			Key:       "register_logo_file_id",
+			Value:     fmt.Sprintf("%d", file.ID),
+			ValueType: "string",
+			Remark:    "新增用户默认头像文件ID",
+		},
+	}
+	if err := db.Create(&configs).Error; err != nil {
 		t.Fatalf("create config: %v", err)
 	}
 

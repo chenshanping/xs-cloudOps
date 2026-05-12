@@ -73,7 +73,7 @@ export function getProfile() {
 }
 
 // 更新个人资料
-export function updateProfile(data: { nickname?: string; email?: string; phone?: string; avatar?: string; avatar_file_id?: number }) {
+export function updateProfile(data: { nickname?: string; email?: string; phone?: string }) {
   return request.put<any, ApiResponse>('/user/profile', data)
 }
 

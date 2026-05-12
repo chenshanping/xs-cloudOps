@@ -9,7 +9,6 @@ type SysUser struct {
 	Email         string    `json:"email" gorm:"size:100;comment:邮箱"`
 	Phone         string    `json:"phone" gorm:"size:20;comment:手机号"`
 	AvatarFileID  uint      `json:"avatar_file_id" gorm:"comment:头像文件ID"`
-	AvatarFile    *SysFile  `json:"-" gorm:"foreignKey:AvatarFileID;references:ID"`
 	AvatarFileURL string    `json:"avatar_file_url" gorm:"-"`
 	Status        int       `json:"status" gorm:"default:1;comment:状态 1启用 0禁用"`
 	DeptID        uint      `json:"dept_id" gorm:"default:0;index;comment:部门ID"`
@@ -20,11 +19,4 @@ type SysUser struct {
 
 func (SysUser) TableName() string {
 	return "sys_user"
-}
-
-// FillAvatarURL 填充头像URL
-func (u *SysUser) FillAvatarURL() {
-	if u.AvatarFile != nil {
-		u.AvatarFileURL = u.AvatarFile.URL
-	}
 }

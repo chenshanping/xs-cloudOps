@@ -8,7 +8,6 @@ type CreateUserRequest struct {
 	Gender       int    `json:"gender" comment:"性别(0:未知,1:男,2:女)"`
 	Email        string `json:"email" comment:"邮箱"`
 	Phone        string `json:"phone" comment:"手机号"`
-	Avatar       string `json:"avatar" comment:"头像地址"`
 	AvatarFileID uint   `json:"avatar_file_id" comment:"头像文件ID"`
 	Status       int    `json:"status" comment:"状态(0:禁用,1:启用)"`
 	DeptID       uint   `json:"dept_id" comment:"部门ID"`
@@ -21,7 +20,6 @@ type UpdateUserRequest struct {
 	Gender       int    `json:"gender" comment:"性别(0:未知,1:男,2:女)"`
 	Email        string `json:"email" comment:"邮箱"`
 	Phone        string `json:"phone" comment:"手机号"`
-	Avatar       string `json:"avatar" comment:"头像地址"`
 	AvatarFileID uint   `json:"avatar_file_id" comment:"头像文件ID"`
 	Status       int    `json:"status" comment:"状态(0:禁用,1:启用)"`
 	DeptID       uint   `json:"dept_id" comment:"部门ID"`

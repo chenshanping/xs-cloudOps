@@ -47,6 +47,9 @@ func TestGetFileListIncludesReferenceCount(t *testing.T) {
 	if err := global.DB.Create(&aiMessage).Error; err != nil {
 		t.Fatalf("create ai message: %v", err)
 	}
+	if err := FileReference.BackfillFileReferences(); err != nil {
+		t.Fatalf("backfill file references: %v", err)
+	}
 
 	list, total, err := File.GetFileList(1, 10, "", "", nil)
 	if err != nil {
@@ -108,6 +111,9 @@ func TestGetFileListFiltersByReferencedStatus(t *testing.T) {
 	if err := global.DB.Create(&aiMessage).Error; err != nil {
 		t.Fatalf("create ai message: %v", err)
 	}
+	if err := FileReference.BackfillFileReferences(); err != nil {
+		t.Fatalf("backfill file references: %v", err)
+	}
 
 	referenced := true
 	referencedList, referencedTotal, err := File.GetFileList(1, 10, "", "", &referenced)
@@ -161,6 +167,9 @@ func TestGetFileListIncludesConfigFileReferences(t *testing.T) {
 	}
 	if err := global.DB.Create(&configs).Error; err != nil {
 		t.Fatalf("create configs: %v", err)
+	}
+	if err := FileReference.BackfillFileReferences(); err != nil {
+		t.Fatalf("backfill file references: %v", err)
 	}
 
 	list, total, err := File.GetFileList(1, 10, "", "", nil)

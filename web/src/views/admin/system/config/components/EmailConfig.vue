@@ -222,9 +222,13 @@ const save = async () => {
   try {
     const configs: Record<string, string> = {}
     for (const [key, val] of Object.entries(getConfigState())) {
+      if (key === 'slider_captcha_bg') {
+        continue
+      }
       configs[key] = typeof val === 'number' ? String(val) : val
     }
     await configStore.updateConfigs(configs)
+    await configStore.loadConfigs(true, 'all')
     baselineSnapshot.value = createSnapshot(getConfigState())
     message.success('配置保存成功')
     return true

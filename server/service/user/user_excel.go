@@ -3,8 +3,11 @@ package user
 import (
 	"fmt"
 
+	"gorm.io/gorm"
+
 	"server/global"
 	"server/model"
+	"server/service/filesvc"
 	"server/utils"
 )
 
@@ -98,9 +101,9 @@ func (s *UserService) GetImportTemplate(deptID uint) ([]byte, string, error) {
 
 // ImportUsersResult 导入用户结果
 type ImportUsersResult struct {
-	TotalCount   int                `json:"total_count"`
-	SuccessCount int                `json:"success_count"`
-	FailedCount  int                `json:"failed_count"`
+	TotalCount   int                 `json:"total_count"`
+	SuccessCount int                 `json:"success_count"`
+	FailedCount  int                 `json:"failed_count"`
 	Errors       []utils.ImportError `json:"errors"`
 }
 
@@ -214,11 +217,32 @@ func (s *UserService) ImportUsers(operatorID uint, deptID uint, fileData []byte)
 			user.AvatarFileID = defaultAvatarFileID
 		}
 
-		createQuery := global.DB
-		if user.AvatarFileID == 0 {
-			createQuery = createQuery.Omit("AvatarFileID")
-		}
-		if err := createQuery.Create(&user).Error; err != nil {
+		if err := global.DB.Transaction(func(tx *gorm.DB) error {
+			createQuery := tx
+			if user.AvatarFileID == 0 {
+				createQuery = createQuery.Omit("AvatarFileID")
+			}
+			if err := createQuery.Create(&user).Error; err != nil {
+				return err
+			}
+
+			if hasDefaultRole {
+				if err := tx.Model(&user).Association("Roles").Append(&defaultRole); err != nil {
+					return err
+				}
+			}
+
+			if user.AvatarFileID > 0 {
+				if err := filesvc.Reference.ReplaceRefs(tx, "sys_user", user.ID, []filesvc.FileRef{{
+					FileID: user.AvatarFileID,
+					Field:  "avatar",
+				}}); err != nil {
+					return err
+				}
+			}
+
+			return nil
+		}); err != nil {
 			importResult.FailedCount++
 			importResult.Errors = append(importResult.Errors, utils.ImportError{
 				Row:     0,
@@ -227,11 +251,6 @@ func (s *UserService) ImportUsers(operatorID uint, deptID uint, fileData []byte)
 				Message: fmt.Sprintf("创建用户【%s】失败: %s", username, err.Error()),
 			})
 			continue
-		}
-
-		// 分配默认角色
-		if hasDefaultRole {
-			_ = global.DB.Model(&user).Association("Roles").Append(&defaultRole)
 		}
 
 		importResult.SuccessCount++

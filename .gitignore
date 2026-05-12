@@ -1,3 +1,7 @@
 *.exe
 archive.zip
 .worktrees/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db  

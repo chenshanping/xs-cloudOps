@@ -11,7 +11,7 @@
  Target Server Version : 80034 (8.0.34)
  File Encoding         : 65001
 
- Date: 05/05/2026 23:10:04
+ Date: 11/05/2026 22:51:58
 */
 
 SET NAMES utf8mb4;
@@ -33,7 +33,7 @@ CREATE TABLE `ai_conversations`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_ai_conversations_deleted_at`(`deleted_at` ASC) USING BTREE,
   INDEX `idx_ai_conversations_user_id`(`user_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of ai_conversations
@@ -56,7 +56,7 @@ CREATE TABLE `ai_messages`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_ai_messages_deleted_at`(`deleted_at` ASC) USING BTREE,
   INDEX `idx_ai_messages_conversation_id`(`conversation_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of ai_messages
@@ -104,132 +104,137 @@ CREATE TABLE `casbin_rule`  (
   `v5` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `idx_casbin_rule`(`ptype` ASC, `v0` ASC, `v1` ASC, `v2` ASC, `v3` ASC, `v4` ASC, `v5` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 294 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 317 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of casbin_rule
 -- ----------------------------
-INSERT INTO `casbin_rule` VALUES (156, 'p', 'admin', '/api/v1/ai/chat', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (157, 'p', 'admin', '/api/v1/ai/chat/stream', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (204, 'p', 'admin', '/api/v1/ai/config', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (205, 'p', 'admin', '/api/v1/ai/config', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (149, 'p', 'admin', '/api/v1/ai/conversations', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (150, 'p', 'admin', '/api/v1/ai/conversations', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (153, 'p', 'admin', '/api/v1/ai/conversations/:id', 'DELETE', '', '', '');
-INSERT INTO `casbin_rule` VALUES (151, 'p', 'admin', '/api/v1/ai/conversations/:id', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (152, 'p', 'admin', '/api/v1/ai/conversations/:id', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (159, 'p', 'admin', '/api/v1/ai/conversations/:id/clear-context', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (155, 'p', 'admin', '/api/v1/ai/conversations/:id/messages', 'DELETE', '', '', '');
-INSERT INTO `casbin_rule` VALUES (154, 'p', 'admin', '/api/v1/ai/conversations/:id/messages', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (158, 'p', 'admin', '/api/v1/ai/messages/:id', 'DELETE', '', '', '');
-INSERT INTO `casbin_rule` VALUES (148, 'p', 'admin', '/api/v1/ai/models', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (202, 'p', 'admin', '/api/v1/ai/providers/models/fetch', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (174, 'p', 'admin', '/api/v1/ai/test', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (110, 'p', 'admin', '/api/v1/apis', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (112, 'p', 'admin', '/api/v1/apis', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (114, 'p', 'admin', '/api/v1/apis/:id', 'DELETE', '', '', '');
-INSERT INTO `casbin_rule` VALUES (111, 'p', 'admin', '/api/v1/apis/:id', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (113, 'p', 'admin', '/api/v1/apis/:id', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (125, 'p', 'admin', '/api/v1/apis/all', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (126, 'p', 'admin', '/api/v1/apis/groups', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (127, 'p', 'admin', '/api/v1/apis/sync', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (117, 'p', 'admin', '/api/v1/auth/login', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (118, 'p', 'admin', '/api/v1/auth/logout', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (119, 'p', 'admin', '/api/v1/auth/refresh', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (160, 'p', 'admin', '/api/v1/auth/register', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (162, 'p', 'admin', '/api/v1/auth/reset-password', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (166, 'p', 'admin', '/api/v1/auth/reset-password-by-email', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (165, 'p', 'admin', '/api/v1/auth/reset-password-by-username', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (161, 'p', 'admin', '/api/v1/auth/send-email-code', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (120, 'p', 'admin', '/api/v1/auth/userinfo', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (163, 'p', 'admin', '/api/v1/captcha', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (164, 'p', 'admin', '/api/v1/captcha/config', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (191, 'p', 'admin', '/api/v1/captcha/slider', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (192, 'p', 'admin', '/api/v1/captcha/slider/verify', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (128, 'p', 'admin', '/api/v1/configs', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (131, 'p', 'admin', '/api/v1/configs', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (134, 'p', 'admin', '/api/v1/configs/:id', 'DELETE', '', '', '');
-INSERT INTO `casbin_rule` VALUES (132, 'p', 'admin', '/api/v1/configs/:id', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (133, 'p', 'admin', '/api/v1/configs/batch', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (129, 'p', 'admin', '/api/v1/configs/key/:key', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (130, 'p', 'admin', '/api/v1/configs/keys', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (167, 'p', 'admin', '/api/v1/configs/test-email', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (198, 'p', 'admin', '/api/v1/depts', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (200, 'p', 'admin', '/api/v1/depts/:id', 'DELETE', '', '', '');
-INSERT INTO `casbin_rule` VALUES (197, 'p', 'admin', '/api/v1/depts/:id', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (199, 'p', 'admin', '/api/v1/depts/:id', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (201, 'p', 'admin', '/api/v1/depts/manageable-tree', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (196, 'p', 'admin', '/api/v1/depts/tree', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (186, 'p', 'admin', '/api/v1/dict/data', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (188, 'p', 'admin', '/api/v1/dict/data', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (190, 'p', 'admin', '/api/v1/dict/data/:id', 'DELETE', '', '', '');
-INSERT INTO `casbin_rule` VALUES (187, 'p', 'admin', '/api/v1/dict/data/:id', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (189, 'p', 'admin', '/api/v1/dict/data/:id', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (179, 'p', 'admin', '/api/v1/dict/type/:type', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (180, 'p', 'admin', '/api/v1/dict/types', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (183, 'p', 'admin', '/api/v1/dict/types', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (185, 'p', 'admin', '/api/v1/dict/types/:id', 'DELETE', '', '', '');
-INSERT INTO `casbin_rule` VALUES (182, 'p', 'admin', '/api/v1/dict/types/:id', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (184, 'p', 'admin', '/api/v1/dict/types/:id', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (181, 'p', 'admin', '/api/v1/dict/types/all', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (171, 'p', 'admin', '/api/v1/echart/role-status-stats', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (172, 'p', 'admin', '/api/v1/echart/user-register-trend', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (169, 'p', 'admin', '/api/v1/echart/user-role-stats', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (170, 'p', 'admin', '/api/v1/echart/user-status-stats', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (135, 'p', 'admin', '/api/v1/files', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (137, 'p', 'admin', '/api/v1/files/:id', 'DELETE', '', '', '');
-INSERT INTO `casbin_rule` VALUES (136, 'p', 'admin', '/api/v1/files/:id', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (193, 'p', 'admin', '/api/v1/files/batch', 'DELETE', '', '', '');
-INSERT INTO `casbin_rule` VALUES (139, 'p', 'admin', '/api/v1/files/check-md5', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (138, 'p', 'admin', '/api/v1/files/credential', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (144, 'p', 'admin', '/api/v1/files/multipart/abort', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (143, 'p', 'admin', '/api/v1/files/multipart/complete', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (141, 'p', 'admin', '/api/v1/files/multipart/init', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (142, 'p', 'admin', '/api/v1/files/multipart/parts', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (140, 'p', 'admin', '/api/v1/files/save', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (146, 'p', 'admin', '/api/v1/files/upload/chunk', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (145, 'p', 'admin', '/api/v1/files/upload/local', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (116, 'p', 'admin', '/api/v1/logs/login', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (115, 'p', 'admin', '/api/v1/logs/operation', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (168, 'p', 'admin', '/api/v1/logs/route-groups', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (105, 'p', 'admin', '/api/v1/menus', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (107, 'p', 'admin', '/api/v1/menus', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (109, 'p', 'admin', '/api/v1/menus/:id', 'DELETE', '', '', '');
-INSERT INTO `casbin_rule` VALUES (106, 'p', 'admin', '/api/v1/menus/:id', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (108, 'p', 'admin', '/api/v1/menus/:id', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (98, 'p', 'admin', '/api/v1/roles', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (100, 'p', 'admin', '/api/v1/roles', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (102, 'p', 'admin', '/api/v1/roles/:id', 'DELETE', '', '', '');
-INSERT INTO `casbin_rule` VALUES (99, 'p', 'admin', '/api/v1/roles/:id', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (101, 'p', 'admin', '/api/v1/roles/:id', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (104, 'p', 'admin', '/api/v1/roles/:id/apis', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (206, 'p', 'admin', '/api/v1/roles/:id/data-scopes', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (103, 'p', 'admin', '/api/v1/roles/:id/menus', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (207, 'p', 'admin', '/api/v1/roles/:id/permissions', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (208, 'p', 'admin', '/api/v1/roles/data-scope-resources', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (147, 'p', 'admin', '/api/v1/user/avatar', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (124, 'p', 'admin', '/api/v1/user/menus', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (123, 'p', 'admin', '/api/v1/user/password', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (121, 'p', 'admin', '/api/v1/user/profile', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (122, 'p', 'admin', '/api/v1/user/profile', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (175, 'p', 'admin', '/api/v1/user/profiles', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (176, 'p', 'admin', '/api/v1/user/profiles/types', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (91, 'p', 'admin', '/api/v1/users', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (93, 'p', 'admin', '/api/v1/users', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (95, 'p', 'admin', '/api/v1/users/:id', 'DELETE', '', '', '');
-INSERT INTO `casbin_rule` VALUES (92, 'p', 'admin', '/api/v1/users/:id', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (94, 'p', 'admin', '/api/v1/users/:id', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (177, 'p', 'admin', '/api/v1/users/:id/offline', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (97, 'p', 'admin', '/api/v1/users/:id/password', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (178, 'p', 'admin', '/api/v1/users/:id/profiles', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (96, 'p', 'admin', '/api/v1/users/:id/status', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (194, 'p', 'admin', '/api/v1/users/batch', 'DELETE', '', '', '');
-INSERT INTO `casbin_rule` VALUES (203, 'p', 'admin', '/api/v1/users/batch-password', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (195, 'p', 'admin', '/api/v1/users/batch-status', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (293, 'p', 'admin', '/api/v1/users/export', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (292, 'p', 'admin', '/api/v1/ai/admin/conversations', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (294, 'p', 'admin', '/api/v1/ai/admin/conversations/:id', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (293, 'p', 'admin', '/api/v1/ai/admin/conversations/:id/messages', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (315, 'p', 'admin', '/api/v1/ai/admin/users', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (235, 'p', 'admin', '/api/v1/ai/chat', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (236, 'p', 'admin', '/api/v1/ai/chat/stream', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (283, 'p', 'admin', '/api/v1/ai/config', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (284, 'p', 'admin', '/api/v1/ai/config', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (228, 'p', 'admin', '/api/v1/ai/conversations', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (229, 'p', 'admin', '/api/v1/ai/conversations', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (232, 'p', 'admin', '/api/v1/ai/conversations/:id', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (230, 'p', 'admin', '/api/v1/ai/conversations/:id', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (231, 'p', 'admin', '/api/v1/ai/conversations/:id', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (238, 'p', 'admin', '/api/v1/ai/conversations/:id/clear-context', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (234, 'p', 'admin', '/api/v1/ai/conversations/:id/messages', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (233, 'p', 'admin', '/api/v1/ai/conversations/:id/messages', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (237, 'p', 'admin', '/api/v1/ai/messages/:id', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (227, 'p', 'admin', '/api/v1/ai/models', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (281, 'p', 'admin', '/api/v1/ai/providers/models/fetch', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (253, 'p', 'admin', '/api/v1/ai/test', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (189, 'p', 'admin', '/api/v1/apis', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (191, 'p', 'admin', '/api/v1/apis', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (193, 'p', 'admin', '/api/v1/apis/:id', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (190, 'p', 'admin', '/api/v1/apis/:id', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (192, 'p', 'admin', '/api/v1/apis/:id', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (204, 'p', 'admin', '/api/v1/apis/all', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (205, 'p', 'admin', '/api/v1/apis/groups', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (206, 'p', 'admin', '/api/v1/apis/sync', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (196, 'p', 'admin', '/api/v1/auth/login', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (197, 'p', 'admin', '/api/v1/auth/logout', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (198, 'p', 'admin', '/api/v1/auth/refresh', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (239, 'p', 'admin', '/api/v1/auth/register', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (241, 'p', 'admin', '/api/v1/auth/reset-password', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (245, 'p', 'admin', '/api/v1/auth/reset-password-by-email', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (244, 'p', 'admin', '/api/v1/auth/reset-password-by-username', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (240, 'p', 'admin', '/api/v1/auth/send-email-code', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (199, 'p', 'admin', '/api/v1/auth/userinfo', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (242, 'p', 'admin', '/api/v1/captcha', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (243, 'p', 'admin', '/api/v1/captcha/config', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (270, 'p', 'admin', '/api/v1/captcha/slider', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (271, 'p', 'admin', '/api/v1/captcha/slider/verify', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (207, 'p', 'admin', '/api/v1/configs', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (210, 'p', 'admin', '/api/v1/configs', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (213, 'p', 'admin', '/api/v1/configs/:id', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (211, 'p', 'admin', '/api/v1/configs/:id', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (212, 'p', 'admin', '/api/v1/configs/batch', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (208, 'p', 'admin', '/api/v1/configs/key/:key', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (209, 'p', 'admin', '/api/v1/configs/keys', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (246, 'p', 'admin', '/api/v1/configs/test-email', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (277, 'p', 'admin', '/api/v1/depts', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (279, 'p', 'admin', '/api/v1/depts/:id', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (276, 'p', 'admin', '/api/v1/depts/:id', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (278, 'p', 'admin', '/api/v1/depts/:id', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (280, 'p', 'admin', '/api/v1/depts/manageable-tree', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (275, 'p', 'admin', '/api/v1/depts/tree', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (265, 'p', 'admin', '/api/v1/dict/data', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (267, 'p', 'admin', '/api/v1/dict/data', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (269, 'p', 'admin', '/api/v1/dict/data/:id', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (266, 'p', 'admin', '/api/v1/dict/data/:id', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (268, 'p', 'admin', '/api/v1/dict/data/:id', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (258, 'p', 'admin', '/api/v1/dict/type/:type', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (259, 'p', 'admin', '/api/v1/dict/types', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (262, 'p', 'admin', '/api/v1/dict/types', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (264, 'p', 'admin', '/api/v1/dict/types/:id', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (261, 'p', 'admin', '/api/v1/dict/types/:id', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (263, 'p', 'admin', '/api/v1/dict/types/:id', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (260, 'p', 'admin', '/api/v1/dict/types/all', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (250, 'p', 'admin', '/api/v1/echart/role-status-stats', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (251, 'p', 'admin', '/api/v1/echart/user-register-trend', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (248, 'p', 'admin', '/api/v1/echart/user-role-stats', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (249, 'p', 'admin', '/api/v1/echart/user-status-stats', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (214, 'p', 'admin', '/api/v1/files', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (216, 'p', 'admin', '/api/v1/files/:id', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (215, 'p', 'admin', '/api/v1/files/:id', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (272, 'p', 'admin', '/api/v1/files/batch', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (218, 'p', 'admin', '/api/v1/files/check-md5', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (217, 'p', 'admin', '/api/v1/files/credential', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (223, 'p', 'admin', '/api/v1/files/multipart/abort', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (222, 'p', 'admin', '/api/v1/files/multipart/complete', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (220, 'p', 'admin', '/api/v1/files/multipart/init', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (221, 'p', 'admin', '/api/v1/files/multipart/parts', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (219, 'p', 'admin', '/api/v1/files/save', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (225, 'p', 'admin', '/api/v1/files/upload/chunk', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (224, 'p', 'admin', '/api/v1/files/upload/local', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (195, 'p', 'admin', '/api/v1/logs/login', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (194, 'p', 'admin', '/api/v1/logs/operation', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (247, 'p', 'admin', '/api/v1/logs/route-groups', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (184, 'p', 'admin', '/api/v1/menus', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (186, 'p', 'admin', '/api/v1/menus', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (188, 'p', 'admin', '/api/v1/menus/:id', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (185, 'p', 'admin', '/api/v1/menus/:id', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (187, 'p', 'admin', '/api/v1/menus/:id', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (177, 'p', 'admin', '/api/v1/roles', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (179, 'p', 'admin', '/api/v1/roles', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (181, 'p', 'admin', '/api/v1/roles/:id', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (178, 'p', 'admin', '/api/v1/roles/:id', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (180, 'p', 'admin', '/api/v1/roles/:id', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (183, 'p', 'admin', '/api/v1/roles/:id/apis', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (285, 'p', 'admin', '/api/v1/roles/:id/data-scopes', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (182, 'p', 'admin', '/api/v1/roles/:id/menus', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (286, 'p', 'admin', '/api/v1/roles/:id/permissions', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (287, 'p', 'admin', '/api/v1/roles/data-scope-resources', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (226, 'p', 'admin', '/api/v1/user/avatar', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (203, 'p', 'admin', '/api/v1/user/menus', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (202, 'p', 'admin', '/api/v1/user/password', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (200, 'p', 'admin', '/api/v1/user/profile', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (201, 'p', 'admin', '/api/v1/user/profile', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (254, 'p', 'admin', '/api/v1/user/profiles', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (255, 'p', 'admin', '/api/v1/user/profiles/types', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (170, 'p', 'admin', '/api/v1/users', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (172, 'p', 'admin', '/api/v1/users', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (174, 'p', 'admin', '/api/v1/users/:id', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (171, 'p', 'admin', '/api/v1/users/:id', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (173, 'p', 'admin', '/api/v1/users/:id', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (256, 'p', 'admin', '/api/v1/users/:id/offline', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (176, 'p', 'admin', '/api/v1/users/:id/password', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (257, 'p', 'admin', '/api/v1/users/:id/profiles', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (175, 'p', 'admin', '/api/v1/users/:id/status', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (273, 'p', 'admin', '/api/v1/users/batch', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (282, 'p', 'admin', '/api/v1/users/batch-password', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (274, 'p', 'admin', '/api/v1/users/batch-status', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (291, 'p', 'admin', '/api/v1/users/default-password', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (290, 'p', 'admin', '/api/v1/users/export', 'GET', '', '', '');
 INSERT INTO `casbin_rule` VALUES (289, 'p', 'admin', '/api/v1/users/import', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (286, 'p', 'admin', '/api/v1/users/import-template', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (173, 'p', 'admin', '/api/v1/users/options', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (288, 'p', 'admin', '/api/v1/users/import-template', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (252, 'p', 'admin', '/api/v1/users/options', 'GET', '', '', '');
 INSERT INTO `casbin_rule` VALUES (54, 'p', 'codex_dual_track_1777414199', '/api/v1/users', 'GET', '', '', '');
 INSERT INTO `casbin_rule` VALUES (13, 'p', 'doctor', '/api/v1/ai/chat', 'POST', '', '', '');
 INSERT INTO `casbin_rule` VALUES (14, 'p', 'doctor', '/api/v1/ai/chat/stream', 'POST', '', '', '');
@@ -284,77 +289,82 @@ INSERT INTO `casbin_rule` VALUES (29, 'p', 'farmer_certification', '/api/v1/user
 INSERT INTO `casbin_rule` VALUES (30, 'p', 'farmer_certification', '/api/v1/user/profile', 'PUT', '', '', '');
 INSERT INTO `casbin_rule` VALUES (44, 'p', 'farmer_certification', '/api/v1/user/profiles', 'GET', '', '', '');
 INSERT INTO `casbin_rule` VALUES (45, 'p', 'farmer_certification', '/api/v1/user/profiles/types', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (252, 'p', 'system_admin', '/api/v1/ai/chat', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (253, 'p', 'system_admin', '/api/v1/ai/chat/stream', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (275, 'p', 'system_admin', '/api/v1/ai/config', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (276, 'p', 'system_admin', '/api/v1/ai/config', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (245, 'p', 'system_admin', '/api/v1/ai/conversations', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (246, 'p', 'system_admin', '/api/v1/ai/conversations', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (249, 'p', 'system_admin', '/api/v1/ai/conversations/:id', 'DELETE', '', '', '');
-INSERT INTO `casbin_rule` VALUES (247, 'p', 'system_admin', '/api/v1/ai/conversations/:id', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (248, 'p', 'system_admin', '/api/v1/ai/conversations/:id', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (255, 'p', 'system_admin', '/api/v1/ai/conversations/:id/clear-context', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (251, 'p', 'system_admin', '/api/v1/ai/conversations/:id/messages', 'DELETE', '', '', '');
-INSERT INTO `casbin_rule` VALUES (250, 'p', 'system_admin', '/api/v1/ai/conversations/:id/messages', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (254, 'p', 'system_admin', '/api/v1/ai/messages/:id', 'DELETE', '', '', '');
-INSERT INTO `casbin_rule` VALUES (244, 'p', 'system_admin', '/api/v1/ai/models', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (273, 'p', 'system_admin', '/api/v1/ai/providers/models/fetch', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (261, 'p', 'system_admin', '/api/v1/ai/test', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (217, 'p', 'system_admin', '/api/v1/auth/login', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (218, 'p', 'system_admin', '/api/v1/auth/logout', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (219, 'p', 'system_admin', '/api/v1/auth/refresh', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (220, 'p', 'system_admin', '/api/v1/auth/userinfo', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (224, 'p', 'system_admin', '/api/v1/configs', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (227, 'p', 'system_admin', '/api/v1/configs', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (230, 'p', 'system_admin', '/api/v1/configs/:id', 'DELETE', '', '', '');
-INSERT INTO `casbin_rule` VALUES (228, 'p', 'system_admin', '/api/v1/configs/:id', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (229, 'p', 'system_admin', '/api/v1/configs/batch', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (225, 'p', 'system_admin', '/api/v1/configs/key/:key', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (226, 'p', 'system_admin', '/api/v1/configs/keys', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (269, 'p', 'system_admin', '/api/v1/depts', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (271, 'p', 'system_admin', '/api/v1/depts/:id', 'DELETE', '', '', '');
-INSERT INTO `casbin_rule` VALUES (268, 'p', 'system_admin', '/api/v1/depts/:id', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (270, 'p', 'system_admin', '/api/v1/depts/:id', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (272, 'p', 'system_admin', '/api/v1/depts/manageable-tree', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (267, 'p', 'system_admin', '/api/v1/depts/tree', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (258, 'p', 'system_admin', '/api/v1/echart/role-status-stats', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (259, 'p', 'system_admin', '/api/v1/echart/user-register-trend', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (256, 'p', 'system_admin', '/api/v1/echart/user-role-stats', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (257, 'p', 'system_admin', '/api/v1/echart/user-status-stats', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (231, 'p', 'system_admin', '/api/v1/files', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (233, 'p', 'system_admin', '/api/v1/files/:id', 'DELETE', '', '', '');
-INSERT INTO `casbin_rule` VALUES (232, 'p', 'system_admin', '/api/v1/files/:id', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (235, 'p', 'system_admin', '/api/v1/files/check-md5', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (234, 'p', 'system_admin', '/api/v1/files/credential', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (240, 'p', 'system_admin', '/api/v1/files/multipart/abort', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (239, 'p', 'system_admin', '/api/v1/files/multipart/complete', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (237, 'p', 'system_admin', '/api/v1/files/multipart/init', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (238, 'p', 'system_admin', '/api/v1/files/multipart/parts', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (236, 'p', 'system_admin', '/api/v1/files/save', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (242, 'p', 'system_admin', '/api/v1/files/upload/chunk', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (241, 'p', 'system_admin', '/api/v1/files/upload/local', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (216, 'p', 'system_admin', '/api/v1/roles', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (243, 'p', 'system_admin', '/api/v1/user/avatar', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (223, 'p', 'system_admin', '/api/v1/user/password', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (221, 'p', 'system_admin', '/api/v1/user/profile', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (222, 'p', 'system_admin', '/api/v1/user/profile', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (262, 'p', 'system_admin', '/api/v1/user/profiles', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (263, 'p', 'system_admin', '/api/v1/user/profiles/types', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (209, 'p', 'system_admin', '/api/v1/users', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (211, 'p', 'system_admin', '/api/v1/users', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (213, 'p', 'system_admin', '/api/v1/users/:id', 'DELETE', '', '', '');
-INSERT INTO `casbin_rule` VALUES (210, 'p', 'system_admin', '/api/v1/users/:id', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (212, 'p', 'system_admin', '/api/v1/users/:id', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (264, 'p', 'system_admin', '/api/v1/users/:id/offline', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (215, 'p', 'system_admin', '/api/v1/users/:id/password', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (265, 'p', 'system_admin', '/api/v1/users/:id/profiles', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (214, 'p', 'system_admin', '/api/v1/users/:id/status', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (274, 'p', 'system_admin', '/api/v1/users/batch-password', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (266, 'p', 'system_admin', '/api/v1/users/batch-status', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (291, 'p', 'system_admin', '/api/v1/users/export', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (288, 'p', 'system_admin', '/api/v1/users/import', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (284, 'p', 'system_admin', '/api/v1/users/import-template', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (260, 'p', 'system_admin', '/api/v1/users/options', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (167, 'p', 'system_admin', '/api/v1/ai/admin/conversations', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (169, 'p', 'system_admin', '/api/v1/ai/admin/conversations/:id', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (168, 'p', 'system_admin', '/api/v1/ai/admin/conversations/:id/messages', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (316, 'p', 'system_admin', '/api/v1/ai/admin/users', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (134, 'p', 'system_admin', '/api/v1/ai/chat', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (135, 'p', 'system_admin', '/api/v1/ai/chat/stream', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (157, 'p', 'system_admin', '/api/v1/ai/config', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (158, 'p', 'system_admin', '/api/v1/ai/config', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (127, 'p', 'system_admin', '/api/v1/ai/conversations', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (128, 'p', 'system_admin', '/api/v1/ai/conversations', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (131, 'p', 'system_admin', '/api/v1/ai/conversations/:id', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (129, 'p', 'system_admin', '/api/v1/ai/conversations/:id', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (130, 'p', 'system_admin', '/api/v1/ai/conversations/:id', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (137, 'p', 'system_admin', '/api/v1/ai/conversations/:id/clear-context', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (133, 'p', 'system_admin', '/api/v1/ai/conversations/:id/messages', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (132, 'p', 'system_admin', '/api/v1/ai/conversations/:id/messages', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (136, 'p', 'system_admin', '/api/v1/ai/messages/:id', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (126, 'p', 'system_admin', '/api/v1/ai/models', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (155, 'p', 'system_admin', '/api/v1/ai/providers/models/fetch', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (143, 'p', 'system_admin', '/api/v1/ai/test', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (99, 'p', 'system_admin', '/api/v1/auth/login', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (100, 'p', 'system_admin', '/api/v1/auth/logout', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (101, 'p', 'system_admin', '/api/v1/auth/refresh', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (102, 'p', 'system_admin', '/api/v1/auth/userinfo', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (106, 'p', 'system_admin', '/api/v1/configs', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (109, 'p', 'system_admin', '/api/v1/configs', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (112, 'p', 'system_admin', '/api/v1/configs/:id', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (110, 'p', 'system_admin', '/api/v1/configs/:id', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (111, 'p', 'system_admin', '/api/v1/configs/batch', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (107, 'p', 'system_admin', '/api/v1/configs/key/:key', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (108, 'p', 'system_admin', '/api/v1/configs/keys', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (151, 'p', 'system_admin', '/api/v1/depts', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (153, 'p', 'system_admin', '/api/v1/depts/:id', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (150, 'p', 'system_admin', '/api/v1/depts/:id', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (152, 'p', 'system_admin', '/api/v1/depts/:id', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (154, 'p', 'system_admin', '/api/v1/depts/manageable-tree', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (149, 'p', 'system_admin', '/api/v1/depts/tree', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (140, 'p', 'system_admin', '/api/v1/echart/role-status-stats', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (141, 'p', 'system_admin', '/api/v1/echart/user-register-trend', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (138, 'p', 'system_admin', '/api/v1/echart/user-role-stats', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (139, 'p', 'system_admin', '/api/v1/echart/user-status-stats', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (113, 'p', 'system_admin', '/api/v1/files', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (115, 'p', 'system_admin', '/api/v1/files/:id', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (114, 'p', 'system_admin', '/api/v1/files/:id', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (117, 'p', 'system_admin', '/api/v1/files/check-md5', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (116, 'p', 'system_admin', '/api/v1/files/credential', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (122, 'p', 'system_admin', '/api/v1/files/multipart/abort', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (121, 'p', 'system_admin', '/api/v1/files/multipart/complete', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (119, 'p', 'system_admin', '/api/v1/files/multipart/init', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (120, 'p', 'system_admin', '/api/v1/files/multipart/parts', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (118, 'p', 'system_admin', '/api/v1/files/save', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (124, 'p', 'system_admin', '/api/v1/files/upload/chunk', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (123, 'p', 'system_admin', '/api/v1/files/upload/local', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (98, 'p', 'system_admin', '/api/v1/roles', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (125, 'p', 'system_admin', '/api/v1/user/avatar', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (105, 'p', 'system_admin', '/api/v1/user/password', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (103, 'p', 'system_admin', '/api/v1/user/profile', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (104, 'p', 'system_admin', '/api/v1/user/profile', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (144, 'p', 'system_admin', '/api/v1/user/profiles', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (145, 'p', 'system_admin', '/api/v1/user/profiles/types', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (91, 'p', 'system_admin', '/api/v1/users', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (93, 'p', 'system_admin', '/api/v1/users', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (95, 'p', 'system_admin', '/api/v1/users/:id', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (92, 'p', 'system_admin', '/api/v1/users/:id', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (94, 'p', 'system_admin', '/api/v1/users/:id', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (146, 'p', 'system_admin', '/api/v1/users/:id/offline', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (97, 'p', 'system_admin', '/api/v1/users/:id/password', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (147, 'p', 'system_admin', '/api/v1/users/:id/profiles', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (96, 'p', 'system_admin', '/api/v1/users/:id/status', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (156, 'p', 'system_admin', '/api/v1/users/batch-password', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (148, 'p', 'system_admin', '/api/v1/users/batch-status', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (166, 'p', 'system_admin', '/api/v1/users/default-password', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (164, 'p', 'system_admin', '/api/v1/users/export', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (162, 'p', 'system_admin', '/api/v1/users/import', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (160, 'p', 'system_admin', '/api/v1/users/import-template', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (142, 'p', 'system_admin', '/api/v1/users/options', 'GET', '', '', '');
 INSERT INTO `casbin_rule` VALUES (66, 'p', 'test', '/api/v1/configs', 'GET', '', '', '');
 INSERT INTO `casbin_rule` VALUES (67, 'p', 'test', '/api/v1/configs/key/:key', 'GET', '', '', '');
 INSERT INTO `casbin_rule` VALUES (86, 'p', 'test', '/api/v1/depts', 'POST', '', '', '');
@@ -390,18 +400,31 @@ INSERT INTO `casbin_rule` VALUES (60, 'p', 'test', '/api/v1/users/:id/status', '
 INSERT INTO `casbin_rule` VALUES (82, 'p', 'test', '/api/v1/users/batch', 'DELETE', '', '', '');
 INSERT INTO `casbin_rule` VALUES (90, 'p', 'test', '/api/v1/users/batch-password', 'PUT', '', '', '');
 INSERT INTO `casbin_rule` VALUES (83, 'p', 'test', '/api/v1/users/batch-status', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (290, 'p', 'test', '/api/v1/users/export', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (287, 'p', 'test', '/api/v1/users/import', 'POST', '', '', '');
-INSERT INTO `casbin_rule` VALUES (283, 'p', 'test', '/api/v1/users/import-template', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (165, 'p', 'test', '/api/v1/users/default-password', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (163, 'p', 'test', '/api/v1/users/export', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (161, 'p', 'test', '/api/v1/users/import', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (159, 'p', 'test', '/api/v1/users/import-template', 'GET', '', '', '');
 INSERT INTO `casbin_rule` VALUES (78, 'p', 'test', '/api/v1/users/options', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (281, 'p', 'user', '/api/v1/user/avatar', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (280, 'p', 'user', '/api/v1/user/password', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (278, 'p', 'user', '/api/v1/user/profile', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (279, 'p', 'user', '/api/v1/user/profile', 'PUT', '', '', '');
-INSERT INTO `casbin_rule` VALUES (282, 'p', 'user', '/api/v1/user/profiles', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (277, 'p', 'user', '/api/v1/users', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (292, 'p', 'user', '/api/v1/users/export', 'GET', '', '', '');
-INSERT INTO `casbin_rule` VALUES (285, 'p', 'user', '/api/v1/users/import-template', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (307, 'p', 'user', '/api/v1/ai/chat', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (308, 'p', 'user', '/api/v1/ai/chat/stream', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (300, 'p', 'user', '/api/v1/ai/conversations', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (301, 'p', 'user', '/api/v1/ai/conversations', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (304, 'p', 'user', '/api/v1/ai/conversations/:id', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (302, 'p', 'user', '/api/v1/ai/conversations/:id', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (303, 'p', 'user', '/api/v1/ai/conversations/:id', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (310, 'p', 'user', '/api/v1/ai/conversations/:id/clear-context', 'POST', '', '', '');
+INSERT INTO `casbin_rule` VALUES (306, 'p', 'user', '/api/v1/ai/conversations/:id/messages', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (305, 'p', 'user', '/api/v1/ai/conversations/:id/messages', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (312, 'p', 'user', '/api/v1/ai/conversations/batch', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (309, 'p', 'user', '/api/v1/ai/messages/:id', 'DELETE', '', '', '');
+INSERT INTO `casbin_rule` VALUES (299, 'p', 'user', '/api/v1/user/avatar', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (298, 'p', 'user', '/api/v1/user/password', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (296, 'p', 'user', '/api/v1/user/profile', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (297, 'p', 'user', '/api/v1/user/profile', 'PUT', '', '', '');
+INSERT INTO `casbin_rule` VALUES (311, 'p', 'user', '/api/v1/user/profiles', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (295, 'p', 'user', '/api/v1/users', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (314, 'p', 'user', '/api/v1/users/export', 'GET', '', '', '');
+INSERT INTO `casbin_rule` VALUES (313, 'p', 'user', '/api/v1/users/import-template', 'GET', '', '', '');
 
 -- ----------------------------
 -- Table structure for sys_api
@@ -421,7 +444,7 @@ CREATE TABLE `sys_api`  (
   `need_auth` tinyint(1) NULL DEFAULT NULL COMMENT '是否需要认证',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_sys_api_deleted_at`(`deleted_at` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 247 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 252 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_api
@@ -567,6 +590,11 @@ INSERT INTO `sys_api` VALUES (243, '2026-05-05 01:15:49.769', '2026-05-05 01:15:
 INSERT INTO `sys_api` VALUES (244, '2026-05-05 01:15:49.780', '2026-05-05 01:15:49.780', NULL, '/api/v1/menus/tree-with-apis', 'GET', '菜单管理', '菜单树(带API)', '', '', 1);
 INSERT INTO `sys_api` VALUES (245, '2026-05-05 01:15:49.787', '2026-05-05 01:15:49.787', NULL, '/api/v1/menus/:id/apis', 'GET', '菜单管理', '菜单API列表', '', '', 1);
 INSERT INTO `sys_api` VALUES (246, '2026-05-05 01:15:49.795', '2026-05-05 01:15:49.795', NULL, '/api/v1/menus/:id/apis', 'PUT', '菜单管理', '更新菜单API', '[{\"name\":\"api_ids\",\"type\":\"array[integer]\",\"description\":\"菜单关联API ID列表\",\"required\":false,\"in\":\"body\"}]', '', 1);
+INSERT INTO `sys_api` VALUES (247, '2026-05-11 21:36:50.410', '2026-05-11 21:36:50.410', NULL, '/api/v1/users/default-password', 'GET', '用户管理', '默认密码', '', '', 1);
+INSERT INTO `sys_api` VALUES (248, '2026-05-11 22:04:44.164', '2026-05-11 22:04:44.164', NULL, '/api/v1/ai/admin/conversations', 'GET', 'AI对话历史', '对话历史列表', '', '', 1);
+INSERT INTO `sys_api` VALUES (249, '2026-05-11 22:04:44.273', '2026-05-11 22:04:44.273', NULL, '/api/v1/ai/admin/conversations/:id/messages', 'GET', 'AI对话历史', '对话历史消息', '', '', 1);
+INSERT INTO `sys_api` VALUES (250, '2026-05-11 22:04:44.358', '2026-05-11 22:04:44.358', NULL, '/api/v1/ai/admin/conversations/:id', 'DELETE', 'AI对话历史', '删除历史对话', '', '', 1);
+INSERT INTO `sys_api` VALUES (251, '2026-05-11 22:19:41.759', '2026-05-11 22:19:41.759', NULL, '/api/v1/ai/admin/users', 'GET', 'AI对话历史', 'AI活跃用户列表', '', '', 1);
 
 -- ----------------------------
 -- Table structure for sys_config
@@ -585,13 +613,13 @@ CREATE TABLE `sys_config`  (
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `idx_sys_config_key`(`key` ASC) USING BTREE,
   INDEX `idx_sys_config_deleted_at`(`deleted_at` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 55 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 56 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_config
 -- ----------------------------
-INSERT INTO `sys_config` VALUES (1, '2026-01-25 00:27:27.184', '2026-05-04 03:30:09.275', NULL, '系统名称', 'sys_name', '天之云', 'string', '显示在侧边栏顶部');
-INSERT INTO `sys_config` VALUES (2, '2026-01-25 00:27:27.184', '2026-05-04 03:30:09.277', NULL, '系统Logo', 'sys_logo', 'http://115.190.199.115:7000/go-base/2026/05/02/1777664719606847500.png', 'string', '系统Logo图片地址');
+INSERT INTO `sys_config` VALUES (1, '2026-01-25 00:27:27.184', '2026-05-11 21:56:26.212', NULL, '系统名称', 'sys_name', '天之云', 'string', '显示在侧边栏顶部');
+INSERT INTO `sys_config` VALUES (2, '2026-01-25 00:27:27.184', '2026-05-11 21:56:26.198', NULL, '系统Logo', 'sys_logo', 'http://115.190.199.115:7000/go-base/2026/05/02/1777664719606847500.png', 'string', '系统Logo图片地址');
 INSERT INTO `sys_config` VALUES (13, '2026-01-26 00:44:42.303', '2026-05-05 01:08:08.325', NULL, 'login_title', 'login_title', '欢迎登录', 'string', '');
 INSERT INTO `sys_config` VALUES (14, '2026-01-26 00:44:42.304', '2026-05-05 01:08:08.312', NULL, 'login_subtitle', 'login_subtitle', '智慧养殖，生态未来', 'string', '');
 INSERT INTO `sys_config` VALUES (15, '2026-01-26 00:44:42.308', '2026-05-05 01:08:08.304', NULL, 'login_bg_image', 'login_bg_image', 'http://115.190.199.115:7000/go-base/2026/05/02/1777664632234976900.png', 'string', '');
@@ -602,23 +630,23 @@ INSERT INTO `sys_config` VALUES (19, '2026-01-30 22:01:16.072', '2026-05-05 01:0
 INSERT INTO `sys_config` VALUES (20, '2026-01-30 22:01:16.072', '2026-05-05 01:08:08.319', NULL, '', 'login_desc', '牧智云是一套专业的生态养殖管理平台，为养殖户提供牲畜管理、疫苗接种、疾病防控、饲料追踪等全流程数字化解决方案', 'string', '');
 INSERT INTO `sys_config` VALUES (21, '2026-01-30 22:37:07.412', '2026-05-05 01:08:08.331', NULL, '', 'login_features_max', '4', 'string', '');
 INSERT INTO `sys_config` VALUES (22, '2026-01-30 22:37:07.414', '2026-05-05 01:08:08.338', NULL, '', 'login_images_max', '2', 'string', '');
-INSERT INTO `sys_config` VALUES (23, '2026-01-31 00:22:04.469', '2026-04-27 20:26:40.932', NULL, '', 'email_password', 'jciaykeercqaibgc', 'string', '');
-INSERT INTO `sys_config` VALUES (24, '2026-01-31 00:22:04.471', '2026-04-27 20:26:40.946', NULL, '', 'email_from_name', 'test', 'string', '');
-INSERT INTO `sys_config` VALUES (25, '2026-01-31 00:22:04.471', '2026-04-27 20:26:40.954', NULL, '', 'register_email_verify', '1', 'string', '');
-INSERT INTO `sys_config` VALUES (26, '2026-01-31 00:22:04.472', '2026-04-27 20:26:40.959', NULL, '', 'email_smtp_host', 'smtp.qq.com', 'string', '');
-INSERT INTO `sys_config` VALUES (27, '2026-01-31 00:22:04.472', '2026-04-27 20:26:40.949', NULL, '', 'login_captcha_enabled', '1', 'string', '');
+INSERT INTO `sys_config` VALUES (23, '2026-01-31 00:22:04.469', '2026-05-11 21:56:49.028', NULL, '', 'email_password', 'jciaykeercqaibgc', 'string', '');
+INSERT INTO `sys_config` VALUES (24, '2026-01-31 00:22:04.471', '2026-05-11 21:56:49.032', NULL, '', 'email_from_name', 'test', 'string', '');
+INSERT INTO `sys_config` VALUES (25, '2026-01-31 00:22:04.471', '2026-05-11 21:56:49.022', NULL, '', 'register_email_verify', '1', 'string', '');
+INSERT INTO `sys_config` VALUES (26, '2026-01-31 00:22:04.472', '2026-05-11 21:56:49.055', NULL, '', 'email_smtp_host', 'smtp.qq.com', 'string', '');
+INSERT INTO `sys_config` VALUES (27, '2026-01-31 00:22:04.472', '2026-05-11 21:56:49.036', NULL, '', 'login_captcha_enabled', '0', 'string', '');
 INSERT INTO `sys_config` VALUES (28, '2026-01-31 00:22:04.473', '2026-02-02 09:14:19.672', NULL, '', 'register_captcha_enabled', '0', 'string', '');
-INSERT INTO `sys_config` VALUES (29, '2026-01-31 00:22:04.474', '2026-04-27 20:26:40.941', NULL, '', 'frontend_url', 'http://localhost:5173', 'string', '');
-INSERT INTO `sys_config` VALUES (30, '2026-01-31 00:22:04.475', '2026-04-27 20:26:40.944', NULL, '', 'email_smtp_port', '587', 'string', '');
-INSERT INTO `sys_config` VALUES (31, '2026-01-31 00:22:04.475', '2026-04-27 20:26:40.929', NULL, '', 'email_username', '1440350254@qq.com', 'string', '');
+INSERT INTO `sys_config` VALUES (29, '2026-01-31 00:22:04.474', '2026-05-11 21:56:49.025', NULL, '', 'frontend_url', 'http://localhost:5173', 'string', '');
+INSERT INTO `sys_config` VALUES (30, '2026-01-31 00:22:04.475', '2026-05-11 21:56:49.059', NULL, '', 'email_smtp_port', '587', 'string', '');
+INSERT INTO `sys_config` VALUES (31, '2026-01-31 00:22:04.475', '2026-05-11 21:56:49.061', NULL, '', 'email_username', '1440350254@qq.com', 'string', '');
 INSERT INTO `sys_config` VALUES (32, '2026-01-31 20:42:31.302', '2026-05-05 01:08:08.295', NULL, '', 'register_logo', 'http://115.190.199.115:7000/go-base/2026/02/15/1771163518773570700.jpg', 'string', '');
 INSERT INTO `sys_config` VALUES (33, '2026-02-01 02:14:55.436', '2026-05-05 01:08:08.340', NULL, '', 'enable_register', 'false', 'string', '');
-INSERT INTO `sys_config` VALUES (35, '2026-02-07 17:04:08.827', '2026-05-04 03:30:09.281', NULL, '', 'front_mode', 'none', 'string', '');
-INSERT INTO `sys_config` VALUES (36, '2026-02-10 01:48:05.727', '2026-04-27 20:26:40.939', NULL, '', 'login_lock_time', '15', 'string', '');
-INSERT INTO `sys_config` VALUES (37, '2026-02-10 01:48:05.729', '2026-04-27 20:26:40.935', NULL, '', 'login_captcha_type', 'math', 'string', '');
-INSERT INTO `sys_config` VALUES (38, '2026-02-10 01:48:05.729', '2026-04-27 20:26:40.952', NULL, '', 'login_max_retry', '5', 'string', '');
-INSERT INTO `sys_config` VALUES (39, '2026-02-10 02:08:32.557', '2026-04-27 20:26:40.958', NULL, '', 'slider_captcha_bg', '/api/v1/upload/2026/02/15/1771163674365522700.jpg', 'string', '');
-INSERT INTO `sys_config` VALUES (40, '2026-04-26 23:18:22.035', '2026-05-04 03:30:09.282', NULL, '用户身份按钮显示', 'user_profile_button_visible', 'false', 'string', '后台用户管理列表是否显示身份按钮');
+INSERT INTO `sys_config` VALUES (35, '2026-02-07 17:04:08.827', '2026-05-11 21:56:26.204', NULL, '', 'front_mode', 'full', 'string', '');
+INSERT INTO `sys_config` VALUES (36, '2026-02-10 01:48:05.727', '2026-05-11 21:56:49.042', NULL, '', 'login_lock_time', '15', 'string', '');
+INSERT INTO `sys_config` VALUES (37, '2026-02-10 01:48:05.729', '2026-05-11 21:56:49.019', NULL, '', 'login_captcha_type', 'math', 'string', '');
+INSERT INTO `sys_config` VALUES (38, '2026-02-10 01:48:05.729', '2026-05-11 21:56:49.039', NULL, '', 'login_max_retry', '5', 'string', '');
+INSERT INTO `sys_config` VALUES (39, '2026-02-10 02:08:32.557', '2026-05-11 21:56:49.047', NULL, '', 'slider_captcha_bg', '/api/v1/upload/2026/02/15/1771163674365522700.jpg', 'string', '');
+INSERT INTO `sys_config` VALUES (40, '2026-04-26 23:18:22.035', '2026-05-11 21:56:26.206', NULL, '用户身份按钮显示', 'user_profile_button_visible', 'false', 'string', '后台用户管理列表是否显示身份按钮');
 INSERT INTO `sys_config` VALUES (42, '2026-04-27 21:27:30.217', '2026-05-04 10:09:03.350', NULL, '', 'storage_type', 'minio', 'string', '');
 INSERT INTO `sys_config` VALUES (43, '2026-04-27 21:27:30.224', '2026-04-27 21:30:32.671', NULL, '', 'storage_config', '{\"base_path\":\"uploads\",\"base_url\":\"/api/v1/upload\"}', 'string', '');
 INSERT INTO `sys_config` VALUES (44, '2026-04-28 00:13:29.747', '2026-05-04 10:09:03.344', NULL, '', 'storage_minio_config', '{\"endpoint\":\"115.190.199.115:7000\",\"access_key_id\":\"s6o4KO5Iup1UpIXWKtwc\",\"secret_access_key\":\"3B2P1cjmwODnT5l4yrWoevnGOxC1rJU7uexUjQdt\",\"bucket_name\":\"go-base\",\"use_ssl\":false}', 'string', '');
@@ -626,12 +654,13 @@ INSERT INTO `sys_config` VALUES (45, '2026-04-28 00:13:38.258', '2026-05-04 10:0
 INSERT INTO `sys_config` VALUES (46, '2026-04-28 00:15:46.192', '2026-05-04 10:09:03.336', NULL, '阿里云 OSS 配置', 'storage_aliyun_config', '{\"endpoint\":\"\",\"access_key_id\":\"YT01\",\"access_key_secret\":\"123456\",\"bucket_name\":\"\",\"region\":\"\"}', 'json', '阿里云 OSS 的已保存配置(JSON)');
 INSERT INTO `sys_config` VALUES (47, '2026-04-28 00:15:46.201', '2026-05-04 10:09:03.340', NULL, '腾讯云 COS 配置', 'storage_tencent_config', '{\"region\":\"\",\"secret_id\":\"\",\"secret_key\":\"\",\"bucket\":\"\",\"app_id\":\"\"}', 'json', '腾讯云 COS 的已保存配置(JSON)');
 INSERT INTO `sys_config` VALUES (48, '2026-04-28 00:36:13.315', '2026-05-04 10:09:03.347', NULL, '', 'file_delete_mode', 'physical', 'string', '');
-INSERT INTO `sys_config` VALUES (49, '2026-04-28 19:58:27.000', '2026-05-04 03:30:09.286', NULL, '用户默认密码', 'user_default_password', '123456', 'string', '后台用户管理单条/批量重置密码默认值');
+INSERT INTO `sys_config` VALUES (49, '2026-04-28 19:58:27.000', '2026-05-11 21:56:26.208', NULL, '用户默认密码', 'user_default_password', 'Abc@123', 'string', '后台用户管理单条/批量重置密码默认值');
 INSERT INTO `sys_config` VALUES (50, '2026-04-30 21:29:48.644', '2026-04-30 21:51:47.628', NULL, '公开配置键', 'public_config_keys', '[\"sys_name\",\"sys_logo\",\"login_bg_image\",\"login_title\",\"login_subtitle\",\"login_bg_color\",\"login_slogan\",\"login_desc\",\"login_features\",\"login_features_max\",\"login_images\",\"login_images_max\",\"register_logo\",\"enable_register\",\"front_mode\",\"user_profile_button_visible\"]', 'json', '允许匿名批量读取的配置键(JSON数组)，敏感键即使写入也不会公开');
 INSERT INTO `sys_config` VALUES (51, '2026-05-01 08:03:59.025', '2026-05-01 08:03:59.025', NULL, 'AI配置', 'ai_config', '{\"default_provider\":\"阿里云百炼\",\"providers\":[{\"name\":\"deepseek\",\"api_key\":\"sk-e6c0478a770a49ad8650884ce456c801\",\"base_url\":\"https://api.deepseek.com\",\"models\":[{\"id\":\"deepseek-v4-flash\",\"name\":\"deepseek-v4-flash\",\"description\":\"\"},{\"id\":\"deepseek-v4-pro\",\"name\":\"deepseek-v4-pro\",\"description\":\"\"}]},{\"name\":\"阿里云百炼\",\"api_key\":\"sk-93a09f74fb7e49dc951d8b30b06e5a04\",\"base_url\":\"https://dashscope.aliyuncs.com/compatible-mode/v1\",\"models\":[{\"id\":\"deepseek-v4-flash\",\"name\":\"deepseek-v4-flash\",\"description\":\"\"},{\"id\":\"kimi-k2.6\",\"name\":\"kimi-k2.6\",\"description\":\"\"},{\"id\":\"deepseek-v4-pro\",\"name\":\"deepseek-v4-pro\",\"description\":\"\"},{\"id\":\"qwen3.6-27b\",\"name\":\"qwen3.6-27b\",\"description\":\"\"}]}]}', 'json', 'AI平台配置');
-INSERT INTO `sys_config` VALUES (52, '2026-05-02 03:40:07.109', '2026-05-04 03:30:09.279', NULL, '系统Logo文件ID', 'sys_logo_file_id', '121', 'string', '系统Logo关联文件ID');
+INSERT INTO `sys_config` VALUES (52, '2026-05-02 03:40:07.109', '2026-05-11 21:56:26.200', NULL, '系统Logo文件ID', 'sys_logo_file_id', '121', 'string', '系统Logo关联文件ID');
 INSERT INTO `sys_config` VALUES (53, '2026-05-02 03:40:07.122', '2026-05-05 01:08:08.301', NULL, '注册默认头像文件ID', 'register_logo_file_id', '93', 'string', '注册默认头像关联文件ID');
 INSERT INTO `sys_config` VALUES (54, '2026-05-02 03:40:07.133', '2026-05-05 01:08:08.309', NULL, '登录页背景图文件ID', 'login_bg_image_file_id', '120', 'string', '登录页背景图关联文件ID');
+INSERT INTO `sys_config` VALUES (55, '2026-05-11 21:56:49.051', '2026-05-11 21:56:49.051', NULL, '', 'slider_captcha_bg_file_id', '0', 'string', '');
 
 -- ----------------------------
 -- Table structure for sys_dept
@@ -807,7 +836,7 @@ CREATE TABLE `sys_login_log`  (
   `msg` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '消息',
   `created_at` datetime(3) NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 8 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_login_log
@@ -834,7 +863,7 @@ CREATE TABLE `sys_menu`  (
   `hidden` bigint NULL DEFAULT 0 COMMENT '是否隐藏 0显示 1隐藏',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_sys_menu_deleted_at`(`deleted_at` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 385 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 388 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_menu
@@ -1203,6 +1232,9 @@ INSERT INTO `sys_menu` VALUES (381, '2026-04-29 16:42:43.638', '2026-04-29 20:59
 INSERT INTO `sys_menu` VALUES (382, '2026-05-02 01:27:44.994', '2026-05-02 01:27:45.040', NULL, 3, '强制下线', '', '', '', 0, 3, 'system:user:forceOffline', 1, 0);
 INSERT INTO `sys_menu` VALUES (383, '2026-05-04 11:51:09.550', '2026-05-04 11:51:09.550', NULL, 3, '导入用户', '', '', '', 8, 3, 'system:user:import', 1, 0);
 INSERT INTO `sys_menu` VALUES (384, '2026-05-04 11:51:09.572', '2026-05-04 11:51:09.572', NULL, 3, '导出用户', '', '', '', 9, 3, 'system:user:export', 1, 0);
+INSERT INTO `sys_menu` VALUES (385, '2026-05-11 22:04:44.455', '2026-05-11 22:04:44.455', NULL, 375, '对话历史', '/ai/history', 'ai/history/index', 'history', 3, 2, 'ai:history:list', 1, 0);
+INSERT INTO `sys_menu` VALUES (386, '2026-05-11 22:04:44.458', '2026-05-11 22:04:44.458', NULL, 385, '查看消息', '', '', '', 1, 3, 'ai:history:view', 1, 0);
+INSERT INTO `sys_menu` VALUES (387, '2026-05-11 22:04:44.464', '2026-05-11 22:04:44.464', NULL, 385, '删除对话', '', '', '', 2, 3, 'ai:history:delete', 1, 0);
 
 -- ----------------------------
 -- Table structure for sys_menu_api
@@ -1243,7 +1275,7 @@ CREATE TABLE `sys_operation_log`  (
   `summary` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '路由描述',
   `business_code` bigint NULL DEFAULT NULL COMMENT '业务状态码',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 537 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 201 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_operation_log
@@ -1274,10 +1306,10 @@ CREATE TABLE `sys_role`  (
 -- ----------------------------
 -- Records of sys_role
 -- ----------------------------
-INSERT INTO `sys_role` VALUES (1, '2026-01-24 02:39:47.708', '2026-05-04 11:51:09.837', NULL, '超级管理员', 'admin', 1, 1, 1, '拥有所有权限', NULL, 1);
-INSERT INTO `sys_role` VALUES (2, '2026-01-24 02:57:36.645', '2026-05-04 11:51:09.829', NULL, '普通用户', 'user', 0, 1, 5, '普通注册用户', NULL, 0);
-INSERT INTO `sys_role` VALUES (3, '2026-01-25 15:21:40.670', '2026-05-04 11:51:09.820', NULL, '系统管理员', 'system_admin', 0, 1, 1, '系统的最高权限用户，负责整个平台的运营和管理', NULL, 1);
-INSERT INTO `sys_role` VALUES (6, '2026-04-29 02:37:34.212', '2026-05-04 11:51:09.806', NULL, 'test', 'test', 0, 1, 1, '', NULL, 0);
+INSERT INTO `sys_role` VALUES (1, '2026-01-24 02:39:47.708', '2026-05-11 22:19:41.769', NULL, '超级管理员', 'admin', 1, 1, 1, '拥有所有权限', NULL, 1);
+INSERT INTO `sys_role` VALUES (2, '2026-01-24 02:57:36.645', '2026-05-11 22:07:26.927', NULL, '普通用户', 'user', 0, 1, 5, '普通注册用户', NULL, 0);
+INSERT INTO `sys_role` VALUES (3, '2026-01-25 15:21:40.670', '2026-05-11 22:19:41.789', NULL, '系统管理员', 'system_admin', 0, 1, 1, '系统的最高权限用户，负责整个平台的运营和管理', NULL, 1);
+INSERT INTO `sys_role` VALUES (6, '2026-04-29 02:37:34.212', '2026-05-11 21:36:50.416', NULL, 'test', 'test', 0, 1, 1, '', NULL, 0);
 INSERT INTO `sys_role` VALUES (7, '2026-04-29 06:09:21.462', '2026-04-29 06:09:21.462', '2026-04-29 06:09:21.826', 'CodexDualTrack1777414160', 'codex_dual_track_1777414160', 999, 1, 1, 'codex dual track verification', NULL, 0);
 INSERT INTO `sys_role` VALUES (8, '2026-04-29 06:09:59.805', '2026-04-29 06:10:00.865', '2026-04-29 06:10:01.295', 'CodexDualTrack1777414199', 'codex_dual_track_1777414199', 999, 1, 1, 'codex dual track verification', NULL, 0);
 INSERT INTO `sys_role` VALUES (9, '2026-04-30 05:00:21.127', '2026-04-30 05:00:21.127', '2026-04-30 06:22:15.848', 'test1', 'test1', 0, 1, 1, '', NULL, 0);
@@ -1422,26 +1454,37 @@ INSERT INTO `sys_role_api` VALUES (6, 81);
 INSERT INTO `sys_role_api` VALUES (1, 97);
 INSERT INTO `sys_role_api` VALUES (3, 97);
 INSERT INTO `sys_role_api` VALUES (1, 98);
+INSERT INTO `sys_role_api` VALUES (2, 98);
 INSERT INTO `sys_role_api` VALUES (3, 98);
 INSERT INTO `sys_role_api` VALUES (1, 99);
+INSERT INTO `sys_role_api` VALUES (2, 99);
 INSERT INTO `sys_role_api` VALUES (3, 99);
 INSERT INTO `sys_role_api` VALUES (1, 100);
+INSERT INTO `sys_role_api` VALUES (2, 100);
 INSERT INTO `sys_role_api` VALUES (3, 100);
 INSERT INTO `sys_role_api` VALUES (1, 101);
+INSERT INTO `sys_role_api` VALUES (2, 101);
 INSERT INTO `sys_role_api` VALUES (3, 101);
 INSERT INTO `sys_role_api` VALUES (1, 102);
+INSERT INTO `sys_role_api` VALUES (2, 102);
 INSERT INTO `sys_role_api` VALUES (3, 102);
 INSERT INTO `sys_role_api` VALUES (1, 103);
+INSERT INTO `sys_role_api` VALUES (2, 103);
 INSERT INTO `sys_role_api` VALUES (3, 103);
 INSERT INTO `sys_role_api` VALUES (1, 104);
+INSERT INTO `sys_role_api` VALUES (2, 104);
 INSERT INTO `sys_role_api` VALUES (3, 104);
 INSERT INTO `sys_role_api` VALUES (1, 105);
+INSERT INTO `sys_role_api` VALUES (2, 105);
 INSERT INTO `sys_role_api` VALUES (3, 105);
 INSERT INTO `sys_role_api` VALUES (1, 106);
+INSERT INTO `sys_role_api` VALUES (2, 106);
 INSERT INTO `sys_role_api` VALUES (3, 106);
 INSERT INTO `sys_role_api` VALUES (1, 112);
+INSERT INTO `sys_role_api` VALUES (2, 112);
 INSERT INTO `sys_role_api` VALUES (3, 112);
 INSERT INTO `sys_role_api` VALUES (1, 113);
+INSERT INTO `sys_role_api` VALUES (2, 113);
 INSERT INTO `sys_role_api` VALUES (3, 113);
 INSERT INTO `sys_role_api` VALUES (1, 114);
 INSERT INTO `sys_role_api` VALUES (1, 115);
@@ -1524,6 +1567,7 @@ INSERT INTO `sys_role_api` VALUES (1, 230);
 INSERT INTO `sys_role_api` VALUES (3, 230);
 INSERT INTO `sys_role_api` VALUES (1, 231);
 INSERT INTO `sys_role_api` VALUES (3, 231);
+INSERT INTO `sys_role_api` VALUES (2, 232);
 INSERT INTO `sys_role_api` VALUES (1, 237);
 INSERT INTO `sys_role_api` VALUES (1, 238);
 INSERT INTO `sys_role_api` VALUES (1, 239);
@@ -1538,6 +1582,17 @@ INSERT INTO `sys_role_api` VALUES (1, 242);
 INSERT INTO `sys_role_api` VALUES (2, 242);
 INSERT INTO `sys_role_api` VALUES (3, 242);
 INSERT INTO `sys_role_api` VALUES (6, 242);
+INSERT INTO `sys_role_api` VALUES (1, 247);
+INSERT INTO `sys_role_api` VALUES (3, 247);
+INSERT INTO `sys_role_api` VALUES (6, 247);
+INSERT INTO `sys_role_api` VALUES (1, 248);
+INSERT INTO `sys_role_api` VALUES (3, 248);
+INSERT INTO `sys_role_api` VALUES (1, 249);
+INSERT INTO `sys_role_api` VALUES (3, 249);
+INSERT INTO `sys_role_api` VALUES (1, 250);
+INSERT INTO `sys_role_api` VALUES (3, 250);
+INSERT INTO `sys_role_api` VALUES (1, 251);
+INSERT INTO `sys_role_api` VALUES (3, 251);
 
 -- ----------------------------
 -- Table structure for sys_role_data_scope
@@ -1672,6 +1727,12 @@ INSERT INTO `sys_role_menu` VALUES (8, 383);
 INSERT INTO `sys_role_menu` VALUES (3, 384);
 INSERT INTO `sys_role_menu` VALUES (6, 384);
 INSERT INTO `sys_role_menu` VALUES (8, 384);
+INSERT INTO `sys_role_menu` VALUES (1, 385);
+INSERT INTO `sys_role_menu` VALUES (3, 385);
+INSERT INTO `sys_role_menu` VALUES (1, 386);
+INSERT INTO `sys_role_menu` VALUES (3, 386);
+INSERT INTO `sys_role_menu` VALUES (1, 387);
+INSERT INTO `sys_role_menu` VALUES (3, 387);
 
 -- ----------------------------
 -- Table structure for sys_user
@@ -1700,22 +1761,24 @@ CREATE TABLE `sys_user`  (
   INDEX `idx_sys_user_created_by`(`created_by` ASC) USING BTREE,
   CONSTRAINT `fk_sys_user_avatar_file` FOREIGN KEY (`avatar_file_id`) REFERENCES `sys_file` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fk_sys_user_dept` FOREIGN KEY (`dept_id`) REFERENCES `sys_dept` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 41 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 43 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_user
 -- ----------------------------
 INSERT INTO `sys_user` VALUES (1, '2026-01-24 02:39:47.881', '2026-04-30 05:35:41.260', NULL, 'admin', '$2a$10$nW3w6LIPh.29XBIczfzrVOTjFJMBqbxty48vdanFbzmyZxB6yk0mW', '管理员', '1440350254@qq.com', '17688744031', 1, 7, 93, 0, 0);
-INSERT INTO `sys_user` VALUES (18, '2026-01-25 15:26:36.448', '2026-04-28 16:58:42.222', NULL, 'A1001', '$2a$10$Hg7bxA3CSbxLve3wCeEfuu3HJmtaO3LytEXkeKo81qc0MFkK0hfMu', '龙舞', 'eee33@qq.com', '1768874223', 1, 6, 93, 1, 0);
-INSERT INTO `sys_user` VALUES (24, '2026-01-31 22:04:53.330', '2026-04-28 16:58:38.110', NULL, 'lisan', '$2a$10$Gijr8jyphPbEKMpNmjsRje1Ku.1qXm7deGz0VqqNH2CwU83RwVHv2', '李三', 'dsdsd444@qilincsp.cn', '', 1, 6, 93, 0, 0);
-INSERT INTO `sys_user` VALUES (30, '2026-02-05 03:35:05.611', '2026-04-28 20:11:00.938', NULL, 'csp', '$2a$10$Lst0s1FcBF/Fy86v.tbGXu5u17UTz7NJOOYIhOUOhFI9Eu3LX7hfq', '', '', '', 1, 3, 93, 1, 0);
+INSERT INTO `sys_user` VALUES (18, '2026-01-25 15:26:36.448', '2026-05-11 21:37:35.435', NULL, 'A1001', '$2a$10$GGdRDsunt1QuZXSUK3.OeekMiKCoViSZfV9MuhOfhZyIaEm932ufC', '龙舞', 'eee33@qq.com', '1768874223', 1, 6, 93, 1, 0);
+INSERT INTO `sys_user` VALUES (24, '2026-01-31 22:04:53.330', '2026-05-11 21:37:35.435', NULL, 'lisan', '$2a$10$GGdRDsunt1QuZXSUK3.OeekMiKCoViSZfV9MuhOfhZyIaEm932ufC', '李三', 'dsdsd444@qilincsp.cn', '', 1, 6, 93, 0, 0);
+INSERT INTO `sys_user` VALUES (30, '2026-02-05 03:35:05.611', '2026-05-11 21:37:35.435', NULL, 'csp', '$2a$10$GGdRDsunt1QuZXSUK3.OeekMiKCoViSZfV9MuhOfhZyIaEm932ufC', '', '', '', 1, 3, 93, 1, 0);
 INSERT INTO `sys_user` VALUES (33, '2026-04-27 05:55:08.272', '2026-05-02 04:04:07.375', '2026-04-30 05:46:18.866', 'test_deleted_33_1777499178', '$2a$10$Lst0s1FcBF/Fy86v.tbGXu5u17UTz7NJOOYIhOUOhFI9Eu3LX7hfq', '', '', '', 1, 8, NULL, 0, 0);
 INSERT INTO `sys_user` VALUES (35, '2026-04-29 06:09:59.899', '2026-04-29 06:10:01.272', '2026-04-29 06:10:01.275', 'codex_dual_1777414199_deleted_35_1777414201', '$2a$10$ewxm7xXmb8IAeD7aSyL8PeFidYsYo8JIHQ50acpfo3SsPYKpQgJBq', 'codex dual track', 'codex_dual_1777414199@example.com', '', 1, 5, 93, 0, 0);
 INSERT INTO `sys_user` VALUES (36, '2026-04-30 04:42:35.436', '2026-05-02 04:04:04.767', '2026-04-30 05:10:13.517', 'test1111_deleted_36_1777497013', '$2a$10$dAz0NIGkXz0tv7Aa6ui1beIKnNf0ZOaDFNrvgjW/0O1N.A2U1z4Zq', '', '', '', 1, 5, NULL, 0, 33);
-INSERT INTO `sys_user` VALUES (37, '2026-04-30 06:00:13.647', '2026-04-30 06:14:56.901', NULL, 'test', '$2a$10$/Bhgu47AwsGKeM0R5k.MIOhNCSeIJo4FqImdC7pq6At3z5wZp2z46', '11', 'test@qq.com', '17688744031', 1, 8, 114, 0, 1);
-INSERT INTO `sys_user` VALUES (38, '2026-04-30 06:01:40.456', '2026-04-30 06:02:10.174', NULL, '111', '$2a$10$9eDqAjhMyQJ8Wlxu5Fl0KuRy30HP7/EkigxkZlHNKFYLki3MuDuOy', '', '11', '11', 1, 8, 115, 0, 37);
+INSERT INTO `sys_user` VALUES (37, '2026-04-30 06:00:13.647', '2026-05-11 21:37:35.435', NULL, 'test', '$2a$10$GGdRDsunt1QuZXSUK3.OeekMiKCoViSZfV9MuhOfhZyIaEm932ufC', '11', 'test@qq.com', '17688744031', 1, 8, 114, 0, 1);
+INSERT INTO `sys_user` VALUES (38, '2026-04-30 06:01:40.456', '2026-05-11 21:37:35.435', NULL, '111', '$2a$10$GGdRDsunt1QuZXSUK3.OeekMiKCoViSZfV9MuhOfhZyIaEm932ufC', '', '11', '11', 1, 8, 115, 0, 37);
 INSERT INTO `sys_user` VALUES (39, '2026-05-05 01:07:18.601', '2026-05-05 02:08:10.113', '2026-05-05 02:08:10.115', 'zhangsan_deleted_39_1777918090', '$2a$10$UXtHWZLAMMq1ST.D2saYTOw7.pkhlyER5L6QsPogzGIMzHr3X6xb6', '', 'zhangsan@example.com', '13800138000', 1, 3, NULL, 0, 1);
-INSERT INTO `sys_user` VALUES (40, '2026-05-05 02:08:19.222', '2026-05-05 02:08:19.226', NULL, 'zhangsan', '$2a$10$37lfTaPkT3JXBjoOOMwLLeS3qVVLuhERE4aHnZ/Xc3DTpE0uTXdmO', '', 'zhangsan@example.com', '13800138000', 1, 3, 93, 0, 1);
+INSERT INTO `sys_user` VALUES (40, '2026-05-05 02:08:19.222', '2026-05-11 21:37:35.435', NULL, 'zhangsan', '$2a$10$GGdRDsunt1QuZXSUK3.OeekMiKCoViSZfV9MuhOfhZyIaEm932ufC', '', 'zhangsan@example.com', '13800138000', 1, 3, 93, 0, 1);
+INSERT INTO `sys_user` VALUES (41, '2026-05-11 21:28:06.967', '2026-05-11 21:29:36.086', '2026-05-11 21:29:36.087', '111222_deleted_41_1778506176', '$2a$10$UUswYJSPb3o1MiZhRPM/NOEHdXoTci66fu5p7tck8XANvqRXm1JOK', '', '', '', 1, 6, NULL, 0, 1);
+INSERT INTO `sys_user` VALUES (42, '2026-05-11 21:46:53.861', '2026-05-11 21:48:17.590', NULL, 'zhangsan1', '$2a$10$6.hKgVpNu0f8H6rTRyzh3OGzJow3OetEdmAynZORIgWU.cE1ejCzm', '张三', '2222ddd@qq.com', '13800138000', 1, 5, 93, 0, 1);
 
 -- ----------------------------
 -- Table structure for sys_user_role
@@ -1738,6 +1801,7 @@ INSERT INTO `sys_user_role` VALUES (24, 2);
 INSERT INTO `sys_user_role` VALUES (30, 2);
 INSERT INTO `sys_user_role` VALUES (38, 2);
 INSERT INTO `sys_user_role` VALUES (40, 2);
+INSERT INTO `sys_user_role` VALUES (42, 2);
 INSERT INTO `sys_user_role` VALUES (18, 3);
 INSERT INTO `sys_user_role` VALUES (37, 6);
 

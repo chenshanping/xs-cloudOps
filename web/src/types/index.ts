@@ -21,7 +21,6 @@ export interface User {
   gender: number
   email: string
   phone: string
-  avatar: string
   avatar_file_id?: number
   avatar_file_url?: string
   status: number

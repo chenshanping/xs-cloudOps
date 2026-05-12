@@ -122,13 +122,13 @@ const save = async () => {
   try {
     const configs: Record<string, string> = {
       sys_name: basicForm.sys_name,
-      sys_logo: basicForm.sys_logo,
       sys_logo_file_id: basicForm.sys_logo_file_id > 0 ? String(basicForm.sys_logo_file_id) : '',
       front_mode: basicForm.front_mode,
       user_profile_button_visible: basicForm.user_profile_button_visible,
       user_default_password: basicForm.user_default_password,
     }
     await configStore.updateConfigs(configs)
+    await configStore.loadConfigs(true, 'all')
     baselineSnapshot.value = createSnapshot(getBasicState())
     updateTitle()
     message.success('基础配置保存成功')
