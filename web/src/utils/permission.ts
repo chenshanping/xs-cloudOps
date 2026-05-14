@@ -1,6 +1,32 @@
 import { computed, type ComputedRef } from 'vue'
 import { useUserStore } from '@/store/user'
 
+export type PermissionCheckMode = 'disable' | 'hide'
+
+export interface PermissionDirectiveConfig {
+  allOf?: string[]
+  anyOf?: string[]
+  mode?: PermissionCheckMode
+  permission?: string | string[]
+  reason?: string
+}
+
+export type PermissionDirectiveValue = string | string[] | PermissionDirectiveConfig
+
+export const withDisabledPermission = (
+  permission: string | string[],
+  reason = '当前账号无权限执行该操作'
+): PermissionDirectiveConfig => ({
+  permission,
+  mode: 'disable',
+  reason,
+})
+
+export const withHiddenPermission = (permission: string | string[]): PermissionDirectiveConfig => ({
+  permission,
+  mode: 'hide',
+})
+
 /**
  * 权限相关工具函数
  */

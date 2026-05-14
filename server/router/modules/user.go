@@ -51,7 +51,7 @@ func (m *UserModule) RegisterPrivateRoutes(rg *gin.RouterGroup) {
 	R(rg, "PUT", "/users/:id/password", m.Name(), "重置密码", v1.User.ResetPassword, registry.WithAuth())
 	R(rg, "PUT", "/users/batch-password", m.Name(), "批量重置密码", v1.User.BatchResetPassword,
 		registry.WithAuth(), registry.WithRequest(request.BatchResetPasswordRequest{}))
-	R(rg, "POST", "/users/:id/offline", m.Name(), "强制下线", v1.User.ForceOffline, registry.WithAuth())
+	R(rg, "POST", "/user/:id/offline", m.Name(), "强制下线", v1.User.ForceOffline, registry.WithAuth())
 	R(rg, "GET", "/users/:id/profiles", m.Name(), "用户身份", v1.User.GetUserProfilesById, registry.WithAuth())
 
 	// 导入导出

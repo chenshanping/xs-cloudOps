@@ -237,7 +237,8 @@ func (s *RoleService) AssignApis(roleID uint, apiIDs []uint) error {
 		}
 
 		var apis []model.SysApi
-		if err := tx.Where("id IN ?", ids).Find(&apis).Error; err != nil {
+		// 只关联 need_auth=true 的 API，公开接口不需要权限控制，避免幽灵关联与无用的 Casbin 规则。
+		if err := tx.Where("id IN ? AND need_auth = ?", ids, true).Find(&apis).Error; err != nil {
 			return err
 		}
 		if err := tx.Model(&role).Association("Apis").Replace(apis); err != nil {
@@ -251,14 +252,12 @@ func (s *RoleService) AssignApis(roleID uint, apiIDs []uint) error {
 	return s.syncRolePoliciesByRoleID(roleID)
 }
 
-func (s *RoleService) AssignDataScopes(
-	roleID uint,
-	assignments []request.RoleFeatureDataScopeAssignment,
-) error {
+func (s *RoleService) AssignDataScopes(roleID uint, assignments []request.RoleFeatureDataScopeAssignment) error {
 	var role model.SysRole
 	if err := global.DB.First(&role, roleID).Error; err != nil {
 		return err
 	}
+	_ = role
 
 	if err := global.DB.Transaction(func(tx *gorm.DB) error {
 		normalizedAssignments, err := normalizePersistedRoleFeatureDataScopeAssignmentsTx(tx, roleID, assignments)
@@ -301,6 +300,18 @@ func (s *RoleService) AssignDataScopes(
 }
 
 func (s *RoleService) SavePermissions(roleID uint, req *request.SaveRolePermissionsRequest) error {
+	return s.savePermissions(roleID, req, true)
+}
+
+func (s *RoleService) SavePermissionsForOperator(roleID uint, req *request.SaveRolePermissionsRequest, operatorRoleIDs []uint) error {
+	allowDirectApis, err := s.HasSuperAdminRoleIDs(operatorRoleIDs)
+	if err != nil {
+		return err
+	}
+	return s.savePermissions(roleID, req, allowDirectApis)
+}
+
+func (s *RoleService) savePermissions(roleID uint, req *request.SaveRolePermissionsRequest, allowDirectApis bool) error {
 	var role model.SysRole
 	if err := global.DB.First(&role, roleID).Error; err != nil {
 		return err
@@ -320,12 +331,14 @@ func (s *RoleService) SavePermissions(roleID uint, req *request.SaveRolePermissi
 			return err
 		}
 
-		directApis, err := loadApisByIDs(tx, core.NormalizeIDs(req.DirectApiIds))
-		if err != nil {
-			return err
-		}
-		if err := tx.Model(&role).Association("Apis").Replace(directApis); err != nil {
-			return err
+		if allowDirectApis {
+			directApis, err := loadApisByIDs(tx, core.NormalizeIDs(req.DirectApiIds))
+			if err != nil {
+				return err
+			}
+			if err := tx.Model(&role).Association("Apis").Replace(directApis); err != nil {
+				return err
+			}
 		}
 
 		if err := replaceRoleFeatureDataScopes(tx, roleID, normalizedAssignments); err != nil {
@@ -398,10 +411,16 @@ func (s *RoleService) loadEffectiveRoleApisTx(tx *gorm.DB, roleID uint) ([]model
 
 	apiMap := make(map[uint]model.SysApi)
 	for _, api := range role.Apis {
+		if !api.NeedAuth {
+			continue
+		}
 		apiMap[api.ID] = api
 	}
 	for _, menu := range role.Menus {
 		for _, api := range menu.Apis {
+			if !api.NeedAuth {
+				continue
+			}
 			apiMap[api.ID] = api
 		}
 	}

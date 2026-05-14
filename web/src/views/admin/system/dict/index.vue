@@ -1,7 +1,7 @@
 <template>
-  <div class="dict-page">
-    <a-row :gutter="16">
-      <a-col :xs="24" :xl="8">
+  <PageWrapper class="dict-page">
+    <AdminSplitLayout class="dict-page__layout" :aside-width="420" :content-min-width="940">
+      <template #aside>
         <a-card class="dict-panel dict-panel--types">
           <template #title>
             <div class="dict-panel__title">
@@ -16,7 +16,7 @@
                   <ReloadOutlined />
                 </a-button>
               </a-tooltip>
-              <a-button type="primary" @click="handleAddType">
+              <a-button type="primary" @click="handleAddType" v-permission="'system:dict:add'">
                 <PlusOutlined />
                 新增
               </a-button>
@@ -31,6 +31,14 @@
             @search="handleTypeSearch"
           />
 
+          <a-segmented
+            :value="typeStatusFilter"
+            :options="statusFilterOptions"
+            block
+            class="dict-panel__segmented"
+            @change="handleTypeStatusFilterChange"
+          />
+
           <a-alert
             v-if="showSelectedOutsideFilter && selectedType"
             class="dict-panel__hint"
@@ -40,8 +48,9 @@
           />
 
           <div class="dict-type-list">
+            <a-skeleton v-if="typeLoading && !filteredDictTypes.length" active :paragraph="{ rows: 6 }" />
             <a-list
-              v-if="filteredDictTypes.length"
+              v-else-if="filteredDictTypes.length"
               :data-source="filteredDictTypes"
               :loading="typeLoading"
               item-layout="horizontal"
@@ -56,13 +65,23 @@
                   @keydown.space.prevent="handleSelectType(item)"
                 >
                   <template #actions>
+                    <a-tooltip :title="item.status === 1 ? '点击停用' : '点击启用'">
+                      <a-switch
+                        size="small"
+                        :checked="item.status === 1"
+                        :loading="togglingTypeIds.has(item.id)"
+                        @click.stop
+                        @change="checked => handleToggleTypeStatus(item, Boolean(checked))"
+                        v-permission="'system:dict:edit'"
+                      />
+                    </a-tooltip>
                     <a-tooltip title="复制编码">
                       <a-button type="text" size="small" @click.stop="handleCopy(item.type, '字典类型编码')">
                         <CopyOutlined />
                       </a-button>
                     </a-tooltip>
                     <a-tooltip title="编辑">
-                      <a-button type="text" size="small" @click.stop="handleEditType(item)">
+                      <a-button type="text" size="small" @click.stop="handleEditType(item)" v-permission="'system:dict:edit'">
                         <EditOutlined />
                       </a-button>
                     </a-tooltip>
@@ -70,7 +89,7 @@
                       title="确定删除此字典类型及其所有字典数据吗？"
                       @confirm="handleDeleteType(item)"
                     >
-                      <a-button type="text" size="small" danger @click.stop>
+                      <a-button type="text" size="small" danger @click.stop v-permission="'system:dict:delete'">
                         <DeleteOutlined />
                       </a-button>
                     </a-popconfirm>
@@ -79,10 +98,11 @@
                   <a-list-item-meta>
                     <template #title>
                       <div class="dict-type-item__title">
+                        <span
+                          class="dict-type-item__dot"
+                          :class="{ 'dict-type-item__dot--off': item.status !== 1 }"
+                        />
                         <span class="dict-type-item__name">{{ item.name }}</span>
-                        <a-tag :color="item.status === 1 ? 'success' : 'default'">
-                          {{ item.status === 1 ? '正常' : '停用' }}
-                        </a-tag>
                       </div>
                     </template>
                     <template #description>
@@ -96,7 +116,7 @@
               </template>
             </a-list>
 
-            <a-empty v-else :image="false" description="当前条件下没有匹配的字典类型" />
+            <a-empty v-else-if="!typeLoading" :image="false" description="当前条件下没有匹配的字典类型" />
           </div>
 
           <div class="dict-panel__pagination">
@@ -112,9 +132,9 @@
             />
           </div>
         </a-card>
-      </a-col>
+      </template>
 
-      <a-col :xs="24" :xl="16">
+      <div class="dict-page__main">
         <a-card class="dict-panel dict-panel--data">
           <template #title>
             <div class="dict-data-header">
@@ -138,7 +158,7 @@
                 <ReloadOutlined />
                 刷新
               </a-button>
-              <a-button type="primary" :disabled="!selectedType" @click="handleAddData">
+              <a-button type="primary" :disabled="!selectedType" @click="handleAddData" v-permission="'system:dict:add'">
                 <PlusOutlined />
                 新增字典数据
               </a-button>
@@ -151,12 +171,38 @@
               <span class="dict-data-summary__text">{{ selectedType.remark || '暂无备注' }}</span>
             </div>
 
+            <div class="dict-data-toolbar">
+              <a-input-search
+                v-model:value="dataLabelSearch"
+                allow-clear
+                class="dict-data-toolbar__search"
+                placeholder="搜索字典标签"
+                @search="handleDataSearch"
+              />
+              <a-segmented
+                :value="dataStatusFilter"
+                :options="statusFilterOptions"
+                @change="handleDataStatusFilterChange"
+              />
+              <a-popconfirm
+                v-if="selectedDataKeys.length"
+                :title="`确定删除选中的 ${selectedDataKeys.length} 条字典数据吗？`"
+                @confirm="handleBatchDeleteData"
+              >
+                <a-button danger :loading="batchDeleting" v-permission="'system:dict:delete'">
+                  <DeleteOutlined />
+                  批量删除 ({{ selectedDataKeys.length }})
+                </a-button>
+              </a-popconfirm>
+            </div>
+
             <a-table
               :columns="dataColumns"
               :data-source="dictDataList"
               :loading="dataLoading"
               :pagination="dataPagination"
               row-key="id"
+              :row-selection="{ selectedRowKeys: selectedDataKeys, onChange: keys => (selectedDataKeys = keys as number[]) }"
               @change="pagination => handleDataPaginationChange(pagination.current, pagination.pageSize)"
             >
               <template #bodyCell="{ column, record }">
@@ -174,9 +220,14 @@
                   </div>
                 </template>
                 <template v-if="column.key === 'status'">
-                  <a-tag :color="record.status === 1 ? 'success' : 'default'">
-                    {{ record.status === 1 ? '正常' : '停用' }}
-                  </a-tag>
+                  <a-switch
+                    size="small"
+                    :checked="record.status === 1"
+                    :loading="togglingStatusIds.has(record.id)"
+                    checked-children="开"
+                    un-checked-children="关"
+                    @change="checked => handleToggleDataStatus(record, Boolean(checked))"
+                  />
                 </template>
                 <template v-if="column.key === 'is_default'">
                   <a-tag :color="record.is_default === 1 ? 'blue' : 'default'">
@@ -188,9 +239,9 @@
                 </template>
                 <template v-if="column.key === 'action'">
                   <a-space :size="0">
-                    <a-button type="link" size="small" @click="handleEditData(record)">编辑</a-button>
+                    <a-button type="link" size="small" @click="handleEditData(record)" v-permission="'system:dict:edit'">编辑</a-button>
                     <a-popconfirm title="确定删除此字典数据吗？" @confirm="handleDeleteData(record)">
-                      <a-button type="link" size="small" danger>删除</a-button>
+                      <a-button type="link" size="small" danger v-permission="'system:dict:delete'">删除</a-button>
                     </a-popconfirm>
                   </a-space>
                 </template>
@@ -198,14 +249,14 @@
             </a-table>
           </template>
 
-          <a-empty
-            v-else
-            class="dict-panel__empty"
-            description="请先从左侧选择一个字典类型，再管理对应的字典数据"
-          />
+        <a-empty
+          v-else
+          class="dict-panel__empty"
+          description="请先从左侧选择一个字典类型，再管理对应的字典数据"
+        />
         </a-card>
-      </a-col>
-    </a-row>
+      </div>
+    </AdminSplitLayout>
 
     <DictTypeDrawer
       v-model:open="typeDrawerVisible"
@@ -225,14 +276,22 @@
       :initial-value="dataDrawerInitialValue"
       @submit="handleDataSubmit"
     />
-  </div>
+  </PageWrapper>
 </template>
 
 <script setup lang="ts">
 import { CopyOutlined, DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons-vue'
+import AdminSplitLayout from '@/components/AdminSplitLayout.vue'
+import PageWrapper from '@/components/page/PageWrapper.vue'
 import DictDataDrawer from './components/DictDataDrawer.vue'
 import DictTypeDrawer from './components/DictTypeDrawer.vue'
 import { useDictPage } from './useDictPage'
+
+const statusFilterOptions = [
+  { label: '全部', value: 'all' },
+  { label: '正常', value: 1 },
+  { label: '停用', value: 0 },
+]
 
 const dataColumns = [
   { title: '字典标签', key: 'label', width: 160 },
@@ -245,11 +304,14 @@ const dataColumns = [
 ]
 
 const {
+  batchDeleting,
   dataDrawerInitialValue,
   dataDrawerTitle,
   dataDrawerVisible,
+  dataLabelSearch,
   dataLoading,
   dataPagination,
+  dataStatusFilter,
   dataSubmitLoading,
   dictDataList,
   editingType,
@@ -258,32 +320,46 @@ const {
   filteredDictTypes,
   handleAddData,
   handleAddType,
+  handleBatchDeleteData,
   handleCopy,
   handleDataPaginationChange,
+  handleDataSearch,
+  handleDataStatusFilterChange,
   handleDataSubmit,
   handleDeleteData,
   handleDeleteType,
   handleEditData,
   handleEditType,
   handleSelectType,
+  handleToggleDataStatus,
+  handleToggleTypeStatus,
   handleTypePaginationChange,
   handleTypeSearch,
+  handleTypeStatusFilterChange,
   handleTypeSubmit,
+  selectedDataKeys,
   selectedType,
   showSelectedOutsideFilter,
+  togglingStatusIds,
+  togglingTypeIds,
   typeDrawerInitialValue,
   typeDrawerTitle,
   typeDrawerVisible,
   typeLoading,
   typePagination,
   typeSearchText,
+  typeStatusFilter,
   typeSubmitLoading,
 } = useDictPage()
 </script>
 
 <style scoped>
+.dict-page__layout,
+.dict-page__main {
+  min-width: 0;
+}
+
 .dict-page {
-  padding: 16px;
   color: var(--app-text-color);
 }
 
@@ -301,8 +377,40 @@ const {
   margin-bottom: 12px;
 }
 
+.dict-panel__segmented {
+  margin-bottom: 12px;
+}
+
 .dict-panel__hint {
   margin-bottom: 12px;
+}
+
+.dict-type-item__dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--app-success-color, #52c41a);
+  box-shadow: 0 0 0 2px rgba(82, 196, 26, 0.16);
+  flex-shrink: 0;
+}
+
+.dict-type-item__dot--off {
+  background: var(--app-text-muted, #bfbfbf);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.06);
+}
+
+.dict-data-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.dict-data-toolbar__search {
+  width: 240px;
+  max-width: 100%;
 }
 
 .dict-type-list {
@@ -331,8 +439,7 @@ const {
 .dict-type-item__title {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
 }
 
 .dict-type-item__name {

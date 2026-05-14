@@ -74,7 +74,7 @@
       <!-- 保存按钮 -->
       <a-form-item :wrapper-col="{ offset: 6, span: 16 }" style="margin-top: 24px">
         <a-space>
-          <a-button type="primary" :loading="saving" @click="handleSave">保存配置</a-button>
+          <a-button type="primary" :loading="saving" @click="handleSave" v-permission="'system:config:edit'">保存配置</a-button>
           <a-button @click="smtpDrawerVisible = true">
             <SettingOutlined /> SMTP配置
           </a-button>
@@ -118,7 +118,7 @@
         </a-form-item>
 
         <a-form-item :wrapper-col="{ offset: 6 }">
-          <a-button type="primary" ghost @click="testEmail" :loading="testing">
+          <a-button type="primary" ghost @click="testEmail" :loading="testing" v-permission="'system:config:test'">
             <MailOutlined /> 发送测试邮件
           </a-button>
         </a-form-item>

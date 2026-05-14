@@ -1,5 +1,11 @@
 <template>
-  <div class="image-upload">
+  <div
+    ref="uploadRootRef"
+    class="image-upload"
+    tabindex="0"
+    @click="focusUploadRoot"
+    @paste="handlePaste"
+  >
     <!-- 已上传的图片预览 -->
     <div class="image-preview" v-if="currentUrl">
       <img :src="currentUrl" alt="preview" />
@@ -49,6 +55,7 @@ import { message } from 'ant-design-vue'
 import { PlusOutlined, LoadingOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons-vue'
 import type { UploadProps } from 'ant-design-vue'
 import { calculateMD5, multipartUpload } from '@/utils/upload'
+import { getClipboardFiles, isEditablePasteTarget } from '@/utils/upload-paste'
 
 interface Props {
   /** 图片URL (v-model) */
@@ -89,6 +96,7 @@ const uploading = ref(false)
 const progress = ref(0)
 const localUrl = ref('')
 const previewVisible = ref(false)
+const uploadRootRef = ref<HTMLElement>()
 
 const currentUrl = computed(() => localUrl.value || props.modelValue || props.url)
 
@@ -106,47 +114,58 @@ const handleBeforeUpload: UploadProps['beforeUpload'] = (file) => {
   return true
 }
 
-// 执行上传
-const handleUpload: UploadProps['customRequest'] = async (options) => {
-  const file = options.file as File
+const uploadImage = async (
+  file: File,
+  callbacks?: {
+    onSuccess?: (result: { id: number; url: string }) => void
+    onError?: (error: Error) => void
+  }
+) => {
   uploading.value = true
   progress.value = 0
 
   try {
-    // 本地预览
     const reader = new FileReader()
     reader.onload = (e) => {
       localUrl.value = e.target?.result as string
     }
     reader.readAsDataURL(file)
 
-    // 计算MD5
     const md5 = await calculateMD5(file, (p) => {
       progress.value = Math.round(p * 0.1)
     })
 
-    // 上传文件
     const result = await multipartUpload(file, md5, (p) => {
       progress.value = 10 + Math.round(p * 0.9)
     })
 
-    // 上传成功
     localUrl.value = result.url
     emit('update:modelValue', result.url)
     emit('update:fileId', result.id)
     emit('update:url', result.url)
     emit('success', { id: result.id, url: result.url })
     message.success('上传成功')
-    options.onSuccess?.(result)
+    callbacks?.onSuccess?.(result)
+    return result
   } catch (error) {
     localUrl.value = ''
     emit('error', error as Error)
     message.error((error as Error).message || '上传失败')
-    options.onError?.(error as Error)
+    callbacks?.onError?.(error as Error)
+    throw error
   } finally {
     uploading.value = false
     progress.value = 0
   }
+}
+
+// 执行上传
+const handleUpload: UploadProps['customRequest'] = async (options) => {
+  const file = options.file as File
+  await uploadImage(file, {
+    onSuccess: (result) => options.onSuccess?.(result),
+    onError: (error) => options.onError?.(error),
+  })
 }
 
 // 预览
@@ -160,6 +179,31 @@ const handleRemove = () => {
   emit('update:modelValue', '')
   emit('update:fileId', 0)
   emit('update:url', '')
+}
+
+const focusUploadRoot = () => {
+  uploadRootRef.value?.focus()
+}
+
+const handlePaste = async (event: ClipboardEvent) => {
+  if (isEditablePasteTarget(event.target)) {
+    return
+  }
+
+  const file = getClipboardFiles(event, {
+    multiple: false,
+  }).find(item => item.type.startsWith('image/'))
+
+  if (!file) {
+    return
+  }
+
+  if (!handleBeforeUpload(file)) {
+    return
+  }
+
+  event.preventDefault()
+  await uploadImage(file)
 }
 
 // 暴露方法

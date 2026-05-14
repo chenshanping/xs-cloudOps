@@ -10,13 +10,13 @@
     >
       <template #rightExtra>
         <a-dropdown placement="bottomRight">
-          <a-button size="small" type="text">标签操作</a-button>
+          <a-button size="small" type="text" class="tabs-action-button">标签操作</a-button>
           <template #overlay>
             <a-menu @click="handleBatchAction">
-              <a-menu-item key="close-left">关闭左侧</a-menu-item>
-              <a-menu-item key="close-right">关闭右侧</a-menu-item>
-              <a-menu-item key="close-other">关闭其他</a-menu-item>
-              <a-menu-item key="close-all">关闭全部</a-menu-item>
+              <a-menu-item key="close-left" :disabled="!canCloseLeft">关闭左侧</a-menu-item>
+              <a-menu-item key="close-right" :disabled="!canCloseRight">关闭右侧</a-menu-item>
+              <a-menu-item key="close-other" :disabled="!canCloseOther">关闭其他</a-menu-item>
+              <a-menu-item key="close-all" :disabled="!canCloseAll">关闭全部</a-menu-item>
             </a-menu>
           </template>
         </a-dropdown>
@@ -39,6 +39,7 @@ import type { MenuInfo } from 'ant-design-vue/es/menu/src/interface'
 import { useTabsStore } from '@/store/tabs'
 import { useUiStore } from '@/store/ui'
 import { useUserStore } from '@/store/user'
+import { filterVisibleMenus, firstNavigableMenuPath } from './layout-menu'
 
 const route = useRoute()
 const router = useRouter()
@@ -46,12 +47,23 @@ const userStore = useUserStore()
 const uiStore = useUiStore()
 const tabsStore = useTabsStore()
 const tabsDark = computed(() => uiStore.isDark || uiStore.theme.headerDark)
+const backendHomePath = computed(() => firstNavigableMenuPath(filterVisibleMenus(userStore.menus || [])) || '/no-permission')
 
 const tabs = computed(() => tabsStore.tabs)
 const activeTab = computed({
   get: () => tabsStore.activeKey,
   set: (value: string) => tabsStore.setActiveKey(value)
 })
+const activeIndex = computed(() => tabs.value.findIndex(tab => tab.key === activeTab.value))
+const closableTabsCount = computed(() => tabs.value.filter(tab => !tab.affix).length)
+const canCloseLeft = computed(() =>
+  tabs.value.slice(0, Math.max(activeIndex.value, 0)).some(tab => !tab.affix)
+)
+const canCloseRight = computed(() =>
+  activeIndex.value >= 0 && tabs.value.slice(activeIndex.value + 1).some(tab => !tab.affix)
+)
+const canCloseOther = computed(() => closableTabsCount.value > 1)
+const canCloseAll = computed(() => closableTabsCount.value > 0)
 
 const findMenuTitle = (path: string, menus = userStore.menus || []): string | null => {
   for (const menu of menus) {
@@ -73,9 +85,7 @@ const getPageTitle = () => {
     return route.meta.title
   }
 
-  if (route.path === '/dashboard') return '首页'
   if (route.path === '/profile') return '个人中心'
-  if (route.path === '/ai') return 'AI助手'
 
   return findMenuTitle(route.path) || '未命名页面'
 }
@@ -89,7 +99,7 @@ watch(
       fullPath: route.fullPath,
       title: getPageTitle(),
       name: typeof route.name === 'string' ? route.name : undefined,
-      affix: route.path === '/dashboard'
+      affix: false
     })
   },
   { immediate: true, deep: true },
@@ -130,8 +140,17 @@ const handleBatchAction = ({ key }: MenuInfo) => {
 
   if (key === 'close-all') {
     tabsStore.removeAllTabs()
-    if (route.fullPath !== '/dashboard') {
-      router.push('/dashboard')
+    if (route.fullPath !== backendHomePath.value) {
+      router.push(backendHomePath.value)
+    } else {
+      tabsStore.openTab({
+        key: route.fullPath,
+        path: route.path,
+        fullPath: route.fullPath,
+        title: getPageTitle(),
+        name: typeof route.name === 'string' ? route.name : undefined,
+        affix: false
+      })
     }
   }
 }
@@ -139,7 +158,7 @@ const handleBatchAction = ({ key }: MenuInfo) => {
 
 <style scoped>
 .tabs-wrapper {
-  padding: 8px 20px 0;
+  padding: 8px var(--app-page-gap, 20px) 0;
   background: var(--app-surface-color);
   border-bottom: 1px solid var(--app-border-color);
 }
@@ -162,10 +181,37 @@ const handleBatchAction = ({ key }: MenuInfo) => {
   align-items: center;
 }
 
+.tabs-action-button {
+  border-radius: 999px;
+  color: var(--app-text-secondary);
+}
+
+.tabs-action-button:hover,
+.tabs-action-button:focus {
+  color: var(--app-text-strong);
+  background: var(--app-hover-bg);
+}
+
 .tabs-wrapper :deep(.ant-tabs-tab) {
   padding: 6px 12px;
   font-size: 13px;
-  border-radius: 10px 10px 0 0;
+  border-radius: var(--app-radius-sm, 10px) var(--app-radius-sm, 10px) 0 0;
+  transition: all 0.2s ease;
+}
+
+.tabs-wrapper :deep(.ant-tabs-tab:hover) {
+  color: var(--app-text-strong);
+}
+
+.tabs-wrapper :deep(.ant-tabs-tab-active) {
+  background: var(--app-surface-soft);
+  border-color: var(--app-border-strong);
+}
+
+.tabs-wrapper :deep(.ant-tabs-tab-active .ant-tabs-tab-btn),
+.tabs-wrapper :deep(.ant-tabs-tab .ant-tabs-tab-btn),
+.tabs-wrapper :deep(.ant-tabs-tab-remove) {
+  color: inherit;
 }
 
 .tabs-wrapper-dark :deep(.ant-tabs-tab) {
@@ -195,5 +241,11 @@ const handleBatchAction = ({ key }: MenuInfo) => {
 
 .tabs-wrapper-dark :deep(.ant-tabs-nav::before) {
   border-bottom-color: var(--app-border-color);
+}
+
+@media (max-width: 768px) {
+  .tabs-wrapper {
+    padding-inline: var(--app-page-gap-sm, 12px);
+  }
 }
 </style>

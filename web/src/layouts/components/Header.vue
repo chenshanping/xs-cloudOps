@@ -14,7 +14,7 @@
         <MenuFoldOutlined v-else />
       </a-button>
 
-      <div v-if="showBrand" class="brand" @click="router.push('/dashboard')">
+      <div v-if="showBrand" class="brand" @click="router.push(backendHomePath)">
         <img :src="configStore.get('sys_logo')" alt="logo" class="brand-logo" />
         <span class="brand-title">{{ configStore.get('sys_name') }}</span>
       </div>
@@ -73,11 +73,6 @@
               <UserOutlined />
               个人中心
             </a-menu-item>
-            <a-menu-item @click="router.push('/ai')">
-              <SvgIcon name="svg:aiChat" />
-              AI助手
-            </a-menu-item>
-            <a-menu-divider />
             <a-menu-item @click="handleLogout">
               <LogoutOutlined />
               退出登录
@@ -103,7 +98,6 @@ import {
   SettingOutlined,
   UserOutlined,
 } from '@ant-design/icons-vue'
-import SvgIcon from '@/components/SvgIcon.vue'
 import { useConfigStore } from '@/store/config'
 import { useUiStore } from '@/store/ui'
 import { useUserStore } from '@/store/user'
@@ -111,6 +105,7 @@ import {
   filterEnabledMenus,
   filterVisibleMenus,
   findMenuTrail,
+  firstNavigableMenuPath,
   firstNavigablePath,
   getBreadcrumbs,
   normalizePath,
@@ -130,11 +125,12 @@ const uiStore = useUiStore()
 
 const normalizedMenus = computed(() => filterEnabledMenus(userStore.menus || []))
 const visibleMenus = computed(() => filterVisibleMenus(userStore.menus || []))
+const backendHomePath = computed(() => firstNavigableMenuPath(visibleMenus.value) || '/no-permission')
 
 const breadcrumbs = computed<BreadcrumbItem[]>(() => {
-  const items: BreadcrumbItem[] = [{ path: '/dashboard', title: '首页' }]
+  const items: BreadcrumbItem[] = [{ path: backendHomePath.value, title: '首页' }]
 
-  if (route.path === '/dashboard') {
+  if (route.path === backendHomePath.value) {
     return items
   }
 
@@ -248,8 +244,8 @@ const handleRefresh = () => {
 
 <style scoped>
 .header {
-  height: 64px;
-  padding: 0 20px;
+  height: var(--app-header-height, 64px);
+  padding: 0 var(--app-page-gap, 20px);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -283,7 +279,7 @@ const handleRefresh = () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: var(--app-radius-sm, 10px);
 }
 
 .header-dark .header-icon-button {
@@ -407,6 +403,12 @@ const handleRefresh = () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding-inline: var(--app-page-gap-sm, 12px);
+  }
 }
 </style>
 

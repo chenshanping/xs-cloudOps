@@ -47,12 +47,13 @@ Follow these steps in order. Do not skip any step.
 9. **Frontend API** — create or update in `web/src/api/<module>.ts`.
 
 10. **Frontend pages** — create or update in `web/src/views/admin/<module>/`. Follow the Frontend Design rules in the Reference section below. Use Drawer for create/edit, not Modal.
+    - Admin pages are tool pages, not landing pages. Do not add marketing/hero sections, slogans, decorative chips, English promo copy, or large top banners unless explicitly requested.
+    - Before introducing a page header, compare neighboring admin pages. If they use compact card/table/tabs layouts, keep the new page compact too.
 
 11. **Add `v-permission` to EVERY action button** — this is mandatory, not optional:
     - Toolbar: add, import, export, batch edit, batch delete
     - Table action column: edit, copy, delete
     - Pattern: `v-permission="'module:resource:action'"`
-    - The permission keys MUST match the Type=3 menu Permission values from step 7
 
 12. **Frontend verify** — lightweight checks (do NOT run `npm run build` — see Token Budget Rule in `AGENTS.md`):
     - Read back edited files to confirm structure and imports.
@@ -130,18 +131,18 @@ if pageMenuID > 0 {
         menuIDs = append(menuIDs, menu.ID)
     }
 }
-```
 
 ### Frontend Design Skill
 
 When building or refactoring frontend pages, apply these design principles:
 
+- **Admin constraint first**: `frontend-design` is used to improve hierarchy, spacing, loading/error states, density, and dark-mode consistency inside the existing Ant Design Vue admin style. It must not override project admin conventions.
 - **Layout**: White card sections on `#f5f5f5` background, `border-radius: 8px`, light `box-shadow`. Group related form fields into visual sections.
 - **Drawer/Form**: `layout="vertical"`, header on `#fafafa` with `2px solid #f0f0f0` border.
 - **Detail views**: Card-based, not flat `a-descriptions`. Top info bar with tags.
 - **Interactive elements**: Circle badges for option keys, large toggle buttons for binary choices, numbered indices for ordered items.
 - **Typography & color**: `13px` body, `12px` labels `#8c8c8c`, `15px` titles `#262626`. Green `#52c41a` success, orange `#fa8c16` warnings, blue `#1677ff` primary.
-- **No generic aesthetics**: Every page must have visual sections, clear hierarchy, polished micro-interactions.
+- **No generic aesthetics**: Every page must have visual sections, clear hierarchy, polished micro-interactions, but admin pages must avoid landing-page/marketing-style hero blocks, slogans, decorative chips, and promotional top sections unless explicitly requested.
 
 ## Reference: Menu & API Bootstrap
 

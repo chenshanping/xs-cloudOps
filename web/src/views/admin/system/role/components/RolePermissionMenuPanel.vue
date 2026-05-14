@@ -38,9 +38,14 @@
               <span>{{ item.menu.name }}</span>
             </span>
           </a-checkbox>
-          <span v-if="item.menu.permission" class="permission-code">
-            {{ item.menu.permission }}
-          </span>
+          <div class="menu-row__meta">
+            <a-tag v-if="showInheritedApiMeta && item.menu.apis?.length" color="green" size="small">
+              继承 API {{ item.menu.apis.length }}
+            </a-tag>
+            <span v-if="item.menu.permission" class="permission-code">
+              {{ item.menu.permission }}
+            </span>
+          </div>
         </div>
       </template>
       <a-empty v-else description="暂无匹配菜单权限" />
@@ -60,6 +65,7 @@ interface Props {
   checkedMenuKeys: number[]
   checked: boolean
   indeterminate: boolean
+  showInheritedApiMeta?: boolean
 }
 
 const props = defineProps<Props>()
@@ -170,6 +176,14 @@ const getMenuTagColor = (type: number) => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+.menu-row__meta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
 }
 
 .permission-code {

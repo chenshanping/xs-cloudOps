@@ -36,7 +36,7 @@
         </a-form-item>
 
         <a-form-item :wrapper-col="{ offset: 8, span: 16 }" style="margin-top: 24px">
-          <a-button type="primary" :loading="saving" @click="handleSave">保存文件设置</a-button>
+          <a-button type="primary" :loading="saving" @click="handleSave" v-permission="'system:config:edit'">保存文件设置</a-button>
         </a-form-item>
       </a-form>
     </div>
@@ -121,13 +121,14 @@
             :loading="storageTesting"
             :class="{ 'validated-btn': storageValidated }"
             @click="handleTestStorage"
+            v-permission="'system:config:test'"
           >
             <template v-if="storageValidated">
               <CheckCircleOutlined /> 已验证
             </template>
             <template v-else>测试连接</template>
           </a-button>
-          <a-button type="primary" :loading="storageSaving" @click="handleStorageSave">保存配置</a-button>
+          <a-button type="primary" :loading="storageSaving" @click="handleStorageSave" v-permission="'system:config:edit'">保存配置</a-button>
         </a-space>
       </template>
     </a-modal>

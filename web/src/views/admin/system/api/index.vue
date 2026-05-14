@@ -1,30 +1,30 @@
 <template>
-  <div class="api-page">
-    <a-row :gutter="16">
-      <!-- 左侧分组列表 -->
-      <a-col :span="4">
-        <a-card title="API分组" size="small">
-          <a-menu
-            v-model:selectedKeys="selectedGroup"
-            mode="inline"
-            @click="handleGroupClick"
-          >
-            <a-menu-item key="">
-              <template #icon><AppstoreOutlined /></template>
-              全部
-              <a-badge :count="totalApiCount" :overflow-count="999" class="group-badge" />
-            </a-menu-item>
-            <a-menu-item v-for="item in groupList" :key="item.group">
-              <template #icon><FolderOutlined /></template>
-              {{ item.group }}
-              <a-badge :count="item.api_count" :overflow-count="999" class="group-badge" />            
-            </a-menu-item>
-          </a-menu>
-        </a-card>
-      </a-col>
+  <PageWrapper class="api-page">
+    <AdminSplitLayout class="api-page__layout" :aside-width="280" :content-min-width="960">
+      <template #aside>
+        <div class="api-group-panel">
+          <a-card title="API分组" size="small" class="api-page__aside-card">
+            <a-menu
+              v-model:selectedKeys="selectedGroup"
+              mode="inline"
+              @click="handleGroupClick"
+            >
+              <a-menu-item key="">
+                <template #icon><AppstoreOutlined /></template>
+                全部
+                <a-badge :count="totalApiCount" :overflow-count="999" class="group-badge" />
+              </a-menu-item>
+              <a-menu-item v-for="item in groupList" :key="item.group">
+                <template #icon><FolderOutlined /></template>
+                {{ item.group }}
+                <a-badge :count="item.api_count" :overflow-count="999" class="group-badge" />
+              </a-menu-item>
+            </a-menu>
+          </a-card>
+        </div>
+      </template>
 
-      <!-- 右侧表格 -->
-      <a-col :span="20">
+      <div class="api-page__table">
         <ProTable
           :columns="columns"
           :data-source="tableData"
@@ -47,6 +47,13 @@
                 <a-select-option value="DELETE">DELETE</a-select-option>
               </a-select>
             </a-form-item>
+            <a-form-item label="认证">
+              <a-segmented
+                v-model:value="searchForm.needAuth"
+                :options="authFilterOptions"
+                @change="handleSearch"
+              />
+            </a-form-item>
           </template>
 
           <!-- 工具栏 -->
@@ -64,7 +71,17 @@
           <!-- 表格单元格 -->
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'method'">
-              <a-tag :color="getMethodColor(record.method)">{{ record.method }}</a-tag>
+              <a-tag :color="getMethodColor(record.method)" class="method-tag">{{ record.method }}</a-tag>
+            </template>
+            <template v-if="column.key === 'path'">
+              <div class="path-cell">
+                <a-typography-text code class="path-text">{{ record.path }}</a-typography-text>
+                <a-tooltip title="复制路径">
+                  <a-button type="text" size="small" @click="handleCopyPath(record.path)">
+                    <CopyOutlined />
+                  </a-button>
+                </a-tooltip>
+              </div>
             </template>
             <template v-if="column.key === 'need_auth'">
               <a-tag :color="record.need_auth ? 'orange' : 'green'">{{ record.need_auth ? '需要' : '公开' }}</a-tag>
@@ -89,23 +106,29 @@
           </template>
 
         </ProTable>
-      </a-col>
-    </a-row>
+      </div>
+    </AdminSplitLayout>
 
     <!-- 新增/编辑弹窗 -->
-    <a-modal v-model:open="modalVisible" :title="modalTitle" @ok="handleModalOk">
-      <a-form :model="formState" :label-col="{ span: 5 }">
-        <a-form-item label="API路径" required><a-input v-model:value="formState.path" /></a-form-item>
-        <a-form-item label="请求方法" required>
-          <a-select v-model:value="formState.method">
+    <a-modal v-model:open="modalVisible" :title="modalTitle" :confirm-loading="submitLoading" @ok="handleModalOk">
+      <a-form ref="formRef" :model="formState" :rules="formRules" :label-col="{ span: 5 }">
+        <a-form-item label="API路径" name="path">
+          <a-input v-model:value="formState.path" :disabled="isEdit" placeholder="例如 /user/list" />
+        </a-form-item>
+        <a-form-item label="请求方法" name="method">
+          <a-select v-model:value="formState.method" :disabled="isEdit">
             <a-select-option value="GET">GET</a-select-option>
             <a-select-option value="POST">POST</a-select-option>
             <a-select-option value="PUT">PUT</a-select-option>
             <a-select-option value="DELETE">DELETE</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="分组"><a-input v-model:value="formState.group" /></a-form-item>
-        <a-form-item label="描述"><a-input v-model:value="formState.description" /></a-form-item>
+        <a-form-item label="分组" name="group">
+          <a-input v-model:value="formState.group" placeholder="例如 用户管理" />
+        </a-form-item>
+        <a-form-item label="描述" name="description">
+          <a-input v-model:value="formState.description" placeholder="可选" />
+        </a-form-item>
       </a-form>
     </a-modal>
 
@@ -137,14 +160,17 @@
         </template>
       </a-table>
     </a-modal>
-  </div>
+  </PageWrapper>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
 import { message } from 'ant-design-vue'
-import { PlusOutlined, SyncOutlined, AppstoreOutlined, FolderOutlined } from '@ant-design/icons-vue'
+import type { FormInstance, Rule } from 'ant-design-vue/es/form'
+import { PlusOutlined, SyncOutlined, AppstoreOutlined, FolderOutlined, CopyOutlined } from '@ant-design/icons-vue'
+import AdminSplitLayout from '@/components/AdminSplitLayout.vue'
 import ProTable from '@/components/ProTable.vue'
+import PageWrapper from '@/components/page/PageWrapper.vue'
 import { getApiList, getApiGroups, createApi, updateApi, deleteApi, syncApis, type ApiGroupStats } from '@/api/api'
 import { useTableColumns } from '@/utils/permission'
 import type { Api, ApiFieldInfo } from '@/types'
@@ -161,9 +187,29 @@ const isEdit = ref(false)
 const currentId = ref(0)
 const currentApi = ref<Api | null>(null)
 const currentParams = ref<ApiFieldInfo[]>([])
-const searchForm = reactive({ path: '', method: undefined as string | undefined })
+const searchForm = reactive({
+  path: '',
+  method: undefined as string | undefined,
+  needAuth: 'all' as 'all' | 'yes' | 'no',
+})
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
 const formState = reactive({ path: '', method: 'GET', group: '', description: '' })
+const formRef = ref<FormInstance>()
+const submitLoading = ref(false)
+
+const authFilterOptions = [
+  { label: '全部', value: 'all' },
+  { label: '需要', value: 'yes' },
+  { label: '公开', value: 'no' },
+]
+
+const formRules: Record<string, Rule[]> = {
+  path: [
+    { required: true, message: '请输入 API 路径', trigger: 'blur' },
+    { pattern: /^\/[\w\-:/{}.]*$/, message: '路径需以 / 开头', trigger: 'blur' },
+  ],
+  method: [{ required: true, message: '请选择请求方法', trigger: 'change' }],
+}
 
 // 参数表格列
 const paramsColumns = [
@@ -177,10 +223,10 @@ const paramsColumns = [
 // 使用工具函数动态生成列配置
 const columns = useTableColumns(
   [
-    { title: 'API路径', dataIndex: 'path', key: 'path', ellipsis: true },
-    { title: '方法', key: 'method', width: 80 },
-    { title: '认证', key: 'need_auth', width: 80 },
-    { title: '参数', key: 'params', width: 100 },
+    { title: 'API路径', key: 'path', ellipsis: true },
+    { title: '方法', key: 'method', width: 90 },
+    { title: '认证', key: 'need_auth', width: 90 },
+    { title: '参数', key: 'params', width: 110 },
     { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
   ],
   { title: '操作', key: 'action', width: 120 },
@@ -226,11 +272,21 @@ const fetchData = async () => {
       page_size: pagination.pageSize,
       path: searchForm.path,
       method: searchForm.method,
-      group: selectedGroup.value[0] || undefined
+      group: selectedGroup.value[0] || undefined,
+      need_auth: searchForm.needAuth === 'all' ? undefined : searchForm.needAuth === 'yes',
     })
     tableData.value = res.data.list
     pagination.total = res.data.total
   } finally { loading.value = false }
+}
+
+const handleCopyPath = async (path: string) => {
+  try {
+    await navigator.clipboard.writeText(path)
+    message.success('路径已复制')
+  } catch {
+    message.error('复制失败')
+  }
 }
 
 const handleGroupClick = ({ key }: { key: string }) => {
@@ -247,6 +303,7 @@ const handleSearch = () => {
 const handleReset = () => {
   searchForm.path = ''
   searchForm.method = undefined
+  searchForm.needAuth = 'all'
   pagination.current = 1
   fetchData()
 }
@@ -256,12 +313,47 @@ const handleTableChange = (pag: any) => {
   pagination.pageSize = pag.pageSize
   fetchData()
 }
-const handleAdd = () => { isEdit.value = false; modalTitle.value = '新增API'; Object.assign(formState, { path: '', method: 'GET', group: '', description: '' }); modalVisible.value = true }
-const handleEdit = (record: Api) => { isEdit.value = true; modalTitle.value = '编辑API'; currentId.value = record.id; Object.assign(formState, record); modalVisible.value = true }
+const handleAdd = () => {
+  isEdit.value = false
+  modalTitle.value = '新增API'
+  Object.assign(formState, { path: '', method: 'GET', group: '', description: '' })
+  formRef.value?.clearValidate()
+  modalVisible.value = true
+}
+const handleEdit = (record: Api) => {
+  isEdit.value = true
+  modalTitle.value = '编辑API'
+  currentId.value = record.id
+  Object.assign(formState, {
+    path: record.path,
+    method: record.method,
+    group: record.group || '',
+    description: record.description || '',
+  })
+  formRef.value?.clearValidate()
+  modalVisible.value = true
+}
 const handleModalOk = async () => {
-  if (isEdit.value) { await updateApi(currentId.value, formState); message.success('更新成功') }
-  else { await createApi(formState); message.success('创建成功') }
-  modalVisible.value = false; fetchData()
+  try {
+    await formRef.value?.validate()
+  } catch {
+    return
+  }
+  submitLoading.value = true
+  try {
+    if (isEdit.value) {
+      await updateApi(currentId.value, formState)
+      message.success('更新成功')
+    } else {
+      await createApi(formState)
+      message.success('创建成功')
+    }
+    modalVisible.value = false
+    fetchData()
+    fetchGroups()
+  } finally {
+    submitLoading.value = false
+  }
 }
 const handleDelete = async (record: Api) => { await deleteApi(record.id); message.success('删除成功'); fetchData() }
 const handleSync = async () => {
@@ -277,23 +369,36 @@ onMounted(() => { fetchGroups(); fetchData() })
 </script>
 
 <style scoped>
-.api-page {
-  height: 100%;
+.api-page__layout,
+.api-page__table {
+  min-width: 0;
+}
+
+.api-group-panel {
+  width: 100%;
+}
+
+.api-page__aside-card {
+  color: var(--app-text-color);
+  border-color: var(--app-border-color);
+  background: var(--app-surface-color);
 }
 .api-page :deep(.ant-menu) {
   border-right: none;
+  background: transparent;
 }
-.api-page :deep(.ant-card-body) {
+.api-page__aside-card :deep(.ant-card-body) {
   padding: 0;
 }
 .text-gray {
-  color: #999;
+  color: var(--app-text-muted);
 }
 .params-tag {
   cursor: pointer;
+  transition: opacity 0.15s ease;
 }
 .params-tag:hover {
-  opacity: 0.8;
+  opacity: 0.75;
 }
 .mb-4 {
   margin-bottom: 16px;
@@ -302,12 +407,34 @@ onMounted(() => { fetchGroups(); fetchData() })
   margin-left: auto;
 }
 .group-badge :deep(.ant-badge-count) {
-  background: #e6f7ff;
-  color: #1890ff;
+  background: var(--app-primary-color-soft, #e6f7ff);
+  color: var(--app-primary-color, #1890ff);
   box-shadow: none;
 }
 .api-page :deep(.ant-menu-item-selected) .group-badge :deep(.ant-badge-count) {
-  background: #1890ff;
+  background: var(--app-primary-color, #1890ff);
   color: #fff;
+}
+
+/* Method tag uniform width for column alignment */
+.method-tag {
+  min-width: 56px;
+  text-align: center;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.path-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.path-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
 }
 </style>

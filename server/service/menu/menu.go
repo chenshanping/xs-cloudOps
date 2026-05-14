@@ -40,6 +40,9 @@ func (s *MenuService) GetMenu(id uint) (*model.SysMenu, error) {
 func (s *MenuService) GetMenuApis(id uint) ([]model.SysApi, error) {
 	var menu model.SysMenu
 	if err := global.DB.Preload("Apis").First(&menu, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return []model.SysApi{}, nil
+		}
 		return nil, err
 	}
 	if menu.Apis == nil {

@@ -46,7 +46,7 @@
           <!-- 操作按钮 -->
           <a-form-item :wrapper-col="{ offset: 8, span: 16 }" style="margin-top: 24px">
             <a-space>
-              <a-button type="primary" :loading="saving" @click="handleSave">保存配置</a-button>
+              <a-button type="primary" :loading="saving" @click="handleSave" v-permission="'system:config:edit'">保存配置</a-button>
               <a-button @click="advancedDrawerVisible = true">
                 <SettingOutlined /> 高级设置
               </a-button>
@@ -81,7 +81,10 @@
           </div>
           <!-- 右侧表单区 -->
           <div class="login-preview-right">
-            <div class="preview-form-title">{{ formData.login_title || '欢迎回来' }}</div>
+            <div class="preview-form-header">
+              <img v-if="configStore.get('sys_logo')" :src="configStore.get('sys_logo')" alt="Logo" class="preview-form-logo" />
+              <div class="preview-form-title">{{ formData.login_title || '欢迎回来' }}</div>
+            </div>
             <div class="preview-form-subtitle">登录您的账户</div>
             <div class="preview-form-input"><UserOutlined /> 用户名</div>
             <div class="preview-form-input"><LockOutlined /> 密码</div>
@@ -147,7 +150,7 @@
                   <component :is="getIconComponent(icon.value)" /> {{ icon.label }}
                 </a-select-option>
               </a-select>
-              <a-button type="text" danger size="small" @click="removeFeature(index)">
+              <a-button type="text" danger size="small" @click="removeFeature(index)" v-permission="'system:config:edit'">
                 <DeleteOutlined />
               </a-button>
             </div>
@@ -159,6 +162,7 @@
             block
             @click="addFeature" 
             :disabled="featureList.length >= formData.login_features_max"
+            v-permission="'system:config:edit'"
           >
             <PlusOutlined /> 添加特性 ({{ featureList.length }}/{{ formData.login_features_max }})
           </a-button>
@@ -185,7 +189,7 @@
             />
             <div class="image-card-info">
               <a-input v-model:value="img.title" placeholder="图片标题" size="small" />
-              <a-button type="text" danger size="small" @click="removeImage(index)">
+              <a-button type="text" danger size="small" @click="removeImage(index)" v-permission="'system:config:edit'">
                 <DeleteOutlined />
               </a-button>
             </div>
@@ -195,6 +199,7 @@
             block
             @click="addImage" 
             :disabled="imageList.length >= formData.login_images_max"
+            v-permission="'system:config:edit'"
           >
             <PlusOutlined /> 添加图片 ({{ imageList.length }}/{{ formData.login_images_max }})
           </a-button>
@@ -673,11 +678,25 @@ defineExpose({
   box-shadow: -2px 0 8px rgba(0, 0, 0, 0.05);
 }
 
+.preview-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.preview-form-logo {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
 .preview-form-title {
   font-size: 12px;
   font-weight: 600;
   color: var(--app-text-strong);
-  margin-bottom: 2px;
   text-align: center;
 }
 

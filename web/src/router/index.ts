@@ -5,6 +5,7 @@ import { message } from 'ant-design-vue';
 import type { Menu } from '@/types';
 import { resolveViewModulePath } from './view-resolver';
 import { computeDynamicRouteSyncPlan } from './dynamic-route-sync.js';
+import { filterVisibleMenus, firstNavigableMenuPath } from '@/layouts/components/layout-menu';
 
 
 // 动态导入视图组件的映射
@@ -82,14 +83,7 @@ const constantRoutes: RouteRecordRaw[] = [
     path: '/',
     name: 'Layout',
     component: () => import('@/layouts/BasicLayout.vue'),
-    redirect: '/dashboard',
     children: [
-      {
-        path: 'dashboard',
-        name: 'Dashboard',
-        component: () => import('@/views/admin/dashboard/index.vue'),
-        meta: { title: '首页' }
-      },
       {
         path: 'profile',
         name: 'Profile',
@@ -97,10 +91,10 @@ const constantRoutes: RouteRecordRaw[] = [
         meta: { title: '个人中心' }
       },
       {
-        path: 'ai',
-        name: 'AIChat',
-        component: () => import('@/views/admin/ai/index.vue'),
-        meta: { title: 'AI对话' }
+        path: 'test',
+        name: 'AdminTest',
+        component: () => import('@/views/admin/test/index.vue'),
+        meta: { title: '测试页面' }
       },
       {
         path: 'system/storage',
@@ -131,6 +125,10 @@ const router = createRouter({
 // 已添加的动态路由名称（用于避免重复添加）
 let dynamicRoutesAdded = false
 let addedDynamicRouteNames = new Set<string>()
+
+function getBackendHomePath(menus: Menu[] | null | undefined) {
+  return firstNavigableMenuPath(filterVisibleMenus(menus || [])) || '/no-permission'
+}
 
 // 根据菜单生成路由
 function generateRoutes(menus: Menu[]): RouteRecordRaw[] {
@@ -271,7 +269,7 @@ router.beforeEach(async (to, from, next) => {
       return
     }
     if (userStore.menus && userStore.menus.length > 0) {
-      next('/dashboard')
+      next(getBackendHomePath(userStore.menus))
       return
     }
     next()
@@ -303,7 +301,8 @@ router.beforeEach(async (to, from, next) => {
       // 无前台模式：所有前台路由不可访问
       if (userStore.token) {
         // 已登录用户：有菜单回后台，无菜单去等待页
-        next(userStore.menus && userStore.menus.length > 0 ? '/dashboard' : '/no-permission')
+        addDynamicRoutes(userStore.menus)
+        next(getBackendHomePath(userStore.menus))
       } else {
         next('/login')
       }
@@ -345,6 +344,11 @@ router.beforeEach(async (to, from, next) => {
         return
       }
       
+      if (to.path === '/') {
+        next(getBackendHomePath(userStore.menus))
+        return
+      }
+
       // 重新导航到目标路由（确保动态路由已添加）
       // 使用 nextTick 确保路由已完全注册
       next({ ...to, replace: true })
@@ -374,6 +378,11 @@ router.beforeEach(async (to, from, next) => {
     } else {
       next('/front')
     }
+    return
+  }
+
+  if (to.path === '/') {
+    next(getBackendHomePath(userStore.menus))
     return
   }
 

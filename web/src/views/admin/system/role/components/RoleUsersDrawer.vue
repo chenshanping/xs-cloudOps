@@ -1,12 +1,20 @@
 <template>
   <a-drawer
     :open="open"
-    :title="`关联用户 - ${roleName}`"
-    width="720"
+    :width="drawerWidth"
     placement="right"
+    :mask-closable="false"
     destroyOnClose
+    :class="['permission-drawer', { 'permission-drawer--dark': uiStore.isDark }]"
     @close="emit('update:open', false)"
   >
+    <template #title>
+      <RoleDrawerContextHeader
+        title="关联用户"
+        :role-name="roleName"
+      />
+    </template>
+
     <a-table
       :columns="columns"
       :data-source="users"
@@ -43,6 +51,9 @@
 </template>
 
 <script setup lang="ts">
+import RoleDrawerContextHeader from './RoleDrawerContextHeader.vue'
+import { useResponsiveDrawerWidth } from './useResponsiveDrawerWidth'
+import { useUiStore } from '@/store/ui'
 import type { User } from '@/types'
 
 interface DrawerPagination {
@@ -60,6 +71,8 @@ interface Props {
 }
 
 defineProps<Props>()
+const uiStore = useUiStore()
+const { drawerWidth } = useResponsiveDrawerWidth(720, 640)
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
@@ -79,6 +92,8 @@ const handlePageChange = (page: number) => {
 </script>
 
 <style scoped>
+@import './rolePermissionDrawerShared.css';
+
 .drawer-pagination {
   display: flex;
   justify-content: flex-end;

@@ -653,6 +653,62 @@ func TestRoleServiceSavePermissionsUsesDirectAndInheritedApis(t *testing.T) {
 	}
 }
 
+func TestRoleServiceSavePermissionsForOperatorPreservesDirectApisForNonSuperOperator(t *testing.T) {
+	db := setupRoleAssignmentTestDB(t)
+	enforcer := setupRoleAssignmentTestEnforcer(t, db)
+
+	operatorRole := model.SysRole{Name: "业务权限管理员", Code: "business-permission-operator", Status: 1}
+	if err := db.Create(&operatorRole).Error; err != nil {
+		t.Fatalf("create operator role: %v", err)
+	}
+
+	targetRole := model.SysRole{Name: "业务角色", Code: "business-target-role", Status: 1}
+	if err := db.Create(&targetRole).Error; err != nil {
+		t.Fatalf("create target role: %v", err)
+	}
+
+	existingDirectAPI := model.SysApi{Path: "/api/v1/existing-direct", Method: "GET", Group: "测试", Description: "已有直授", NeedAuth: true}
+	requestedDirectAPI := model.SysApi{Path: "/api/v1/requested-direct", Method: "POST", Group: "测试", Description: "请求直授", NeedAuth: true}
+	for _, api := range []*model.SysApi{&existingDirectAPI, &requestedDirectAPI} {
+		if err := db.Create(api).Error; err != nil {
+			t.Fatalf("create api %s %s: %v", api.Method, api.Path, err)
+		}
+	}
+
+	if err := Role.AssignApis(targetRole.ID, []uint{existingDirectAPI.ID}); err != nil {
+		t.Fatalf("AssignApis error: %v", err)
+	}
+
+	if err := Role.SavePermissionsForOperator(targetRole.ID, &request.SaveRolePermissionsRequest{
+		MenuIds:      []uint{},
+		DirectApiIds: []uint{requestedDirectAPI.ID},
+	}, []uint{operatorRole.ID}); err != nil {
+		t.Fatalf("SavePermissionsForOperator error: %v", err)
+	}
+
+	detail, err := Role.GetRole(targetRole.ID)
+	if err != nil {
+		t.Fatalf("GetRole error: %v", err)
+	}
+	if len(detail.Apis) != 1 || detail.Apis[0].ID != existingDirectAPI.ID {
+		t.Fatalf("direct apis changed by non-super operator: got %+v, want existing api %d", detail.Apis, existingDirectAPI.ID)
+	}
+	ok, err := enforcer.Enforce(targetRole.Code, existingDirectAPI.Path, existingDirectAPI.Method)
+	if err != nil {
+		t.Fatalf("enforce existing direct api: %v", err)
+	}
+	if !ok {
+		t.Fatalf("expected existing direct api policy to remain")
+	}
+	ok, err = enforcer.Enforce(targetRole.Code, requestedDirectAPI.Path, requestedDirectAPI.Method)
+	if err != nil {
+		t.Fatalf("enforce requested direct api: %v", err)
+	}
+	if ok {
+		t.Fatalf("non-super operator should not grant requested direct api")
+	}
+}
+
 func TestRoleServiceSavePermissionsRollsBackOnInvalidDataScope(t *testing.T) {
 	db := setupRoleAssignmentTestDB(t)
 	enforcer := setupRoleAssignmentTestEnforcer(t, db)
@@ -860,9 +916,17 @@ func TestRoleApiSavePermissionsEndpointUsesUnifiedPayload(t *testing.T) {
 	if err := db.Create(&role).Error; err != nil {
 		t.Fatalf("create role: %v", err)
 	}
+	operatorRole := model.SysRole{Name: "超管操作者", Code: "role-api-save-operator", Status: 1, IsSuperAdmin: true}
+	if err := db.Create(&operatorRole).Error; err != nil {
+		t.Fatalf("create operator role: %v", err)
+	}
 
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set(middleware.ContextRoleIDsKey, []uint{operatorRole.ID})
+		c.Next()
+	})
 	router.PUT("/api/v1/roles/:id/permissions", v1.Role.SavePermissions)
 
 	body := `{"menu_ids":[` + toUintString(pageMenu.ID) + `],"direct_api_ids":[` + toUintString(directAPI.ID) + `],"scopes":[]}`

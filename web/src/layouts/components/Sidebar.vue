@@ -8,7 +8,7 @@
     :width="uiStore.layout.sidebarWidth"
     :class="['sider', { 'sider-dark': sidebarTheme === 'dark' }]"
   >
-    <div class="logo" @click="router.push('/dashboard')">
+    <div class="logo" @click="router.push(backendHomePath)">
       <img :src="configStore.get('sys_logo')" alt="logo" class="logo-img" />
       <span v-if="!uiStore.layout.sidebarCollapsed" class="logo-title">
         {{ sidebarTitle }}
@@ -34,7 +34,6 @@
 <script setup lang="ts">
 import { computed, h, ref, watch } from 'vue'
 import type { ItemType, MenuInfo } from 'ant-design-vue/es/menu/src/interface'
-import { DashboardOutlined } from '@ant-design/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useConfigStore } from '@/store/config'
 import { useUiStore } from '@/store/ui'
@@ -43,6 +42,7 @@ import type { Menu } from '@/types'
 import {
   filterVisibleMenus,
   findMenuTrail,
+  firstNavigableMenuPath,
   firstNavigablePath,
   getMixedSidebarMenus,
   normalizePath,
@@ -65,6 +65,7 @@ const sidebarTitle = computed(() => {
 })
 
 const normalizedMenus = computed(() => filterVisibleMenus(userStore.menus || []))
+const backendHomePath = computed(() => firstNavigableMenuPath(normalizedMenus.value) || '/no-permission')
 
 const currentMenus = computed(() => {
   if (uiStore.layout.mode === 'mixed') {
@@ -97,14 +98,25 @@ const buildMenuItems = (menus: Menu[]): ItemType[] => {
   })
 }
 
-const menuItems = computed<ItemType[]>(() => [
-  {
-    key: '/dashboard',
-    icon: () => h(DashboardOutlined),
-    label: '首页',
-  },
-  ...buildMenuItems(currentMenus.value),
-])
+const menuItems = computed<ItemType[]>(() => buildMenuItems(currentMenus.value))
+
+const getSubmenuKey = (menu: Menu) => `menu-${menu.id}`
+
+const findTopSubmenuKey = (menus: Menu[], targetKey: string, topKey?: string): string | null => {
+  for (const menu of menus) {
+    const currentTopKey = topKey || getSubmenuKey(menu)
+    if (getSubmenuKey(menu) === targetKey) {
+      return currentTopKey
+    }
+    if (menu.children?.length) {
+      const matchedKey = findTopSubmenuKey(menu.children, targetKey, currentTopKey)
+      if (matchedKey) {
+        return matchedKey
+      }
+    }
+  }
+  return null
+}
 
 watch(
   () => [route.path, currentMenus.value, uiStore.layout.mode],
@@ -124,7 +136,19 @@ const handleMenuClick = ({ key }: MenuInfo) => {
 }
 
 const handleOpenChange = (keys: string[]) => {
-  openKeys.value = keys
+  const latestOpenKey = keys.find(key => !openKeys.value.includes(key))
+  if (!latestOpenKey) {
+    openKeys.value = keys
+    return
+  }
+
+  const latestTopKey = findTopSubmenuKey(currentMenus.value, latestOpenKey)
+  if (!latestTopKey) {
+    openKeys.value = keys
+    return
+  }
+
+  openKeys.value = keys.filter(key => findTopSubmenuKey(currentMenus.value, key) === latestTopKey)
 }
 </script>
 
@@ -154,11 +178,11 @@ const handleOpenChange = (keys: string[]) => {
 }
 
 .logo {
-  height: 64px;
+  height: var(--app-header-height, 64px);
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 20px;
+  padding: 0 var(--app-page-gap, 20px);
   cursor: pointer;
   border-bottom: 1px solid rgba(148, 163, 184, 0.12);
 }
@@ -170,7 +194,7 @@ const handleOpenChange = (keys: string[]) => {
 .logo-img {
   width: 34px;
   height: 34px;
-  border-radius: 10px;
+  border-radius: var(--app-radius-sm, 10px);
   object-fit: cover;
   flex-shrink: 0;
 }
@@ -207,7 +231,7 @@ const handleOpenChange = (keys: string[]) => {
 
 .sidebar-menu :deep(.ant-menu-item),
 .sidebar-menu :deep(.ant-menu-submenu-title) {
-  border-radius: 10px;
+  border-radius: var(--app-radius-sm, 10px);
 }
 
 .sidebar-menu :deep(.ant-menu-item),

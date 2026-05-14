@@ -11,9 +11,27 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
 )
+
+// truncateUTF8 按 rune 安全截断字符串，避免在多字节字符中间切断导致 MySQL utf8mb4 校验失败。
+func truncateUTF8(s string, maxBytes int) string {
+	if len(s) <= maxBytes {
+		return s
+	}
+	// 从 maxBytes 处向前回退到一个合法 rune 边界
+	cut := maxBytes
+	for cut > 0 && !utf8.RuneStart(s[cut]) {
+		cut--
+	}
+	// 再次校验回退后这段确实是完整有效的 UTF-8
+	for cut > 0 && !utf8.ValidString(s[:cut]) {
+		cut--
+	}
+	return s[:cut] + "..."
+}
 
 // 需要跳过记录的路径前缀
 var skipLogPaths = []string{
@@ -194,7 +212,7 @@ func OperationLog() gin.HandlerFunc {
 			} else {
 				// 普通请求，读取请求体
 				bodyBytes, _ := io.ReadAll(c.Request.Body)
-				requestBody = sanitizeLogPayload(string(bodyBytes))
+				requestBody = truncateUTF8(sanitizeLogPayload(string(bodyBytes)), 2000)
 				c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 			}
 		}
@@ -233,11 +251,8 @@ func OperationLog() gin.HandlerFunc {
 			fullResponseBody := writer.body.String()
 			businessCode = parseBusinessCode(fullResponseBody)
 
-			// 限制响应体长度
-			responseBody = sanitizeLogPayload(fullResponseBody)
-			if len(responseBody) > 1000 {
-				responseBody = responseBody[:1000] + "..."
-			}
+			// 限制响应体长度（按 rune 边界截断，避免破坏多字节字符导致 MySQL utf8mb4 校验失败）
+			responseBody = truncateUTF8(sanitizeLogPayload(fullResponseBody), 1000)
 		}
 
 		// 获取路由元信息（使用 FullPath 获取路由模板，如 /api/v1/roles/:id/menus）

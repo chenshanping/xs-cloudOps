@@ -101,11 +101,11 @@
 
     <template #footer>
       <div class="editor-footer">
-        <a-button v-if="isEdit" danger @click="emit('remove')">删除模型</a-button>
+        <a-button v-if="isEdit && canDelete" danger @click="emit('remove')">删除模型</a-button>
         <a-space>
           <a-button @click="handleClose">取消</a-button>
-          <a-button @click="handleTest">测试模型</a-button>
-          <a-button type="primary" @click="handleSubmit">确认</a-button>
+          <a-button :disabled="!canTest" @click="handleTest">测试模型</a-button>
+          <a-button type="primary" :disabled="!canSubmit" @click="handleSubmit">确认</a-button>
         </a-space>
       </div>
     </template>
@@ -129,6 +129,9 @@ const props = defineProps<{
   isEdit: boolean
   model?: Partial<AIModel> | null
   providerName: string
+  canDelete: boolean
+  canSubmit: boolean
+  canTest: boolean
 }>()
 
 const emit = defineEmits<{
@@ -160,6 +163,9 @@ const handleClose = () => {
 const buildPayload = () => normalizeModel(formState)
 
 const handleSubmit = async () => {
+  if (!props.canSubmit) {
+    return
+  }
   try {
     await formRef.value?.validate()
   } catch {
@@ -169,6 +175,9 @@ const handleSubmit = async () => {
 }
 
 const handleTest = async () => {
+  if (!props.canTest) {
+    return
+  }
   try {
     await formRef.value?.validateFields(['id'])
   } catch {

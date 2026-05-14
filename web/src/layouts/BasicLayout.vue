@@ -59,7 +59,7 @@ const contentStyle = computed(() => {
   return {
     margin: padding,
     padding,
-    borderRadius: '16px',
+    borderRadius: 'var(--app-radius-lg, 16px)',
     minHeight: '280px',
     overflow: 'auto',
     background: 'var(--app-surface-color)',
@@ -91,6 +91,7 @@ const contentStyle = computed(() => {
 
 .content {
   flex: 1;
+  box-sizing: border-box;
 }
 
 .loading-container {
@@ -113,7 +114,7 @@ const contentStyle = computed(() => {
   .content {
     margin: 12px !important;
     padding: 12px !important;
-    border-radius: 12px !important;
+    border-radius: var(--app-radius-md, 12px) !important;
   }
 }
 </style>

@@ -1,5 +1,11 @@
 <template>
-  <div class="file-upload">
+  <div
+    ref="uploadRootRef"
+    class="file-upload"
+    tabindex="0"
+    @click="focusUploadRoot"
+    @paste="handlePaste"
+  >
     <a-upload-dragger
       v-model:file-list="fileList"
       :multiple="multiple"
@@ -15,7 +21,7 @@
       <p class="ant-upload-text">点击或拖拽文件到此区域上传</p>
       <p class="ant-upload-hint" v-if="hint">{{ hint }}</p>
       <p class="ant-upload-hint" v-else>
-        支持单个或批量上传{{ maxSize ? `，单个文件最大 ${formatFileSize(maxSize)}` : '' }}
+        支持单个或批量上传，也可直接粘贴文件{{ maxSize ? `，单个文件最大 ${formatFileSize(maxSize)}` : '' }}
       </p>
     </a-upload-dragger>
 
@@ -84,6 +90,7 @@ import {
   validateFileType,
   validateFileSize,
 } from '@/utils/upload'
+import { getClipboardFiles, isEditablePasteTarget } from '@/utils/upload-paste'
 
 interface Props {
   multiple?: boolean
@@ -105,9 +112,9 @@ const emit = defineEmits<{
 
 const fileList = ref<any[]>([])
 const uploadList = ref<UploadProgress[]>([])
+const uploadRootRef = ref<HTMLElement>()
 
-// 上传前校验
-const handleBeforeUpload: UploadProps['beforeUpload'] = (file) => {
+const isFileAccepted = (file: File) => {
   // 校验文件类型
   if (props.accept && !validateFileType(file, props.accept)) {
     message.error(`不支持的文件类型: ${file.name}`)
@@ -123,9 +130,18 @@ const handleBeforeUpload: UploadProps['beforeUpload'] = (file) => {
   return true
 }
 
-// 自定义上传
-const handleCustomUpload: UploadProps['customRequest'] = async (options) => {
-  const file = options.file as File
+// 上传前校验
+const handleBeforeUpload: UploadProps['beforeUpload'] = (file) => {
+  return isFileAccepted(file)
+}
+
+const uploadFile = async (
+  file: File,
+  callbacks?: {
+    onSuccess?: (result: FileInfo) => void
+    onError?: (error: Error) => void
+  }
+) => {
   const index = uploadList.value.length
 
   // 添加到上传列表
@@ -153,13 +169,47 @@ const handleCustomUpload: UploadProps['customRequest'] = async (options) => {
     uploadList.value[index].progress = 100
     uploadList.value[index].result = result
     emit('success', result)
-    options.onSuccess?.(result)
+    callbacks?.onSuccess?.(result)
   } catch (error) {
     // 上传失败
     uploadList.value[index].status = 'error'
     uploadList.value[index].error = (error as Error).message
     emit('error', error as Error, file)
-    options.onError?.(error as Error)
+    callbacks?.onError?.(error as Error)
+  }
+}
+
+// 自定义上传
+const handleCustomUpload: UploadProps['customRequest'] = async (options) => {
+  const file = options.file as File
+  await uploadFile(file, {
+    onSuccess: (result) => options.onSuccess?.(result),
+    onError: (error) => options.onError?.(error),
+  })
+}
+
+const focusUploadRoot = () => {
+  uploadRootRef.value?.focus()
+}
+
+const handlePaste = async (event: ClipboardEvent) => {
+  if (isEditablePasteTarget(event.target)) {
+    return
+  }
+
+  const files = getClipboardFiles(event, {
+    multiple: props.multiple,
+  })
+
+  if (files.length === 0) {
+    return
+  }
+
+  event.preventDefault()
+  for (const file of files) {
+    if (isFileAccepted(file)) {
+      await uploadFile(file)
+    }
   }
 }
 
@@ -217,6 +267,12 @@ defineExpose({
 <style scoped>
 .file-upload {
   width: 100%;
+  outline: none;
+  border-radius: 8px;
+}
+
+.file-upload:focus-within :deep(.ant-upload-drag) {
+  border-color: #1677ff;
 }
 
 .upload-list {

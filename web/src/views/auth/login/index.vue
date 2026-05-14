@@ -1,7 +1,15 @@
 <template>
   <AuthLayout>
     <div class="form-header">
-      <h2>{{ configStore.get('login_title') }}</h2>
+      <div class="form-header__title-row">
+        <img
+          v-if="configStore.get('sys_logo')"
+          :src="configStore.get('sys_logo')"
+          alt="Logo"
+          class="form-header__logo"
+        />
+        <h2>{{ configStore.get('login_title') }}</h2>
+      </div>
       <p>登录您的账户</p>
     </div>
 
@@ -257,11 +265,27 @@ onMounted(async() => {
   text-align: center;
   margin-bottom: 32px;
 
+  .form-header__title-row {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .form-header__logo {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    object-fit: cover;
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.18);
+  }
+
   h2 {
     font-size: 26px;
     font-weight: 600;
     color: #1a1a2e;
-    margin: 0 0 8px 0;
+    margin: 0;
   }
 
   p {

@@ -1,96 +1,137 @@
 <template>
-  <div class="file-page">
-    <a-card>
-      <a-tabs v-model:activeKey="activeTab">
-        <a-tab-pane key="list" tab="文件列表">
-          <ProTable
-            :title="'文件列表'"
-            :columns="columns"
-            :data-source="fileList"
-            :loading="loading"
-            :pagination="pagination"
-            row-key="id"
-            :row-selection="{ selectedRowKeys, onChange: onSelectChange }"
-            @search="handleSearch"
-            @reset="handleReset"
-            @change="handleTableChange"
-          >
-            <template #search>
-              <a-form-item>
-                <a-input v-model:value="searchForm.name" placeholder="文件名" allowClear style="width: 200px" />
-              </a-form-item>
-              <a-form-item>
-                <a-select v-model:value="searchForm.ext" placeholder="文件类型" allowClear style="width: 120px">
-                  <a-select-option value="">全部</a-select-option>
-                  <a-select-option v-for="item in FILE_TYPES" :key="item.value" :value="item.value">
-                    {{ item.label }}
-                  </a-select-option>
-                </a-select>
-              </a-form-item>
-              <a-form-item label="仅看未引用">
-                <a-switch v-model:checked="searchForm.unreferencedOnly" />
-              </a-form-item>
-            </template>
+  <PageWrapper class="file-page">
+    <div class="file-page__content">
+      <div class="file-stats">
+        <div class="file-stats__item">
+          <span class="file-stats__label">文件总数</span>
+          <span class="file-stats__value">{{ pagination.total }}</span>
+        </div>
+        <div v-if="selectedRowKeys.length" class="file-stats__item file-stats__item--accent">
+          <span class="file-stats__label">已选中</span>
+          <span class="file-stats__value">{{ selectedRowKeys.length }}</span>
+        </div>
+        <div class="file-stats__item">
+          <span class="file-stats__label">当前默认存储</span>
+          <span class="file-stats__value file-stats__value--text">{{ currentStorageLabel }}</span>
+        </div>
+      </div>
 
-            <template #toolbar>
-              <a-button @click="migrationVisible = true">
-                文件迁移
-              </a-button>
-              <a-button type="primary" danger :disabled="selectedRowKeys.length === 0" @click="handleBatchDelete">
-                <DeleteOutlined /> 批量删除
-                <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
-              </a-button>
-            </template>
+      <a-card :bordered="false" class="file-page__tabs-card">
+        <a-tabs v-model:activeKey="activeTab">
+          <a-tab-pane key="list" tab="文件列表">
+            <ProTable
+              :title="'文件列表'"
+              :columns="columns"
+              :data-source="fileList"
+              :loading="loading"
+              :pagination="pagination"
+              row-key="id"
+              :row-selection="{ selectedRowKeys, onChange: onSelectChange }"
+              @search="handleSearch"
+              @reset="handleReset"
+              @change="handleTableChange"
+            >
+              <template #search>
+                <a-form-item>
+                  <a-input v-model:value="searchForm.name" placeholder="文件名" allowClear style="width: 200px" />
+                </a-form-item>
+                <a-form-item>
+                  <a-select v-model:value="searchForm.ext" placeholder="文件类型" allowClear style="width: 120px">
+                    <a-select-option value="">全部</a-select-option>
+                    <a-select-option v-for="item in FILE_TYPES" :key="item.value" :value="item.value">
+                      {{ item.label }}
+                    </a-select-option>
+                  </a-select>
+                </a-form-item>
+                <a-form-item label="仅看未引用">
+                  <a-switch v-model:checked="searchForm.unreferencedOnly" />
+                </a-form-item>
+              </template>
 
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'name'">
-                <div class="file-name-cell">
-                  <img v-if="isExtImg(record.ext)" :src="record.url" style="width: 50px;height: 50px;" />
-                  <component v-else :is="getFileIconComponent(record.ext)" class="file-icon" />
-                  <a-tooltip :title="record.name">
-                    <span class="file-name">{{ record.name }}</span>
-                  </a-tooltip>
-                </div>
+              <template #toolbar>
+                <a-space>
+                  <a-button @click="migrationVisible = true" v-permission="'system:file:migrate'">
+                    <SwapOutlined /> 文件迁移
+                  </a-button>
+                  <a-button
+                    type="primary"
+                    danger
+                    :disabled="selectedRowKeys.length === 0"
+                    @click="handleBatchDelete"
+                    v-permission="'system:file:batchDelete'"
+                  >
+                    <DeleteOutlined /> 批量删除
+                    <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
+                  </a-button>
+                </a-space>
               </template>
-              <template v-if="column.key === 'size'">
-                {{ formatFileSize(record.size) }}
-              </template>
-              <template v-if="column.key === 'ext'">
-                <a-tag :color="getFileTypeInfo(record.ext)?.color">{{ getFileTypeInfo(record.ext)?.label || record.ext?.toUpperCase() }}</a-tag>
-              </template>
-              <template v-if="column.key === 'storage'">
-                <a-tag color="blue">
-                  {{ getStorageLabel(record) }}
-                </a-tag>
-              </template>
-              <template v-if="column.key === 'reference_count'">
-                <a-tag :color="record.reference_count > 0 ? 'processing' : 'default'">
-                  {{ record.reference_count > 0 ? `${record.reference_count} 处引用` : '未引用' }}
-                </a-tag>
-              </template>
-              <template v-if="column.key === 'created_at'">
-                {{ formatTime(record.created_at) }}
-              </template>
-              <template v-if="column.key === 'action'">
-                <a-button type="link" size="small" @click="handlePreview(record)">预览</a-button>
-                <a-button type="link" size="small" @click="handleCopyUrl(record)">复制链接</a-button>
-                <a-popconfirm title="确定删除吗？" @confirm="handleDelete(record)">
-                  <a-button type="link" size="small" danger>删除</a-button>
-                </a-popconfirm>
-              </template>
-            </template>
-          </ProTable>
-        </a-tab-pane>
 
-        <a-tab-pane key="upload" tab="上传文件">
-          <FileUpload
-            ref="fileUploadRef"
-            :multiple="true"
-            @success="handleUploadSuccess"
-          />
-        </a-tab-pane>
-      </a-tabs>
-    </a-card>
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'name'">
+                  <div class="file-name-cell">
+                    <div class="file-name-cell__thumb">
+                      <img v-if="isExtImg(record.ext)" :src="record.url" class="file-name-cell__img" />
+                      <component v-else :is="getFileIconComponent(record.ext)" class="file-icon" />
+                    </div>
+                    <a-tooltip :title="record.name">
+                      <span class="file-name">{{ record.name }}</span>
+                    </a-tooltip>
+                  </div>
+                </template>
+                <template v-if="column.key === 'size'">
+                  {{ formatFileSize(record.size) }}
+                </template>
+                <template v-if="column.key === 'ext'">
+                  <a-tag :color="getFileTypeInfo(record.ext)?.color">{{ getFileTypeInfo(record.ext)?.label || record.ext?.toUpperCase() }}</a-tag>
+                </template>
+                <template v-if="column.key === 'storage'">
+                  <a-tag color="blue">
+                    {{ getStorageLabel(record) }}
+                  </a-tag>
+                </template>
+                <template v-if="column.key === 'reference_count'">
+                  <a-tag :color="record.reference_count > 0 ? 'processing' : 'default'">
+                    {{ record.reference_count > 0 ? `${record.reference_count} 处引用` : '未引用' }}
+                  </a-tag>
+                </template>
+                <template v-if="column.key === 'created_at'">
+                  {{ formatTime(record.created_at) }}
+                </template>
+                <template v-if="column.key === 'action'">
+                  <a-space :size="0">
+                    <a-tooltip title="预览">
+                      <a-button type="link" size="small" @click="handlePreview(record)">
+                        <EyeOutlined />
+                      </a-button>
+                    </a-tooltip>
+                    <a-tooltip title="复制链接">
+                      <a-button type="link" size="small" @click="handleCopyUrl(record)">
+                        <LinkOutlined />
+                      </a-button>
+                    </a-tooltip>
+                    <a-popconfirm title="确定删除吗？" @confirm="handleDelete(record)">
+                      <a-tooltip title="删除">
+                        <a-button type="link" size="small" danger v-permission="'system:file:delete'">
+                          <DeleteOutlined />
+                        </a-button>
+                      </a-tooltip>
+                    </a-popconfirm>
+                  </a-space>
+                </template>
+              </template>
+            </ProTable>
+          </a-tab-pane>
+
+          <a-tab-pane v-if="canUploadFile" key="upload" tab="上传文件">
+            <FileUpload
+              ref="fileUploadRef"
+              :multiple="true"
+              @success="handleUploadSuccess"
+            />
+          </a-tab-pane>
+        </a-tabs>
+      </a-card>
+    </div>
 
     <FilePreview
       v-model:open="previewVisible"
@@ -108,12 +149,13 @@
       :current-default-storage-type="configStore.get('storage_type') || 'local'"
       @success="handleMigrationSuccess"
     />
-  </div>
+  </PageWrapper>
 </template>
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { message, Modal } from 'ant-design-vue'
+import PageWrapper from '@/components/page/PageWrapper.vue'
 import ProTable from '@/components/ProTable.vue'
 import {
   FileImageOutlined,
@@ -127,6 +169,9 @@ import {
   AudioOutlined,
   FileOutlined,
   DeleteOutlined,
+  EyeOutlined,
+  LinkOutlined,
+  SwapOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons-vue'
 import { createVNode } from 'vue'
@@ -138,10 +183,12 @@ import { getFileList, deleteFile, batchDeleteFiles } from '@/api/file'
 import { useConfigStore } from '@/store/config'
 import { formatFileSize } from '@/utils/upload'
 import { formatTime } from '@/utils/format'
+import { usePermission } from '@/utils/permission'
 import { storageTypeOptions } from '@/types/storage'
 import { getFilePreviewDescriptor } from '@/components/file-preview-utils'
 
 const configStore = useConfigStore()
+const { hasPermission } = usePermission()
 
 const activeTab = ref('list')
 const loading = ref(false)
@@ -151,6 +198,7 @@ const selectedRowKeys = ref<number[]>([])
 const previewVisible = ref(false)
 const previewFile = ref<FileInfo | null>(null)
 const migrationVisible = ref(false)
+const canUploadFile = computed(() => hasPermission('system:file:upload'))
 
 const searchForm = reactive({
   name: '',
@@ -266,7 +314,7 @@ const handleSearch = () => {
 const handleReset = () => {
   searchForm.name = ''
   searchForm.ext = ''
-  searchForm.referencedOnly = false
+  searchForm.unreferencedOnly = false
   pagination.current = 1
   fetchList()
 }
@@ -357,23 +405,102 @@ fetchList()
 
 <style scoped>
 .file-page {
-  height: 100%;
+  color: var(--app-text-color);
+}
+
+.file-page__content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: var(--app-text-color);
+}
+
+.file-page__tabs-card {
+  border: 1px solid var(--app-border-color);
+  border-radius: 10px;
+  box-shadow: var(--app-card-shadow, 0 4px 16px rgb(15 23 42 / 4%));
+}
+
+.file-stats {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 4px 4px 20px;
+  flex-wrap: wrap;
+}
+
+.file-stats__item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: var(--app-surface-soft);
+  border: 1px solid var(--app-border-color);
+}
+
+.file-stats__item--accent {
+  border-color: var(--app-primary-color);
+  background: var(--app-primary-color-soft);
+}
+
+.file-stats__label {
+  color: var(--app-text-secondary);
+  font-size: 12px;
+}
+
+.file-stats__value {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--app-text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.file-stats__value--text {
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .file-name-cell {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  min-width: 0;
+}
+
+.file-name-cell__thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: var(--app-surface-soft);
+  border: 1px solid var(--app-border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.file-name-cell__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .file-icon {
   font-size: 18px;
-  color: #1890ff;
+  color: var(--app-primary-color, #1890ff);
 }
 
 .file-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .file-page__content {
+    gap: 12px;
+  }
 }
 </style>

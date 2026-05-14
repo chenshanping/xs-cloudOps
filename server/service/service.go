@@ -8,6 +8,7 @@ import (
 	"server/service/captcha"
 	"server/service/configsvc"
 	"server/service/core"
+	"server/service/cronsvc"
 	"server/service/dept"
 	"server/service/dict"
 	"server/service/echart"
@@ -16,6 +17,7 @@ import (
 	"server/service/filesvc"
 	"server/service/logsvc"
 	"server/service/menu"
+	"server/service/monitorsvc"
 	"server/service/role"
 	"server/service/storagesvc"
 	"server/service/user"
@@ -34,6 +36,8 @@ var (
 	Config        = configsvc.Default
 	Storage       = storagesvc.Default
 	Log           = logsvc.Default
+	Monitor       = monitorsvc.Default
+	Cron          = cronsvc.Default
 	Email         = email.Default
 	Cache         = core.Default
 	Echart        = echart.Default

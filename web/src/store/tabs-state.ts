@@ -12,15 +12,6 @@ export interface TabsStateSnapshot {
   activeKey: string
 }
 
-export const HOME_TAB: TabItem = {
-  key: '/dashboard',
-  path: '/dashboard',
-  fullPath: '/dashboard',
-  title: '首页',
-  name: 'Dashboard',
-  affix: true,
-}
-
 function uniqueTabs(tabs: TabItem[]) {
   const seen = new Set<string>()
   const result: TabItem[] = []
@@ -36,27 +27,15 @@ function uniqueTabs(tabs: TabItem[]) {
   return result
 }
 
-function ensureHomeTab(tabs: TabItem[]) {
-  const merged = uniqueTabs([HOME_TAB, ...tabs])
-  const homeIndex = merged.findIndex((tab) => tab.key === HOME_TAB.key)
-
-  if (homeIndex > 0) {
-    const [home] = merged.splice(homeIndex, 1)
-    merged.unshift(home)
-  }
-
-  return merged
-}
-
 function resolveActiveKey(tabs: TabItem[], preferredKey?: string) {
   if (preferredKey && tabs.some((tab) => tab.key === preferredKey)) {
     return preferredKey
   }
-  return tabs[tabs.length - 1]?.key || HOME_TAB.key
+  return tabs[tabs.length - 1]?.key || ''
 }
 
 export function createInitialTabsState(tabs: TabItem[], activeKey?: string): TabsStateSnapshot {
-  const normalizedTabs = ensureHomeTab(tabs)
+  const normalizedTabs = uniqueTabs(tabs)
   return {
     tabs: normalizedTabs,
     activeKey: resolveActiveKey(normalizedTabs, activeKey),
@@ -89,7 +68,7 @@ export function closeTab(state: TabsStateSnapshot, targetKey: string): TabsState
 
   const nextTabs = state.tabs.filter((tab) => tab.key !== targetKey)
   const fallbackKey = state.activeKey === targetKey
-    ? nextTabs[currentIndex]?.key || nextTabs[currentIndex - 1]?.key || HOME_TAB.key
+    ? nextTabs[currentIndex]?.key || nextTabs[currentIndex - 1]?.key || ''
     : state.activeKey
 
   return createInitialTabsState(nextTabs, fallbackKey)
@@ -121,5 +100,5 @@ export function closeOtherTabs(state: TabsStateSnapshot, targetKey: string): Tab
 }
 
 export function closeAllTabs(): TabsStateSnapshot {
-  return createInitialTabsState([HOME_TAB], HOME_TAB.key)
+  return createInitialTabsState([])
 }

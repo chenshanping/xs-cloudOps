@@ -1,5 +1,5 @@
 <template>
-  <div class="group-list-header">一级菜单</div>
+  <div class="group-list-header">{{ headerTitle }}</div>
   <div class="group-list-content">
     <div
       v-for="menu in topMenus"
@@ -15,6 +15,16 @@
       />
       <span class="group-item-total">({{ getTotalCount(menu) }})</span>
     </div>
+
+    <!-- 虚拟入口：未分类 API（所有顶菜单之外的全局入口，只出现一次） -->
+    <div
+      v-if="uncategorizedCount > 0"
+      :class="['group-item', 'group-item--system', { active: selectedTopMenuId === uncategorizedMenuId }]"
+      @click="$emit('select', uncategorizedMenuId)"
+    >
+      <span class="group-item-name">未分类 API</span>
+      <a-tag color="default" class="group-item-tag">{{ uncategorizedCount }}</a-tag>
+    </div>
   </div>
 </template>
 
@@ -26,6 +36,9 @@ interface Props {
   topMenus: Menu[]
   selectedTopMenuId: number | null
   checkedMenuKeys: number[]
+  uncategorizedCount: number
+  uncategorizedMenuId: number
+  headerTitle?: string
 }
 
 const props = defineProps<Props>()
@@ -89,5 +102,18 @@ const getTotalCount = (menu: Menu) => collectAssignableMenuIds(menu).length
 .group-item-total {
   color: var(--permission-text-muted);
   font-size: 12px;
+}
+
+.group-item--system {
+  margin-top: 8px;
+  border-top: 1px dashed var(--permission-border);
+  background: var(--permission-surface-soft);
+}
+
+.group-item-tag {
+  margin: 0;
+  font-size: 11px;
+  line-height: 16px;
+  padding: 0 6px;
 }
 </style>

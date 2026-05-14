@@ -140,60 +140,67 @@ test('resource-specific scope options hide unsupported self scope', async () => 
   )
 })
 
-test('useRolePermissionDrawer loads data scope resources from backend API', () => {
-  const source = readUtf8('src/views/admin/system/role/components/useRolePermissionDrawer.ts')
+test('RoleDataScopeDrawer loads data scope resources from backend API', () => {
+  const source = readUtf8('src/views/admin/system/role/components/RoleDataScopeDrawer.vue')
 
   assert.match(source, /getDataScopeResources/)
   assert.match(
     source,
-    /Promise\.all\(\[\s*fetchMenuTree\(requestToken\)\s*,\s*fetchAllApis\(requestToken\)\s*,\s*fetchDataScopeResources\(requestToken\)\s*\]\)/,
-    'expected drawer open flow to fetch data scope resources in parallel'
+    /await fetchResources\(token\)[\s\S]*await loadRoleData\(token\)/,
+    'expected drawer open flow to fetch resources before loading role data'
   )
 })
 
-test('useRolePermissionDrawer resets stale interactive state and guards async loading', () => {
-  const source = readUtf8('src/views/admin/system/role/components/useRolePermissionDrawer.ts')
+test('RoleDataScopeDrawer resets stale interactive state and guards async loading', () => {
+  const source = readUtf8('src/views/admin/system/role/components/RoleDataScopeDrawer.vue')
 
-  assert.match(source, /const\s+permissionLoading\s*=\s*ref\(false\)/)
-  assert.match(source, /const\s+permissionRequestToken\s*=\s*ref\(0\)/)
-  assert.match(source, /const\s+resetPermissionState\s*=\s*\(\)\s*=>\s*\{/)
-  assert.match(source, /selectedMenuKeys\.value\s*=\s*\[\]/)
-  assert.match(source, /checkedApiIds\.value\s*=\s*\[\]/)
+  assert.match(source, /const\s+loading\s*=\s*ref\(false\)/)
+  assert.match(source, /const\s+requestToken\s*=\s*ref\(0\)/)
+  assert.match(source, /const\s+resetState\s*=\s*\(\)\s*=>\s*\{/)
+  assert.match(source, /featureDataScopes\.value\s*=\s*\[\]/)
+  assert.match(source, /unknownFeatureDataScopes\.value\s*=\s*\[\]/)
   assert.match(source, /defaultDataScope\.value\s*=\s*1/)
   assert.match(source, /resourceDefinitions\.value\s*=\s*\[\]/)
-  assert.match(source, /featureDataScopes\.value\s*=\s*\[\]/)
   assert.match(
     source,
-    /const\s+requestToken\s*=\s*\+\+permissionRequestToken\.value[\s\S]*permissionLoading\.value\s*=\s*true[\s\S]*resetPermissionState\(\)[\s\S]*await Promise\.all\(\[\s*fetchMenuTree\(requestToken\)\s*,\s*fetchAllApis\(requestToken\)\s*,\s*fetchDataScopeResources\(requestToken\)\s*\]\)/,
-    'expected opening flow to synchronously enter loading mode, reset stale state, and pass request token through loaders'
+    /const\s+token\s*=\s*\+\+requestToken\.value[\s\S]*loading\.value\s*=\s*true[\s\S]*resetState\(\)/,
+    'expected opening flow to synchronously enter loading mode and reset stale state'
   )
   assert.match(
     source,
-    /if\s*\(requestToken\s*!==\s*permissionRequestToken\.value\)\s*\{\s*return\s*\}/,
+    /if\s*\(token\s*!==\s*requestToken\.value\)\s*return/,
     'expected stale async responses to be ignored by request token guard'
   )
 })
 
-test('RolePermissionDrawer disables save and suspends content while permissions load', () => {
-  const source = readUtf8('src/views/admin/system/role/components/RolePermissionDrawer.vue')
+test('split role permission drawers disable save and suspend content while loading', () => {
+  const menuSource = readUtf8('src/views/admin/system/role/components/RolePermissionMenuDrawer.vue')
+  assert.match(menuSource, /permissionLoading/)
+  assert.match(menuSource, /:spinning="permissionLoading"/)
+  assert.match(menuSource, /:disabled="permissionLoading"/)
 
-  assert.match(source, /permissionLoading/)
-  assert.match(source, /:spinning="permissionLoading"/)
-  assert.match(source, /:disabled="permissionLoading"/)
+  const apiSource = readUtf8('src/views/admin/system/role/components/RolePermissionApiDrawer.vue')
+  assert.match(apiSource, /permissionLoading/)
+  assert.match(apiSource, /:spinning="permissionLoading"/)
+  assert.match(apiSource, /:disabled="permissionLoading"/)
+
+  const dataSource = readUtf8('src/views/admin/system/role/components/RoleDataScopeDrawer.vue')
+  assert.match(dataSource, /:spinning="loading"/)
+  assert.match(dataSource, /:disabled="loading"/)
 })
 
-test('unknown feature data scopes are preserved in the save path', () => {
-  const source = readUtf8('src/views/admin/system/role/components/useRolePermissionDrawer.ts')
+test('unknown feature data scopes are preserved in the data scope drawer save path', () => {
+  const source = readUtf8('src/views/admin/system/role/components/RoleDataScopeDrawer.vue')
 
   assert.match(source, /const\s+unknownFeatureDataScopes\s*=\s*ref<[^>]+>\(\[\]\)/)
   assert.match(
     source,
-    /splitKnownAndUnknownFeatureDataScopes\(\s*scopeResources\s*,\s*res\.data\.feature_data_scopes\s*\|\|\s*\[\]\s*\)/,
+    /splitKnownAndUnknownFeatureDataScopes\(\s*resourceDefinitions\.value\s*,\s*res\.data\.feature_data_scopes\s*\|\|\s*\[\]\s*\)/,
     'expected unknown scopes to be separated from rendered resources during load'
   )
   assert.match(
     source,
-    /buildRoleFeatureDataScopePayload\(\s*featureDataScopes\.value\s*,\s*unknownFeatureDataScopes\.value\s*\)/,
+    /buildRoleFeatureDataScopePayload\(featureDataScopes\.value,\s*unknownFeatureDataScopes\.value\)/,
     'expected save payload builder to merge rendered scopes with unknown preserved scopes'
   )
 })

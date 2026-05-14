@@ -83,7 +83,7 @@ export function updateAvatar(fileId: number) {
 }
 
 export function forceUserOffline(id: number) {
-  return request.post(`/users/${id}/offline`)
+  return request.post(`/user/${id}/offline`)
 }
 
 // 下载用户导入模板

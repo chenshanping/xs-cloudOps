@@ -5,6 +5,8 @@ export interface PermissionMenuItem {
   level: number
 }
 
+export type ApiAssignmentSource = 'menu' | 'heuristic'
+
 export interface PermissionPageSection {
   id: string
   topMenuId: number
@@ -12,6 +14,10 @@ export interface PermissionPageSection {
   pageMenu: Menu
   menuItems: PermissionMenuItem[]
   apis: Api[]
+  /** 标记每个 API 是来自菜单显式绑定还是启发式推测 */
+  apiSourceMap: Record<number, ApiAssignmentSource>
+  /** 权威来源：source=menu 时记录哪个菜单绑了它 */
+  apiMenuSourceMap: Record<number, string[]>
 }
 
 export interface PermissionViewModel {
@@ -236,7 +242,9 @@ export function buildPermissionViewModel(menuTree: Menu[], allApis: Api[]): Perm
         topMenuName: topMenu.name,
         pageMenu: root,
         menuItems: flattenMenuItems(root),
-        apis: []
+        apis: [],
+        apiSourceMap: {},
+        apiMenuSourceMap: {}
       }
       allSections.push(section)
       return section
@@ -244,31 +252,82 @@ export function buildPermissionViewModel(menuTree: Menu[], allApis: Api[]): Perm
     sectionsByTopMenu[topMenu.id] = sections
   })
 
+  const apiMap = new Map<number, Api>()
+  allApis.forEach(api => {
+    apiMap.set(api.id, api)
+  })
+
+  // 权威来源：记录所有被任何菜单显式绑定过的 API id
+  const menuBoundApiIds = new Set<number>()
+
+  // ---------- Pass 1: 按菜单显式绑定分组 (权威) ----------
+  allSections.forEach(section => {
+    const seen = new Set<number>()
+    section.menuItems.forEach(item => {
+      item.menu.apis?.forEach(menuApi => {
+        // 菜单 preload 下发的 API 可能是公开接口，与 allApis 不一致；
+        // 以 allApis (已过滤 need_auth=true) 作为权威可勾选集合。
+        const fullApi = apiMap.get(menuApi.id)
+        if (!fullApi || seen.has(fullApi.id)) {
+          return
+        }
+        seen.add(fullApi.id)
+        menuBoundApiIds.add(fullApi.id)
+        section.apis.push(fullApi)
+        section.apiSourceMap[fullApi.id] = 'menu'
+        const sources = section.apiMenuSourceMap[fullApi.id] || []
+        if (!sources.includes(item.menu.name)) {
+          sources.push(item.menu.name)
+        }
+        section.apiMenuSourceMap[fullApi.id] = sources
+      })
+    })
+  })
+
+  // ---------- Pass 2: 未被菜单绑定的 API 走启发式分组 (推测) ----------
   const uncategorizedApis: Api[] = []
   allApis.forEach(api => {
+    if (menuBoundApiIds.has(api.id)) {
+      return
+    }
+
     const overridePageName = API_SECTION_OVERRIDES[api.path]
     if (overridePageName) {
       const matchedSection = allSections.find(section => section.pageMenu.name === overridePageName)
       if (matchedSection) {
         matchedSection.apis.push(api)
+        matchedSection.apiSourceMap[api.id] = 'heuristic'
         return
       }
     }
 
     let bestSection: PermissionPageSection | null = null
     let bestScore = 0
-    allSections.forEach(section => {
+    for (const section of allSections) {
       const score = scoreApiToSection(api, section)
       if (score > bestScore) {
         bestScore = score
         bestSection = section
       }
-    })
+    }
     if (bestSection && bestScore >= 68) {
       bestSection.apis.push(api)
+      bestSection.apiSourceMap[api.id] = 'heuristic'
       return
     }
     uncategorizedApis.push(api)
+  })
+
+  // ---------- Pass 3: section.apis 排序，菜单绑定优先展示 ----------
+  allSections.forEach(section => {
+    section.apis.sort((a, b) => {
+      const sa = section.apiSourceMap[a.id] === 'menu' ? 0 : 1
+      const sb = section.apiSourceMap[b.id] === 'menu' ? 0 : 1
+      if (sa !== sb) {
+        return sa - sb
+      }
+      return (a.group || '').localeCompare(b.group || '', 'zh-CN')
+    })
   })
 
   return {

@@ -1,0 +1,263 @@
+:deep(.permission-drawer) {
+  --permission-surface: #ffffff;
+  --permission-surface-soft: #fafafa;
+  --permission-border: #f0f0f0;
+  --permission-border-soft: #f5f5f5;
+  --permission-hover: #f5f5f5;
+  --permission-text-secondary: #666666;
+  --permission-text-muted: #999999;
+  --permission-text-strong: #333333;
+  --permission-text-default: #262626;
+  --permission-code-bg: #f5f5f5;
+}
+
+:deep(.permission-drawer.permission-drawer--dark) {
+  --permission-surface: #161d29;
+  --permission-surface-soft: #1c2433;
+  --permission-border: rgba(148, 163, 184, 0.2);
+  --permission-border-soft: rgba(148, 163, 184, 0.16);
+  --permission-hover: rgba(148, 163, 184, 0.12);
+  --permission-text-secondary: rgba(255, 255, 255, 0.8);
+  --permission-text-muted: rgba(255, 255, 255, 0.62);
+  --permission-text-strong: rgba(255, 255, 255, 0.93);
+  --permission-text-default: rgba(255, 255, 255, 0.87);
+  --permission-code-bg: rgba(148, 163, 184, 0.14);
+}
+
+:deep(.permission-drawer .ant-drawer-header) {
+  background: #ffffff;
+  border-bottom-color: #f0f0f0;
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
+:deep(.permission-drawer.permission-drawer--dark .ant-drawer-header) {
+  background: #161d29;
+  border-bottom-color: rgba(148, 163, 184, 0.2);
+}
+
+:deep(.permission-drawer .ant-drawer-title) {
+  color: #333333;
+  line-height: 1;
+}
+
+:deep(.permission-drawer.permission-drawer--dark .ant-drawer-title) {
+  color: rgba(255, 255, 255, 0.93);
+}
+
+:deep(.permission-drawer .ant-drawer-close) {
+  color: #666666;
+}
+
+:deep(.permission-drawer.permission-drawer--dark .ant-drawer-close) {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+:deep(.permission-drawer .ant-drawer-close:hover) {
+  color: #333333;
+}
+
+:deep(.permission-drawer.permission-drawer--dark .ant-drawer-close:hover) {
+  color: rgba(255, 255, 255, 0.93);
+}
+
+:deep(.permission-drawer .ant-drawer-footer) {
+  background: #ffffff;
+  border-top-color: #f0f0f0;
+}
+
+:deep(.permission-drawer .ant-drawer-body) {
+  background: var(--permission-surface-soft);
+}
+
+:deep(.permission-drawer.permission-drawer--dark .ant-drawer-body) {
+  background: #161d29;
+  color: rgba(255, 255, 255, 0.87);
+}
+
+:deep(.permission-drawer.permission-drawer--dark .ant-drawer-footer) {
+  background: #161d29;
+  border-top-color: rgba(148, 163, 184, 0.2);
+}
+
+.permission-shell :deep(.ant-tabs-tab) {
+  color: var(--permission-text-strong) !important;
+}
+
+.permission-shell :deep(.ant-tabs-tab:hover) {
+  color: var(--permission-text-strong) !important;
+}
+
+.permission-shell :deep(.ant-tabs-tab-btn) {
+  color: inherit !important;
+}
+
+.permission-shell :deep(.ant-tabs-tab-active .ant-tabs-tab-btn) {
+  color: var(--app-primary-color, #006be6) !important;
+}
+
+.permission-shell :deep(.ant-tabs-ink-bar) {
+  background: var(--app-primary-color, #006be6);
+}
+
+.permission-shell :deep(.ant-input-affix-wrapper),
+.permission-shell :deep(.ant-input-search .ant-input),
+.permission-shell :deep(.ant-input-group-addon) {
+  background: var(--permission-surface);
+  border-color: var(--permission-border);
+}
+
+.permission-shell {
+  color: var(--permission-text-default);
+}
+
+.permission-shell--dark {
+  color: var(--permission-text-default);
+}
+
+.permission-shell :deep(.ant-input),
+.permission-shell :deep(.ant-input-affix-wrapper input) {
+  color: var(--permission-text-default);
+}
+
+.permission-shell :deep(.ant-input::placeholder),
+.permission-shell :deep(.ant-input-affix-wrapper input::placeholder) {
+  color: var(--permission-text-muted) !important;
+}
+
+.permission-shell :deep(.ant-input-prefix),
+.permission-shell :deep(.ant-input-suffix),
+.permission-shell :deep(.ant-input-search-button),
+.permission-shell :deep(.ant-input-search-button .anticon) {
+  color: var(--permission-text-secondary);
+}
+
+.permission-shell :deep(.ant-checkbox-wrapper),
+.permission-shell :deep(.ant-checkbox-wrapper span),
+.permission-shell :deep(.ant-form-item-label > label),
+.permission-shell :deep(.ant-card-head-title),
+.permission-shell :deep(.ant-alert-message),
+.permission-shell :deep(.ant-alert-description) {
+  color: var(--permission-text-default);
+}
+
+.permission-shell :deep(.ant-card) {
+  background: var(--permission-surface);
+  border-color: var(--permission-border);
+}
+
+.permission-shell :deep(.ant-card-head) {
+  background: var(--permission-surface-soft);
+  border-bottom-color: var(--permission-border);
+}
+
+.permission-shell :deep(.ant-card-body) {
+  color: var(--permission-text-default);
+}
+
+.permission-shell :deep(.ant-empty-description) {
+  color: var(--permission-text-secondary);
+}
+
+.permission-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--permission-border);
+  margin-bottom: 12px;
+}
+
+.selected-count {
+  color: var(--permission-text-strong);
+  font-size: 13px;
+}
+
+.permission-layout {
+  display: flex;
+  height: calc(100vh - 250px);
+  min-height: 0;
+  border: 1px solid var(--permission-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--permission-surface);
+}
+
+.permission-sidebar {
+  width: 240px;
+  min-height: 0;
+  border-right: 1px solid var(--permission-border);
+  display: flex;
+  flex-direction: column;
+  color: var(--permission-text-default);
+}
+
+.permission-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--permission-surface-soft);
+  color: var(--permission-text-default);
+}
+
+.section-tabs :deep(.ant-tabs-nav) {
+  margin-bottom: 12px;
+}
+
+.section-tabs :deep(.ant-tabs-tab) {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.section-tabs :deep(.ant-tabs-content-holder) {
+  min-height: 100%;
+}
+
+.content-empty {
+  margin: auto 0;
+}
+
+.system-api-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hint-tag {
+  margin-right: 0;
+}
+
+@media (max-width: 1280px) {
+  .permission-layout {
+    height: auto;
+    min-height: 640px;
+    flex-direction: column;
+  }
+
+  .permission-sidebar {
+    width: 100%;
+    border-right: 0;
+    border-bottom: 1px solid var(--permission-border);
+  }
+}
+
+@media (max-width: 768px) {
+  .permission-header {
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .permission-header :deep(.ant-input-search) {
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
+
+  .permission-content {
+    padding: 12px;
+  }
+}

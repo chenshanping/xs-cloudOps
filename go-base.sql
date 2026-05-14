@@ -663,6 +663,66 @@ INSERT INTO `sys_config` VALUES (54, '2026-05-02 03:40:07.133', '2026-05-05 01:0
 INSERT INTO `sys_config` VALUES (55, '2026-05-11 21:56:49.051', '2026-05-11 21:56:49.051', NULL, '', 'slider_captcha_bg_file_id', '0', 'string', '');
 
 -- ----------------------------
+-- Table structure for sys_cron_task
+-- ----------------------------
+DROP TABLE IF EXISTS `sys_cron_task`;
+CREATE TABLE `sys_cron_task`  (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `created_at` datetime(3) NULL DEFAULT NULL,
+  `updated_at` datetime(3) NULL DEFAULT NULL,
+  `deleted_at` datetime(3) NULL DEFAULT NULL,
+  `code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '任务实例编码',
+  `task_code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '注册任务编码',
+  `name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '任务名称',
+  `cron_expr` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT 'Cron表达式',
+  `params` json NULL COMMENT '任务参数',
+  `status` tinyint NOT NULL DEFAULT 0 COMMENT '状态 0禁用 1启用',
+  `last_run_at` datetime(3) NULL DEFAULT NULL COMMENT '上次执行时间',
+  `last_status` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '上次执行状态',
+  `last_duration_ms` bigint NULL DEFAULT 0 COMMENT '上次执行耗时毫秒',
+  `next_run_at` datetime(3) NULL DEFAULT NULL COMMENT '下次执行时间',
+  `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '备注',
+  `sort` bigint NOT NULL DEFAULT 0 COMMENT '排序',
+  `created_by` bigint UNSIGNED NULL DEFAULT 0 COMMENT '创建人ID',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_sys_cron_task_deleted_at`(`deleted_at` ASC) USING BTREE,
+  INDEX `idx_sys_cron_task_code`(`code` ASC) USING BTREE,
+  INDEX `idx_sys_cron_task_task_code`(`task_code` ASC) USING BTREE,
+  INDEX `idx_sys_cron_task_status`(`status` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
+-- Records of sys_cron_task
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for sys_cron_log
+-- ----------------------------
+DROP TABLE IF EXISTS `sys_cron_log`;
+CREATE TABLE `sys_cron_log`  (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `task_id` bigint UNSIGNED NOT NULL COMMENT '任务ID',
+  `task_code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '注册任务编码',
+  `started_at` datetime(3) NOT NULL COMMENT '开始时间',
+  `finished_at` datetime(3) NULL DEFAULT NULL COMMENT '结束时间',
+  `duration_ms` bigint NULL DEFAULT 0 COMMENT '耗时毫秒',
+  `status` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '执行状态',
+  `summary` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL COMMENT '执行摘要',
+  `error_message` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL COMMENT '错误信息',
+  `triggered_by` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '触发方式',
+  `actor_user_id` bigint UNSIGNED NULL DEFAULT 0 COMMENT '手动触发用户ID',
+  `created_at` datetime(3) NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_sys_cron_log_task_id`(`task_id` ASC) USING BTREE,
+  INDEX `idx_sys_cron_log_started_at`(`started_at` ASC) USING BTREE,
+  INDEX `idx_sys_cron_log_status`(`status` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
+-- Records of sys_cron_log
+-- ----------------------------
+
+-- ----------------------------
 -- Table structure for sys_dept
 -- ----------------------------
 DROP TABLE IF EXISTS `sys_dept`;

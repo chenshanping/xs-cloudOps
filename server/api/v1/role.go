@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"server/middleware"
 	"server/model/request"
 	"server/model/response"
 	"server/service"
@@ -37,6 +38,14 @@ func (a *RoleApi) GetRole(c *gin.Context) {
 	if err != nil {
 		response.Fail(c, "获取角色信息失败")
 		return
+	}
+	hasSuperAdmin, err := service.Role.HasSuperAdminRoleIDs(middleware.GetUserRoleIDs(c))
+	if err != nil {
+		response.Fail(c, "权限校验失败")
+		return
+	}
+	if !hasSuperAdmin {
+		role.Apis = nil
 	}
 
 	response.OkWithData(c, role)
@@ -137,6 +146,16 @@ func (a *RoleApi) AssignApis(c *gin.Context) {
 		return
 	}
 
+	hasSuperAdmin, err := service.Role.HasSuperAdminRoleIDs(middleware.GetUserRoleIDs(c))
+	if err != nil {
+		response.Fail(c, "权限校验失败")
+		return
+	}
+	if !hasSuperAdmin {
+		response.Forbidden(c, "仅超级管理员可分配API权限")
+		return
+	}
+
 	if err := service.Role.AssignApis(uint(id), req.ApiIds); err != nil {
 		response.Fail(c, err.Error())
 		return
@@ -181,7 +200,7 @@ func (a *RoleApi) SavePermissions(c *gin.Context) {
 		return
 	}
 
-	if err := service.Role.SavePermissions(uint(id), &req); err != nil {
+	if err := service.Role.SavePermissionsForOperator(uint(id), &req, middleware.GetUserRoleIDs(c)); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}

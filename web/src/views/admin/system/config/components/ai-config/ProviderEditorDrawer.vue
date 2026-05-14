@@ -23,10 +23,10 @@
 
     <template #footer>
       <div class="drawer-footer">
-        <a-button v-if="isEdit" danger @click="emit('remove')">删除平台</a-button>
+        <a-button v-if="isEdit && canDelete" danger :loading="submitting" :disabled="submitting" @click="emit('remove')">删除平台</a-button>
         <a-space>
-          <a-button @click="handleClose">取消</a-button>
-          <a-button type="primary" @click="handleSubmit">确认</a-button>
+          <a-button :disabled="submitting" @click="handleClose">取消</a-button>
+          <a-button type="primary" :loading="submitting" :disabled="!canSubmit || submitting" @click="handleSubmit">确认</a-button>
         </a-space>
       </div>
     </template>
@@ -51,6 +51,9 @@ const props = defineProps<{
   initialValue?: Partial<AIProvider>
   isDefault: boolean
   existingNames: string[]
+  submitting: boolean
+  canDelete: boolean
+  canSubmit: boolean
 }>()
 
 const emit = defineEmits<{
@@ -111,6 +114,9 @@ const handleClose = () => {
 }
 
 const handleSubmit = async () => {
+  if (!props.canSubmit) {
+    return
+  }
   try {
     await formRef.value?.validate()
   } catch {

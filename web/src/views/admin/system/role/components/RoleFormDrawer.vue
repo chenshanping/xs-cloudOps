@@ -22,25 +22,6 @@
       <a-form-item label="超管角色">
         <a-switch v-model:checked="formState.is_super_admin" />
       </a-form-item>
-      <a-form-item label="默认数据范围" name="data_scope">
-        <a-select v-model:value="formState.data_scope" placeholder="请选择默认数据范围">
-          <a-select-option :value="1">全部数据</a-select-option>
-          <a-select-option :value="2">自定义部门</a-select-option>
-          <a-select-option :value="3">本部门</a-select-option>
-          <a-select-option :value="4">本部门及下级</a-select-option>
-          <a-select-option :value="5">仅本人</a-select-option>
-        </a-select>
-      </a-form-item>
-      <a-form-item v-if="formState.data_scope === 2" label="自定义部门" name="dept_ids">
-        <a-tree-select
-          v-model:value="formState.dept_ids"
-          :tree-data="deptOptions"
-          placeholder="请选择部门"
-          tree-default-expand-all
-          tree-checkable
-          multiple
-        />
-      </a-form-item>
       <a-form-item label="备注">
         <a-textarea v-model:value="formState.remark" />
       </a-form-item>
@@ -59,22 +40,12 @@
 import { computed, reactive, ref, watch } from 'vue'
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 
-interface TreeSelectOption {
-  key: string | number
-  title: string
-  value: number
-  disabled?: boolean
-  children?: TreeSelectOption[]
-}
-
 interface RoleFormValue {
   name: string
   code: string
   sort: number
   statusChecked: boolean
   is_super_admin: boolean
-  data_scope: number
-  dept_ids: number[]
   remark: string
 }
 
@@ -82,7 +53,6 @@ const props = defineProps<{
   open: boolean
   title: string
   isEdit: boolean
-  deptOptions: TreeSelectOption[]
   initialValue?: Partial<RoleFormValue>
 }>()
 
@@ -94,8 +64,6 @@ const emit = defineEmits<{
     sort: number
     status: number
     is_super_admin: boolean
-    data_scope: number
-    dept_ids: number[]
     remark: string
   }): void
 }>()
@@ -108,26 +76,13 @@ const formState = reactive<RoleFormValue>({
   sort: 0,
   statusChecked: true,
   is_super_admin: false,
-  data_scope: 1,
-  dept_ids: [],
   remark: ''
 })
 
 const formRules = computed<Record<string, Rule[]>>(() => ({
   name: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
   code: [{ required: true, message: '请输入角色编码', trigger: 'blur' }],
-  data_scope: [{ required: true, message: '请选择默认数据范围', trigger: 'change' }],
-  dept_ids: formState.data_scope === 2 ? [{ required: true, message: '请选择自定义部门', trigger: 'change' }] : []
 }))
-
-watch(
-  () => formState.data_scope,
-  value => {
-    if (value !== 2) {
-      formState.dept_ids = []
-    }
-  }
-)
 
 watch(
   () => [props.open, props.initialValue],
@@ -141,8 +96,6 @@ watch(
       sort: props.initialValue?.sort ?? 0,
       statusChecked: props.initialValue?.statusChecked ?? true,
       is_super_admin: props.initialValue?.is_super_admin ?? false,
-      data_scope: props.initialValue?.data_scope ?? 1,
-      dept_ids: props.initialValue?.dept_ids ? [...props.initialValue.dept_ids] : [],
       remark: props.initialValue?.remark ?? ''
     })
   },
@@ -167,8 +120,6 @@ const handleSubmit = async () => {
     sort: formState.sort || 0,
     status: formState.statusChecked ? 1 : 0,
     is_super_admin: formState.is_super_admin,
-    data_scope: formState.data_scope,
-    dept_ids: formState.data_scope === 2 ? [...formState.dept_ids] : [],
     remark: formState.remark
   })
 }

@@ -45,6 +45,18 @@ const applyThemeVariables = () => {
   const root = document.documentElement
   const primaryColor = uiStore.theme.primaryColor
   const isDark = uiStore.isDark
+  const contentGap = `${uiStore.contentPadding}px`
+  const compactContent = uiStore.theme.compactContent
+  const densityPalette = {
+    '--app-header-height': '64px',
+    '--app-page-gap': contentGap,
+    '--app-page-gap-sm': compactContent ? '12px' : '16px',
+    '--app-control-height': compactContent ? '32px' : '36px',
+    '--app-control-height-sm': compactContent ? '28px' : '30px',
+    '--app-radius-sm': compactContent ? '8px' : '10px',
+    '--app-radius-md': compactContent ? '10px' : '12px',
+    '--app-radius-lg': compactContent ? '16px' : '18px',
+  }
 
   const palette = isDark
     ? {
@@ -84,7 +96,7 @@ const applyThemeVariables = () => {
   root.style.colorScheme = isDark ? 'dark' : 'light'
   root.style.setProperty('--app-primary-color', primaryColor)
   root.style.setProperty('--app-primary-color-soft', hexToRgba(primaryColor, isDark ? 0.22 : 0.12))
-  Object.entries(palette).forEach(([name, value]) => {
+  Object.entries({ ...palette, ...densityPalette }).forEach(([name, value]) => {
     root.style.setProperty(name, value)
   })
 
@@ -101,7 +113,9 @@ const antdTheme = computed(() => ({
     colorPrimary: uiStore.theme.primaryColor,
     colorInfo: uiStore.theme.primaryColor,
     colorLink: uiStore.theme.primaryColor,
-    borderRadius: 10,
+    borderRadius: uiStore.theme.compactContent ? 8 : 10,
+    controlHeight: uiStore.theme.compactContent ? 32 : 36,
+    controlHeightSM: uiStore.theme.compactContent ? 28 : 30,
     colorBgLayout: uiStore.isDark ? '#0b1220' : '#f5f7fb',
     colorBgContainer: uiStore.isDark ? '#111b2d' : '#ffffff',
     colorBgElevated: uiStore.isDark ? '#1a2638' : '#ffffff',
@@ -117,7 +131,7 @@ watch(
 )
 
 watch(
-  () => uiStore.theme.primaryColor,
+  () => [uiStore.theme.primaryColor, uiStore.theme.compactContent],
   () => applyThemeVariables(),
   { immediate: true }
 )

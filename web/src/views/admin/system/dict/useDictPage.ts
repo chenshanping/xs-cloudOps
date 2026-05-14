@@ -1,5 +1,5 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { message } from 'ant-design-vue'
+import { message, Modal } from 'ant-design-vue'
 import {
   createDictData,
   createDictType,
@@ -17,6 +17,8 @@ import {
   filterDictTypes,
   reconcileSelectedType,
 } from './dict-page-state'
+
+export type StatusFilter = 'all' | 0 | 1
 
 interface DictTypeFormValue {
   name: string
@@ -48,6 +50,8 @@ export function useDictPage() {
     showTotal: (total: number) => `共 ${total} 条`,
   })
 
+  const typeStatusFilter = ref<StatusFilter>('all')
+
   const dictDataList = ref<DictData[]>([])
   const dataLoading = ref(false)
   const dataPagination = reactive({
@@ -57,6 +61,12 @@ export function useDictPage() {
     showSizeChanger: true,
     showTotal: (total: number) => `共 ${total} 条`,
   })
+  const dataLabelSearch = ref('')
+  const dataStatusFilter = ref<StatusFilter>('all')
+  const selectedDataKeys = ref<number[]>([])
+  const togglingStatusIds = ref<Set<number>>(new Set())
+  const togglingTypeIds = ref<Set<number>>(new Set())
+  const batchDeleting = ref(false)
 
   const typeDrawerVisible = ref(false)
   const typeDrawerTitle = ref('新增字典类型')
@@ -93,6 +103,7 @@ export function useDictPage() {
         page_size: typePagination.pageSize,
         name: keyword || undefined,
         type: keyword || undefined,
+        status: typeStatusFilter.value === 'all' ? undefined : typeStatusFilter.value,
       })
 
       dictTypes.value = res.data.list || []
@@ -138,6 +149,8 @@ export function useDictPage() {
         dict_type: typeCode,
         page: dataPagination.current,
         page_size: dataPagination.pageSize,
+        label: dataLabelSearch.value.trim() || undefined,
+        status: dataStatusFilter.value === 'all' ? undefined : dataStatusFilter.value,
       })
 
       if (requestId !== latestDataRequestId || !canApplyDictDataResponse(typeCode, selectedType.value?.type)) {
@@ -170,9 +183,93 @@ export function useDictPage() {
   }
 
   const handleSelectType = (record: DictType) => {
+    if (selectedType.value?.id === record.id) {
+      return
+    }
     selectedType.value = record
+    selectedDataKeys.value = []
+    dataLabelSearch.value = ''
+    dataStatusFilter.value = 'all'
     dataPagination.current = 1
     fetchDictData(record.type)
+  }
+
+  const handleTypeStatusFilterChange = (value: StatusFilter) => {
+    typeStatusFilter.value = value
+    fetchDictTypes(true)
+  }
+
+  const handleDataSearch = () => {
+    dataPagination.current = 1
+    fetchDictData()
+  }
+
+  const handleDataStatusFilterChange = (value: StatusFilter) => {
+    dataStatusFilter.value = value
+    dataPagination.current = 1
+    fetchDictData()
+  }
+
+  const handleToggleTypeStatus = async (record: DictType, checked: boolean) => {
+    if (togglingTypeIds.value.has(record.id)) {
+      return
+    }
+    const nextStatus = checked ? 1 : 0
+    togglingTypeIds.value.add(record.id)
+    try {
+      await updateDictType(record.id, { status: nextStatus })
+      record.status = nextStatus
+      if (selectedType.value?.id === record.id) {
+        selectedType.value = { ...record, status: nextStatus }
+      }
+      message.success(nextStatus === 1 ? '已启用' : '已停用')
+    } catch {
+      // keep original status
+    } finally {
+      togglingTypeIds.value.delete(record.id)
+    }
+  }
+
+  const handleToggleDataStatus = async (record: DictData, checked: boolean) => {
+    if (togglingStatusIds.value.has(record.id)) {
+      return
+    }
+    const nextStatus = checked ? 1 : 0
+    togglingStatusIds.value.add(record.id)
+    try {
+      await updateDictData(record.id, { status: nextStatus })
+      record.status = nextStatus
+      message.success(nextStatus === 1 ? '已启用' : '已停用')
+    } catch {
+      // keep original status
+    } finally {
+      togglingStatusIds.value.delete(record.id)
+    }
+  }
+
+  const handleBatchDeleteData = () => {
+    if (!selectedDataKeys.value.length) {
+      return
+    }
+    const ids = [...selectedDataKeys.value]
+    Modal.confirm({
+      title: `确定删除选中的 ${ids.length} 条字典数据吗？`,
+      content: '删除后无法恢复，请确认操作。',
+      okType: 'danger',
+      okText: '删除',
+      cancelText: '取消',
+      onOk: async () => {
+        batchDeleting.value = true
+        try {
+          await Promise.all(ids.map(id => deleteDictData(id)))
+          message.success(`已删除 ${ids.length} 条`)
+          selectedDataKeys.value = []
+          await fetchDictData()
+        } finally {
+          batchDeleting.value = false
+        }
+      },
+    })
   }
 
   const handleAddType = () => {
@@ -254,7 +351,6 @@ export function useDictPage() {
     editingData.value = record
     dataDrawerTitle.value = '编辑字典数据'
     dataDrawerInitialValue.value = {
-      dict_type: record.dict_type,
       label: record.label,
       value: record.value,
       sort: record.sort,
@@ -302,6 +398,7 @@ export function useDictPage() {
   const handleDeleteData = async (record: DictData) => {
     await deleteDictData(record.id)
     message.success('删除成功')
+    selectedDataKeys.value = selectedDataKeys.value.filter(id => id !== record.id)
     await fetchDictData()
   }
 
@@ -357,6 +454,19 @@ export function useDictPage() {
     handleTypePaginationChange,
     handleTypeSearch,
     handleTypeSubmit,
+    handleTypeStatusFilterChange,
+    handleDataSearch,
+    handleDataStatusFilterChange,
+    handleToggleTypeStatus,
+    handleToggleDataStatus,
+    handleBatchDeleteData,
+    dataLabelSearch,
+    dataStatusFilter,
+    typeStatusFilter,
+    selectedDataKeys,
+    togglingStatusIds,
+    togglingTypeIds,
+    batchDeleting,
     selectedType,
     showSelectedOutsideFilter,
     typeDrawerInitialValue,

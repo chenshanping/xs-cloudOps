@@ -80,7 +80,7 @@
               placeholder="搜索模型名称 / 标识 / 归属"
             />
             <a-space wrap>
-              <a-button :loading="loading" @click="handleFetch">重新获取</a-button>
+              <a-button :loading="loading" :disabled="!canImport" @click="handleFetch">重新获取</a-button>
               <a-button @click="handleResetFilters">重置筛选</a-button>
               <a-button :disabled="filteredImportableModels.length === 0" @click="handleSelectFiltered">
                 全选当前筛选
@@ -183,7 +183,7 @@
         <div class="import-drawer__footer-summary">已选择 {{ targetKeys.length }} 个模型</div>
         <a-space>
           <a-button @click="handleClose">关闭</a-button>
-          <a-button type="primary" :disabled="targetKeys.length === 0" @click="handleConfirm">
+          <a-button type="primary" :disabled="targetKeys.length === 0 || !canImport" @click="handleConfirm">
             导入已选模型
           </a-button>
         </a-space>
@@ -234,6 +234,7 @@ const props = defineProps<{
   apiKey: string
   providerBaseUrl: string
   existingModels: AIModel[]
+  canImport: boolean
 }>()
 
 const emit = defineEmits<{
@@ -362,6 +363,9 @@ const formatTemperature = (value: number | null) => (typeof value === 'number' ?
 const formatContextWindow = (value: number | null) => (typeof value === 'number' && value > 0 ? `${value}` : '-')
 
 const handleFetch = async () => {
+  if (!props.canImport) {
+    return
+  }
   if (!props.apiKey.trim()) {
     message.warning('请先填写当前平台的 API Key')
     return
@@ -411,12 +415,16 @@ const handleClearSelection = () => {
 }
 
 const handleConfirm = () => {
-  if (targetKeys.value.length === 0) {
+  if (!props.canImport) {
+    return
+  }
+  const modelsToImport = selectedModels.value
+  if (modelsToImport.length === 0) {
     message.warning('请先选择要导入的模型')
     return
   }
 
-  const importedModels = selectedModels.value.map(model => normalizeModel({
+  const importedModels = modelsToImport.map(model => normalizeModel({
     ...createEmptyModel(),
     id: model.id,
     name: model.name || model.id,

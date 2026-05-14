@@ -24,13 +24,16 @@ interface TreeSelectOption {
 export function useRolePage() {
   const loading = ref(false)
   const tableData = ref<Role[]>([])
+  const searchKeyword = ref('')
   const deptTree = ref<Dept[]>([])
   const drawerVisible = ref(false)
   const drawerTitle = ref('新增角色')
   const isEdit = ref(false)
   const currentId = ref(0)
   const currentRoleName = ref('')
-  const permissionDrawerVisible = ref(false)
+  const menuPermissionDrawerVisible = ref(false)
+  const apiPermissionDrawerVisible = ref(false)
+  const dataScopeDrawerVisible = ref(false)
   const roleUsersDrawerVisible = ref(false)
   const roleUsersLoading = ref(false)
   const roleUsers = ref<User[]>([])
@@ -39,6 +42,10 @@ export function useRolePage() {
   const statusLoadingMap = ref<Record<number, boolean>>({})
   const superAdminLoadingMap = ref<Record<number, boolean>>({})
   const drawerInitialValue = ref<Record<string, any>>({})
+  const currentRoleScopeState = ref({
+    data_scope: 1,
+    dept_ids: [] as number[]
+  })
   const roleUsersPagination = ref({
     current: 1,
     pageSize: 10,
@@ -47,20 +54,30 @@ export function useRolePage() {
 
   const columns = useTableColumns(
     [
-      { title: '角色名称', dataIndex: 'name', key: 'name' },
-      { title: '角色编码', dataIndex: 'code', key: 'code' },
+      { title: '角色名称', dataIndex: 'name', key: 'name', width: 220 },
+      { title: '角色编码', dataIndex: 'code', key: 'code', width: 180 },
       { title: '超管', key: 'is_super_admin', width: 90 },
       { title: '关联用户', key: 'users', width: 160 },
       { title: '排序', dataIndex: 'sort', key: 'sort', width: 80 },
       { title: '状态', key: 'status', width: 80 },
-      { title: '默认数据范围', key: 'data_scope', width: 140 },
-      { title: '备注', dataIndex: 'remark', key: 'remark' }
+      { title: '默认数据范围', key: 'data_scope', width: 150 },
     ],
-    { title: '操作', key: 'action', width: 200 },
-    ['system:role:edit', 'system:role:delete', 'system:role:assign']
+    { title: '操作', key: 'action', width: 260, fixed: 'right' },
+    ['system:role:edit', 'system:role:delete', 'system:role:assign', 'system:role:dataScope']
   )
 
   const deptSelectOptions = computed<TreeSelectOption[]>(() => buildDeptSelectOptions(deptTree.value))
+  const filteredTableData = computed(() => {
+    const keyword = searchKeyword.value.trim().toLowerCase()
+    if (!keyword) {
+      return tableData.value
+    }
+
+    return tableData.value.filter(role =>
+      role.name.toLowerCase().includes(keyword)
+      || role.code.toLowerCase().includes(keyword)
+    )
+  })
 
   const fetchData = async () => {
     loading.value = true
@@ -105,9 +122,11 @@ export function useRolePage() {
       sort: 0,
       statusChecked: true,
       is_super_admin: false,
-      data_scope: 1,
-      dept_ids: [],
       remark: ''
+    }
+    currentRoleScopeState.value = {
+      data_scope: 1,
+      dept_ids: []
     }
     drawerVisible.value = true
   }
@@ -118,25 +137,32 @@ export function useRolePage() {
     currentId.value = record.id
     const res = await getRole(record.id)
     const role = res.data
+    currentRoleScopeState.value = {
+      data_scope: role.data_scope || 1,
+      dept_ids: role.depts?.map(item => item.id) || []
+    }
     drawerInitialValue.value = {
       name: role.name,
       code: role.code,
       sort: role.sort,
       statusChecked: role.status === 1,
       is_super_admin: role.is_super_admin,
-      data_scope: role.data_scope || 1,
-      dept_ids: role.depts?.map(item => item.id) || [],
       remark: role.remark
     }
     drawerVisible.value = true
   }
 
   const handleDrawerSubmit = async (values: any) => {
+    const payload: RoleUpsertPayload = {
+      ...values,
+      data_scope: isEdit.value ? currentRoleScopeState.value.data_scope : 1,
+      dept_ids: isEdit.value ? [...currentRoleScopeState.value.dept_ids] : [],
+    }
     if (isEdit.value) {
-      await updateRole(currentId.value, values)
+      await updateRole(currentId.value, payload)
       message.success('更新成功')
     } else {
-      await createRole(values)
+      await createRole(payload)
       message.success('创建成功')
     }
     drawerVisible.value = false
@@ -156,10 +182,22 @@ export function useRolePage() {
   const getRoleUsers = (record: Role) => record.users || []
   const getRoleUserCount = (record: Role) => record.user_count ?? getRoleUsers(record).length
 
-  const handleAssignPermissions = (record: Role) => {
+  const handleAssignMenuPermissions = (record: Role) => {
     currentId.value = record.id
     currentRoleName.value = record.name
-    permissionDrawerVisible.value = true
+    menuPermissionDrawerVisible.value = true
+  }
+
+  const handleAssignApiPermissions = (record: Role) => {
+    currentId.value = record.id
+    currentRoleName.value = record.name
+    apiPermissionDrawerVisible.value = true
+  }
+
+  const handleAssignDataScope = (record: Role) => {
+    currentId.value = record.id
+    currentRoleName.value = record.name
+    dataScopeDrawerVisible.value = true
   }
 
   const buildRolePayload = (record: Role, overrides: Partial<RoleUpsertPayload> = {}): RoleUpsertPayload => ({
@@ -322,7 +360,9 @@ export function useRolePage() {
     drawerVisible,
     formatDataScope,
     handleAdd,
-    handleAssignPermissions,
+    handleAssignApiPermissions,
+    handleAssignDataScope,
+    handleAssignMenuPermissions,
     handleDelete,
     handleDrawerSubmit,
     handleEdit,
@@ -337,12 +377,16 @@ export function useRolePage() {
     isRoleStatusLoading,
     isRoleSuperAdminLoading,
     loading,
-    permissionDrawerVisible,
+    apiPermissionDrawerVisible,
+    dataScopeDrawerVisible,
+    filteredTableData,
+    menuPermissionDrawerVisible,
     roleUsers,
     roleUsersDrawerVisible,
     roleUsersLoading,
     roleUsersPagination,
     roleUsersRoleName,
+    searchKeyword,
     tableData
   }
 }

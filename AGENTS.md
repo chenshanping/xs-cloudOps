@@ -29,6 +29,7 @@
 - For admin create/edit/other non-trivial popup interactions, default to `Drawer` unless the user explicitly asks for `Modal` or another interaction.
 - Non-trivial popup/drawer content should be extracted into local `components/` instead of being kept inline in a large page file.
 - Theme/layout work should follow the current Ant Design Vue + Pinia layout preference approach already present in `web/src/layouts` and `web/src/store/ui.ts`.
+- Every admin backend page creation or page-level UI optimization must use the `frontend-design` skill. Apply it within the current Ant Design Vue admin design language; do not turn admin tools into decorative landing-page-style layouts.
 - For system config features that define security boundaries such as anonymous-readable config keys, auth bypass, exposure white/blacklists, secret visibility, or other high-risk access controls, default to backend-coded policy. Do not add admin UI or DB-configurable toggles for these controls unless the user explicitly asks for that operational model.
 
 ## OpenSpec Decision Rule
@@ -179,10 +180,14 @@ This rule supersedes any prior implicit "commit after each logical change" behav
 
 ## Frontend Rules
 
+- Admin backend pages must use the `frontend-design` skill for page-level UI work, while preserving the established Ant Design Vue admin layout, density, permissions, and workflow patterns.
+- When applying `frontend-design` to admin backend pages, treat it as a constraint to improve hierarchy, spacing, states, and consistency inside the existing admin tool style. Do **not** add landing-page/marketing-style hero blocks, slogans, decorative chips, English product copy, or promotional top sections unless the user explicitly asks for that presentation.
+- Admin page headers must stay functional and compact. If neighboring admin pages do not use a hero/header block, do not introduce one; prefer the existing card/table/tabs structure.
 - Follow existing layout, table, form, and permission patterns before introducing new UI structure.
 - Do not expose clickable UI affordances without a real handler or visible feedback.
 - Reuse shared components when they already fit: uploads, previews, tables, icons, permission helpers.
 - Keep list/detail CRUD pages compact; do not add decorative wrappers the user did not request.
+- Do not display internal numeric IDs in admin page UI as decorative metadata unless the user explicitly asks or the ID is required for a support/debug workflow. Internal IDs may still be used for row keys, selections, API calls, and form values.
 
 ## Backend Rules
 

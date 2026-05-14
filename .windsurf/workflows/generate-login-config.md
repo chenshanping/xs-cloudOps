@@ -1,46 +1,100 @@
 ---
-description: Generate login page configuration (system name, slogan, features, etc.) from a system functional description. Use when setting up a new project or rebranding.
+description: Generate go-base login page config from a system/business description. Use when configuring 系统配置 → 基础配置 and 登录与注册 for a new project, rebrand, or login-page copy refresh.
 ---
 
-# Generate Login Page Config
+# Generate Login Config
 
-Given a system's functional description, generate complete login page configuration values.
+Generate a **project-accurate** login page config package for this `go-base` repository.
+
+This workflow is not a generic branding prompt. It must follow the actual config keys, UI tabs, file fields, and rendering behavior already present in this project.
+
+## Project Reality Check
+
+Before generating content, align with the real implementation in this repo:
+
+- Basic config tab: `web/src/views/admin/system/config/components/SystemConfig.vue`
+- Login/Register tab: `web/src/views/admin/system/config/components/LoginRegisterConfig.vue`
+- Auth layout: `web/src/layouts/AuthLayout.vue`
+- Login page form: `web/src/views/auth/login/index.vue`
+- Public config allowlist: `server/service/configsvc/config.go`
 
 ## When To Use
 
-- Setting up a new go-base project instance
-- Rebranding or customizing the login page
-- User says "帮我生成登录页配置" or provides system functionality and asks for login page content
+- Setting up a new `go-base` project instance
+- Rebranding the login page for a specific business domain
+- User says `帮我生成登录页配置`
+- User gives a business/system description and wants ready-to-fill config content
 
-## Input Required
+## What This Project Actually Renders
 
-Ask the user for:
-1. **System functional description** — what does the system do? (e.g. "医院挂号管理系统", "企业OA办公平台")
-2. **Target audience** — who uses it? (optional, infer from description if not given)
-3. **Tone** — professional / friendly / tech / minimal (optional, default: professional)
+Current live login page behavior:
 
-## Output Format
+- `sys_name`: displayed on the left showcase area
+- `sys_logo`: displayed on the left showcase area
+- `login_title`: displayed above the login form
+- `login_slogan`: displayed on the left showcase area
+- `login_desc`: displayed on the left showcase area
+- `login_features`: displayed on the left showcase area, **最多实际显示 4 条**
+- `login_bg_image` or `login_bg_color`: used as left showcase background
+- `enable_register`: controls whether register / forgot-password entry appears
 
-Generate the following fields as a ready-to-paste configuration block:
+Current implementation caveats:
 
+- `login_subtitle` is configurable, but the current login page form text is still hardcoded as `登录您的账户`
+- `login_images` and `login_images_max` are editable in admin config, but the current `AuthLayout.vue` does not render them
+- There is **no actual config key** for “英文系统名称”; if generated, treat it as branding reference only, not a persisted config item
+
+## Required Inputs
+
+Ask only for what is missing.
+
+Minimum required:
+
+1. **System/business description**
+   Example: `AI基金和股票分析后台`
+
+Helpful optional inputs:
+
+2. **Target audience**
+   Example: `投研人员、运营人员、老板自己看盘`
+
+3. **Tone**
+   Example: `专业`, `科技`, `克制`, `金融`, `极简`
+
+4. **Register entry**
+   Choose one:
+   - `开启注册`
+   - `关闭注册`
+
+5. **Visual direction**
+   Choose one:
+   - `偏深色科技`
+   - `偏浅色商务`
+   - `偏金融图表风`
+   - `让我推荐`
+
+## Output Rules
+
+- Prefer output that maps directly to existing config keys
+- Do **not** invent new config keys
+- Do **not** tell the user to add backend fields unless they explicitly ask for code changes
+- Keep Chinese copy concise and usable in admin UI
+- `login_features` must match the actual JSON structure:
+
+```json
+[
+  { "icon": "CheckCircleOutlined", "title": "标题", "desc": "描述" }
+]
 ```
-系统名称 (sys_name):         <中文系统名称，简短有力，4-8字>
-英文系统名称:                 <English System Name, Title Case, 2-4 words>
-登录页标题 (login_title):     <欢迎语，2-6字，如"欢迎回来">
-标语 (login_slogan):          <一句话定位，8-15字，突出系统核心价值>
-副标题 (login_subtitle):      <补充说明，6-12字>
-描述 (login_desc):            <1-2句话，30-50字，描述系统能力和价值>
 
-特性标签 (login_features):
-  1. icon: <icon_name> (<中文标签>)  title: <2-4字>  desc: <6-10字>
-  2. icon: <icon_name> (<中文标签>)  title: <2-4字>  desc: <6-10字>
-  3. icon: <icon_name> (<中文标签>)  title: <2-4字>  desc: <6-10字>
-  4. icon: <icon_name> (<中文标签>)  title: <2-4字>  desc: <6-10字>
-```
+- Recommend `login_features_max = 4` unless the user explicitly wants more
+- Because the live login page only shows 4 features, do not generate more than 4 feature items by default
+- If `enable_register = true`, remind the user to upload a register default avatar in the login/register tab
+- File/image settings in this project should be applied through admin upload components, which persist `*_file_id` config keys behind the scenes
 
-## Available Icons (24 icons)
+## Available Icons
 
-Only use these icon names (registered in AuthLayout.vue + LoginRegisterConfig.vue):
+Only use icon names that are already registered in this project:
 
 | Icon Name              | Meaning  | Best For                        |
 |------------------------|----------|---------------------------------|
@@ -69,123 +123,187 @@ Only use these icon names (registered in AuthLayout.vue + LoginRegisterConfig.vu
 | StarOutlined           | 星标     | 收藏、评分、精选                 |
 | CrownOutlined          | 皇冠     | VIP、高级、专业版                |
 
-## Rules
+## Recommended Generation Process
 
-- **System name**: Concise, memorable, reflects core domain. Avoid generic names like "管理系统".
-- **English name**: Professional, no abbreviations unless well-known (e.g. OA, CRM, ERP).
-- **Slogan**: One phrase that captures the system's unique value. Avoid clichés.
-- **Features**: Each feature should highlight a distinct capability. Use different icons for variety.
-- **Tone consistency**: All text should feel like it belongs to the same brand.
-- Do NOT just copy the defaults — tailor everything to the user's system description.
+### Step 1: Confirm the scope
 
-## Example
+Identify whether the user wants:
 
-**Input**: "这是一个医院智能挂号和排班管理系统，支持患者在线预约、医生排班管理、科室管理和数据统计"
+- just copy/content generation
+- copy + background prompt
+- copy + background + logo prompt
+- actual code/config modification
 
-**Output**:
+If they only want content, do **not** drift into implementation.
 
-```
-系统名称:     智慧医通
-英文系统名称:  MediFlow
-登录页标题:    欢迎使用
-标语:          智慧医疗 高效就诊
-副标题:        医院智能挂号与排班管理平台
-描述:          整合预约挂号、医生排班、科室管理与数据分析，让医疗资源调度更智能，患者就诊更便捷。
+### Step 2: Generate project-accurate config values
 
-特性标签:
-  1. icon: RocketOutlined       title: 在线预约  desc: 患者自助挂号预约
-  2. icon: TeamOutlined         title: 排班管理  desc: 智能医生排班调度
-  3. icon: LineChartOutlined    title: 数据统计  desc: 就诊数据可视分析
-  4. icon: SafetyOutlined       title: 信息安全  desc: 患者隐私合规保障
-```
+Output in this structure:
 
-## Background Image Prompt
+```text
+一、基础配置（系统配置 → 基础配置）
 
-After generating the config, also output **3 background image prompts** the user can paste into AI image generators (豆包 / MidJourney / DALL-E).
+sys_name:
+<系统名称>
 
-### Prompt Rules
+品牌参考（不入库）:
+<可选英文名，仅作品牌灵感>
 
-- Style: match the system tone — tech/business/medical/education etc.
-- Color: derive from the system domain (e.g. blue-purple for tech, green for medical, warm for education).
-- Composition: **16:9**, leave one side (left or right) with dark/low-detail area for login form overlay.
-- Must include: `无文字`, `无水印`, `高清`.
-- Provide 3 variants:
-  1. **Abstract gradient** — safest, most versatile, geometric lines + particles.
-  2. **Scene-based** — relates to the system domain (city for business, hospital for medical, campus for education).
-  3. **Minimal texture** — frosted glass / mesh gradient / subtle pattern, ultra-clean.
+二、登录与注册（系统配置 → 登录与注册）
 
-### Prompt Template
+enable_register:
+true | false
 
-Each prompt should follow this structure:
+login_title:
+<2-6字，例如：欢迎回来>
 
-> [场景/主体描述]，[色调描述]，[风格关键词]，适合作为后台管理系统登录页背景，16:9宽幅构图，[留白方向]侧留出空间放置登录表单，无文字，无水印，高清
+login_subtitle:
+<可选；当前项目已可配置，但当前登录页主表单未实际展示>
 
-### Example (for 智慧医通)
+login_slogan:
+<8-16字，一句话定位>
 
-```
-方案A — 抽象科技流线:
-深蓝渐变背景，半透明几何网格线条从左下角扩散，带有微光粒子效果，右侧融入医疗元素的极简线条图标（心电图、听诊器），科技感、商务、简洁大气，适合作为后台管理系统登录页背景，16:9宽幅构图，左侧留白区域用于放置登录表单，无文字，无水印，高清
+login_desc:
+<1-2句话，20-50字，说明系统价值>
 
-方案B — 医疗场景:
-现代化医院大厅，柔和自然光，蓝绿色调，前景虚化，远处走廊延伸感，叠加半透明数据图表全息效果，适合后台系统登录页背景，16:9，左侧偏暗留出空间，无文字，无水印，高清
+login_bg_color:
+<CSS 渐变字符串；如果用户后续上传背景图，可忽略此项>
 
-方案C — 纯净渐变:
-深色渐变背景，从左侧深靛蓝过渡到右侧薄荷绿，表面布满细腻磨砂质感和稀疏微光粒子，左下角有淡色几何圆环装饰，极简高级，适合SaaS后台登录页背景，16:9，左侧大面积留白，无文字，无水印，高清
-```
+login_features_max:
+4
 
-## Logo Prompt
+login_features:
+[
+  {"icon":"...","title":"...","desc":"..."},
+  {"icon":"...","title":"...","desc":"..."},
+  {"icon":"...","title":"...","desc":"..."},
+  {"icon":"...","title":"...","desc":"..."}
+]
 
-Also output **3 logo prompts** for AI image generation.
+三、当前项目渲染提醒
 
-### Prompt Rules
-
-- Must include: `无文字`, `透明背景`, `1:1`, `高清`, `矢量风格` or `扁平设计`.
-- Derive the icon concept from the system name and domain.
-- Provide 3 variants:
-  1. **Letter-based** — initials of the English name combined with domain symbol.
-  2. **Abstract symbol** — domain-related shapes merged into a geometric mark.
-  3. **Name-concept** — visual metaphor of the Chinese system name (e.g. "云商管家" → cloud + shop).
-
-### Prompt Template
-
-> 设计一个现代[风格]Logo，[主体描述]，[配色描述]，扁平化设计，透明背景，适合作为后台管理系统图标，1:1正方形，无文字，高清
-
-### Example (for 智慧医通 / MediFlow)
-
-```
-方案A — 字母组合:
-设计一个现代科技风格Logo，字母M和F组合（MediFlow缩写），融入十字医疗符号，渐变色从深蓝到薄荷绿，扁平化设计，透明背景，适合作为后台管理系统图标，1:1正方形，无文字，高清
-
-方案B — 抽象符号:
-极简Logo设计，心电图波形与数据节点融合成环形标识，线条流畅，蓝绿渐变配色，扁平矢量风格，透明背景，适合SaaS医疗管理平台，1:1正方形，无文字，高清
-
-方案C — 名称概念:
-极简Logo，一个圆润的灯泡造型内部融合十字医疗符号和连接线路，象征"智慧医通"，配色为靛蓝渐变到青色，扁平矢量，透明背景，1:1，无文字，高清
+- 当前真实显示字段：...
+- 当前仅可配置但未明显生效字段：...
 ```
 
-### Logo Usage Tips
+### Step 3: Keep the copy grounded
 
-After generating, tell the user:
-- Export PNG with transparent background
-- Prepare two sizes: **128×128** (sidebar logo) and **32×32** (favicon)
-- If the generator adds unwanted text, retry with `纯图形，不要任何文字和字母` appended
+Rules:
+
+- `sys_name` should usually be 4-10 Chinese characters
+- `login_title` should be short and direct
+- `login_slogan` should express positioning, not marketing fluff
+- `login_desc` should read like a serious admin system, not landing-page ad copy
+- Avoid clichés such as:
+  - `赋能增长`
+  - `一站式闭环`
+  - `数字化转型新引擎`
+  unless the user explicitly wants that style
+
+### Step 4: Generate optional image prompts
+
+If the user wants image generation help, output:
+
+- 3 background prompts
+- 3 logo prompts
+
+#### Background Prompt Rules
+
+- Must include: `无文字`, `无水印`, `高清`
+- Must be suitable for a **后台登录页左侧背景**
+- Must mention **16:9**
+- Must reserve one side for the form overlay
+- Match the user’s domain and tone
+
+Prompt template:
+
+> [场景/主体描述]，[色调描述]，[风格关键词]，适合作为后台管理系统登录页背景，16:9宽幅构图，[左侧或右侧]保留低干扰区域用于放置登录表单，无文字，无水印，高清
+
+#### Logo Prompt Rules
+
+- Must include: `无文字`, `透明背景`, `1:1`, `高清`
+- Prefer `扁平设计` or `矢量风格`
+- Must fit sidebar/admin branding instead of poster-style illustration
+
+Prompt template:
+
+> 设计一个现代[风格]Logo，[主体描述]，[配色描述]，扁平设计，透明背景，适合作为后台管理系统图标，1:1正方形，无文字，高清
+
+## Example Output Shape
+
+```text
+一、基础配置（系统配置 → 基础配置）
+
+sys_name:
+智投研判
+
+品牌参考（不入库）:
+AlphaScope
+
+二、登录与注册（系统配置 → 登录与注册）
+
+enable_register:
+false
+
+login_title:
+欢迎登录
+
+login_subtitle:
+基金与股票分析后台
+
+login_slogan:
+聚焦数据 让判断更稳
+
+login_desc:
+整合A股与公募基金核心数据，支持行情浏览、指标查看与后台同步管理，帮助投研和运营快速获取关键市场信息。
+
+login_bg_color:
+linear-gradient(135deg, #0f1c3f 0%, #123f67 55%, #1d7a85 100%)
+
+login_features_max:
+4
+
+login_features:
+[
+  {"icon":"FundOutlined","title":"市场走势","desc":"聚焦基金股票趋势"},
+  {"icon":"LineChartOutlined","title":"数据分析","desc":"核心指标集中查看"},
+  {"icon":"DashboardOutlined","title":"统一看板","desc":"后台信息快速总览"},
+  {"icon":"SafetyOutlined","title":"权限清晰","desc":"管理操作边界明确"}
+]
+
+三、当前项目渲染提醒
+
+- 当前真实显示字段：sys_name、sys_logo、login_title、login_slogan、login_desc、login_features、login_bg_image/login_bg_color、enable_register
+- login_subtitle 当前可配置，但当前登录页主表单未直接显示
+- login_images 当前后台可编辑，但 AuthLayout 暂未实际渲染
+```
 
 ## After Generation
 
-If the user confirms, help them update the system config:
+If the user confirms and only wants to apply values manually, guide them like this:
 
-1. Go to **系统配置 → 登录与注册** page
-2. Fill in the generated values
-3. For `login_features`, the JSON format is:
-```json
-[
-  {"icon": "RocketOutlined", "title": "在线预约", "desc": "患者自助挂号预约"},
-  {"icon": "TeamOutlined", "title": "排班管理", "desc": "智能医生排班调度"},
-  {"icon": "LineChartOutlined", "title": "数据统计", "desc": "就诊数据可视分析"},
-  {"icon": "SafetyOutlined", "title": "信息安全", "desc": "患者隐私合规保障"}
-]
-```
-4. Optionally update `sys_name` in **系统配置 → 基础设置**
-5. Upload the generated logo to **系统配置 → 基础设置 → 系统Logo**
-6. Upload the background image to **系统配置 → 登录与注册 → 登录背景图**
-7. Save and preview the login page
+1. Open `系统配置 → 基础配置`
+2. Fill `sys_name`
+3. Upload the system logo through `系统Logo`
+4. Open `系统配置 → 登录与注册`
+5. Fill `login_title` / `login_slogan` / `login_desc`
+6. Paste `login_features` content through the feature editor
+7. Upload the login background image
+8. If register is enabled, upload the register default avatar
+9. Save and preview the login page
+
+## If User Wants Actual Implementation
+
+If the user asks to actually modify code or config defaults:
+
+- first inspect the current neighboring implementation
+- keep changes limited to existing config keys whenever possible
+- do not invent new DB-configurable public keys unless explicitly requested
+- if persisted defaults or bootstrap behavior are changed for existing installations, follow this repository’s SQL upgrade and initialize rules
+
+## Hard Boundaries
+
+- Do not generate secret/sensitive config values
+- Do not advise putting API keys or auth bypass config into public login-page keys
+- Do not claim a field is visible if the current project code does not actually render it
+- Do not output generic “English system name” as if it were a stored config key

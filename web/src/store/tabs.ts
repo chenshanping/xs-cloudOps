@@ -1,7 +1,6 @@
 import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import {
-  HOME_TAB,
   closeAllTabs,
   closeLeftTabs,
   closeOtherTabs,
@@ -19,13 +18,14 @@ function loadTabsState(): TabsStateSnapshot {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) {
-      return createInitialTabsState([HOME_TAB], HOME_TAB.key)
+      return createInitialTabsState([])
     }
     const parsed = JSON.parse(raw) as Partial<TabsStateSnapshot>
-    return createInitialTabsState(parsed.tabs || [HOME_TAB], parsed.activeKey)
+    const sanitizedTabs = (parsed.tabs || []).map((tab) => ({ ...tab, affix: false }))
+    return createInitialTabsState(sanitizedTabs, parsed.activeKey)
   } catch (error) {
     console.error('读取标签页状态失败', error)
-    return createInitialTabsState([HOME_TAB], HOME_TAB.key)
+    return createInitialTabsState([])
   }
 }
 

@@ -52,7 +52,7 @@
         </a-form-item>
 
         <a-form-item :wrapper-col="{ offset: 8, span: 16 }" style="margin-top: 24px">
-          <a-button type="primary" :loading="basicSaving" @click="handleBasicSave">保存基础配置</a-button>
+          <a-button type="primary" :loading="basicSaving" @click="handleBasicSave" v-permission="'system:config:edit'">保存基础配置</a-button>
         </a-form-item>
       </a-form>
     </div>

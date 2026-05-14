@@ -22,6 +22,7 @@
         :checked-menu-keys="checkedMenuKeys"
         :checked="isSectionMenuChecked"
         :indeterminate="isSectionMenuIndeterminate"
+        :show-inherited-api-meta="showInheritedApiMeta"
         @toggle-menu="(menu, checked) => emit('toggle-menu', menu, checked)"
         @toggle-all="(sectionValue, checked) => emit('toggle-section-menus', sectionValue, checked)"
         @keep-page-only="sectionValue => emit('keep-page-only', sectionValue)"
@@ -62,6 +63,7 @@ interface Props {
   inheritedApiIds: number[]
   inheritedApiSourceMap: Record<number, string[]>
   mode?: 'split' | 'menu' | 'api'
+  showInheritedApiMeta?: boolean
 }
 
 const props = defineProps<Props>()

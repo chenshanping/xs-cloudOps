@@ -59,6 +59,16 @@ export function firstNavigablePath(menu?: Menu | null): string {
   return ''
 }
 
+export function firstNavigableMenuPath(menus: Menu[] = []): string {
+  for (const menu of menus) {
+    const target = firstNavigablePath(menu)
+    if (target) {
+      return target
+    }
+  }
+  return ''
+}
+
 export function getMixedSidebarMenus(menus: Menu[], path: string): Menu[] {
   const trail = findMenuTrail(menus, path)
   const activeTop = trail[0]

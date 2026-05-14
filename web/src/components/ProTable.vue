@@ -1,7 +1,7 @@
 <template>
   <div class="pro-table">
     <!-- 搜索区域 -->
-    <a-card v-if="$slots.search && showSearch" class="search-card">
+    <SearchCard v-if="$slots.search && showSearch" class="pro-table__search-card">
       <a-form layout="inline" @keyup.enter="handleSearch">
         <slot name="search" />
         <a-form-item>
@@ -15,15 +15,17 @@
           </a-space>
         </a-form-item>
       </a-form>
-    </a-card>
+    </SearchCard>
 
     <!-- 表格区域 -->
-    <a-card :class="{ 'table-card': $slots.search }">
-      <template #title v-if="title">{{ title }}</template>
-      <template #extra>
+    <TableCard
+      :title="title"
+      :class="{ 'pro-table__table-card--with-search': $slots.search && showSearch }"
+    >
+      <template v-if="$slots.toolbar" #toolbar>
         <slot name="toolbar" />
       </template>
-      
+
       <a-table
         :columns="columns"
         :data-source="dataSource"
@@ -45,7 +47,7 @@
           <slot name="expandedRowRender" v-bind="scope" />
         </template>
       </a-table>
-    </a-card>
+    </TableCard>
   </div>
 </template>
 
@@ -53,6 +55,8 @@
 import { computed } from 'vue'
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons-vue'
 import type { TableProps } from 'ant-design-vue'
+import SearchCard from '@/components/page/SearchCard.vue'
+import TableCard from '@/components/page/TableCard.vue'
 
 export interface ProTableProps {
   title?: string
@@ -134,19 +138,32 @@ const handleTableChange = (pagination: any, filters: any, sorter: any) => {
 </script>
 
 <style scoped>
-.pro-table .search-card {
-  margin-bottom: 16px;
-}
-
-.pro-table .table-card {
-  margin-top: 0;
+.pro-table {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
 
 .pro-table :deep(.ant-form-item) {
   margin-bottom: 16px;
 }
 
-.pro-table :deep(.ant-card-body) {
-  padding: 16px 24px;
+.pro-table :deep(.ant-form) {
+  row-gap: 0;
+}
+
+.pro-table :deep(.ant-table-wrapper) {
+  min-width: 0;
+}
+
+.pro-table :deep(.ant-table-pagination.ant-pagination) {
+  margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
+  .pro-table {
+    gap: 12px;
+  }
 }
 </style>

@@ -11,6 +11,7 @@ import (
 	"server/utils"
 	"strings"
 
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -24,6 +25,8 @@ func InitDBTables() {
 		&model.SysApi{},
 		&model.SysOperationLog{},
 		&model.SysLoginLog{},
+		&model.SysCronTask{},
+		&model.SysCronLog{},
 		&model.SysConfig{},
 		&model.AIProviderConfig{},
 		&model.SysFile{},
@@ -99,9 +102,11 @@ func initDefaultData() {
 	global.DB.Create(&adminUser)
 
 	// 根菜单
+	dashboardMenu := model.SysMenu{ParentID: 0, Name: "首页", Path: "/dashboard", Component: "dashboard/index", Icon: "DashboardOutlined", Sort: 0, Type: 2, Permission: "dashboard:list", Status: 1}
+	global.DB.Create(&dashboardMenu)
 	sysMgmt := model.SysMenu{ParentID: 0, Name: "系统管理", Path: "/system", Component: "Layout", Icon: "setting", Sort: 1, Type: 1, Status: 1}
 	global.DB.Create(&sysMgmt)
-	monitor := model.SysMenu{ParentID: 0, Name: "系统监控", Path: "/monitor", Component: "Layout", Icon: "monitor", Sort: 2, Type: 1, Status: 1}
+	monitor := model.SysMenu{ParentID: 0, Name: "运维监控", Path: "/monitor", Component: "Layout", Icon: "MonitorOutlined", Sort: 30, Type: 1, Status: 1}
 	global.DB.Create(&monitor)
 
 	// 子菜单
@@ -113,13 +118,13 @@ func initDefaultData() {
 		{ParentID: sysMgmt.ID, Name: "API管理", Path: "/system/api", Component: "system/api/index", Icon: "api", Sort: 5, Type: 2, Permission: "system:api:list", Status: 1},
 		{ParentID: sysMgmt.ID, Name: "参数配置", Path: "/system/config", Component: "system/config/index", Icon: "setting", Sort: 6, Type: 2, Permission: "system:config:list", Status: 1},
 		{ParentID: sysMgmt.ID, Name: "文件管理", Path: "/system/file", Component: "system/file/index", Icon: "folder", Sort: 7, Type: 2, Permission: "system:file:list", Status: 1},
-		{ParentID: monitor.ID, Name: "操作日志", Path: "/monitor/operation-log", Component: "monitor/operation-log/index", Icon: "file-text", Sort: 1, Type: 2, Permission: "monitor:operation-log:list", Status: 1},
-		{ParentID: monitor.ID, Name: "登录日志", Path: "/monitor/login-log", Component: "monitor/login-log/index", Icon: "login", Sort: 2, Type: 2, Permission: "monitor:login-log:list", Status: 1},
+		{ParentID: monitor.ID, Name: "操作日志", Path: "/monitor/operation-log", Component: "monitor/operation-log/index", Icon: "file-text", Sort: 2, Type: 2, Permission: "monitor:operation-log:list", Status: 1},
+		{ParentID: monitor.ID, Name: "登录日志", Path: "/monitor/login-log", Component: "monitor/login-log/index", Icon: "login", Sort: 3, Type: 2, Permission: "monitor:login-log:list", Status: 1},
 	}
 	global.DB.Create(&menus)
 
 	// 分配菜单
-	global.DB.Model(&adminRole).Association("Menus").Replace(append(menus, sysMgmt, monitor))
+	global.DB.Model(&adminRole).Association("Menus").Replace(append(menus, dashboardMenu, sysMgmt, monitor))
 
 	// 默认API
 	apis := []model.SysApi{
@@ -312,11 +317,17 @@ func ensureBuiltInData() {
 	backfillDepartmentFoundation(rootDept.ID)
 	backfillExplicitSuperAdminRoles()
 
+	ensureDashboardMenu()
 	ensureDeptApiAccess()
+	ensureFileUploadApiAccess()
 	ensureAIApiAccess()
 	ensureAIToolMenus()
+	ensureAIMenuApiBindings()
 	ensureDeptMenus()
+	ensureSystemAdminButtonMenus()
 	ensureLogAuditMenus()
+	ensureServerMonitorMenuApi()
+	ensureCronTaskMenuApi()
 	cleanupSlowLogBuiltInData()
 	cleanupStorageBuiltInData()
 
@@ -364,6 +375,74 @@ func ensureBuiltInData() {
 	}, "/api/v1/roles/:id/apis", "PUT")
 	ensureUserOperationMenus()
 	ensureUserImportExportMenus()
+}
+
+func ensureDashboardMenu() {
+	menu := model.SysMenu{
+		ParentID:   0,
+		Name:       "首页",
+		Path:       "/dashboard",
+		Component:  "dashboard/index",
+		Icon:       "DashboardOutlined",
+		Sort:       0,
+		Type:       2,
+		Permission: "dashboard:list",
+		Status:     1,
+		Hidden:     0,
+	}
+
+	result := global.DB.
+		Where("permission = ? AND type = ?", menu.Permission, menu.Type).
+		Attrs(model.SysMenu{
+			ParentID:  menu.ParentID,
+			Name:      menu.Name,
+			Path:      menu.Path,
+			Component: menu.Component,
+			Icon:      menu.Icon,
+			Sort:      menu.Sort,
+			Status:    menu.Status,
+			Hidden:    menu.Hidden,
+		}).
+		FirstOrCreate(&menu)
+	if err := result.Error; err != nil {
+		global.Log.Errorf("补齐首页菜单失败: %v", err)
+		return
+	}
+
+	grantMenusToRoleCodes([]uint{menu.ID}, []string{"admin"})
+
+	apis := []model.SysApi{
+		{Path: "/api/v1/echart/user-role-stats", Method: "GET", Group: "首页", Description: "用户角色占比", NeedAuth: true},
+		{Path: "/api/v1/echart/user-status-stats", Method: "GET", Group: "首页", Description: "用户状态统计", NeedAuth: true},
+		{Path: "/api/v1/echart/user-register-trend", Method: "GET", Group: "首页", Description: "用户注册趋势", NeedAuth: true},
+	}
+	bindings := make([]menuApiBinding, 0, len(apis))
+	for _, definition := range apis {
+		api := definition
+		if err := global.DB.
+			Where("path = ? AND method = ?", api.Path, api.Method).
+			Attrs(model.SysApi{
+				Group:       api.Group,
+				Description: api.Description,
+				NeedAuth:    api.NeedAuth,
+			}).
+			FirstOrCreate(&api).Error; err != nil {
+			global.Log.Errorf("补齐首页API失败(%s %s): %v", definition.Method, definition.Path, err)
+			continue
+		}
+		bindings = append(bindings, menuApiBinding{
+			MenuPermission: menu.Permission,
+			APIPath:        definition.Path,
+			APIMethod:      definition.Method,
+		})
+	}
+	ensureMenuApiBindings(bindings)
+
+	if result.RowsAffected > 0 {
+		if err := service.Cache.ClearAllUserInfoCache(); err != nil {
+			global.Log.Errorf("清理首页菜单缓存失败: %v", err)
+		}
+	}
 }
 
 func ensureGenderDictData() {
@@ -746,7 +825,7 @@ func backfillExplicitSuperAdminRoles() {
 	}
 
 	if err := global.DB.Model(&model.SysRole{}).
-		Where("code IN ?", []string{"admin", "system_admin"}).
+		Where("code IN ?", []string{"admin"}).
 		Where("is_super_admin = ? OR is_super_admin IS NULL", false).
 		Update("is_super_admin", true).Error; err != nil {
 		global.Log.Errorf("回填显式超管角色失败: %v", err)
@@ -862,7 +941,202 @@ func ensureDeptMenus() {
 		menuIDs = append(menuIDs, menu.ID)
 	}
 
-	grantMenusToRoleCodes(menuIDs, []string{"admin", "system_admin"})
+	grantMenusToRoleCodes(menuIDs, []string{"admin"})
+}
+
+func ensureSystemAdminButtonMenus() {
+	var systemMenu model.SysMenu
+	if err := global.DB.Where("path = ? AND type = ?", "/system", 1).First(&systemMenu).Error; err != nil {
+		global.Log.Errorf("查询系统管理目录失败: %v", err)
+		return
+	}
+
+	type buttonDefinition struct {
+		Name       string
+		Sort       int
+		Permission string
+	}
+	type pageDefinition struct {
+		Name       string
+		Path       string
+		Component  string
+		Icon       string
+		Sort       int
+		Permission string
+		Buttons    []buttonDefinition
+	}
+
+	pages := []pageDefinition{
+		{
+			Name:       "角色管理",
+			Path:       "/system/role",
+			Component:  "system/role/index",
+			Icon:       "team",
+			Sort:       2,
+			Permission: "system:role:list",
+			Buttons: []buttonDefinition{
+				{Name: "新增", Sort: 1, Permission: "system:role:add"},
+				{Name: "编辑", Sort: 2, Permission: "system:role:edit"},
+				{Name: "删除", Sort: 3, Permission: "system:role:delete"},
+				{Name: "分配权限", Sort: 4, Permission: "system:role:assign"},
+			},
+		},
+		{
+			Name:       "部门管理",
+			Path:       "/system/dept",
+			Component:  "system/dept/index",
+			Icon:       "apartment",
+			Sort:       3,
+			Permission: "system:dept:list",
+			Buttons: []buttonDefinition{
+				{Name: "新增", Sort: 1, Permission: "system:dept:add"},
+				{Name: "编辑", Sort: 2, Permission: "system:dept:edit"},
+				{Name: "删除", Sort: 3, Permission: "system:dept:delete"},
+			},
+		},
+		{
+			Name:       "菜单管理",
+			Path:       "/system/menu",
+			Component:  "system/menu/index",
+			Icon:       "menu",
+			Sort:       4,
+			Permission: "system:menu:list",
+			Buttons: []buttonDefinition{
+				{Name: "新增", Sort: 1, Permission: "system:menu:add"},
+				{Name: "编辑", Sort: 2, Permission: "system:menu:edit"},
+				{Name: "删除", Sort: 3, Permission: "system:menu:delete"},
+			},
+		},
+		{
+			Name:       "字典管理",
+			Path:       "/system/dict",
+			Component:  "system/dict/index",
+			Icon:       "AntDesignOutlined",
+			Sort:       5,
+			Permission: "system:dict:list",
+			Buttons: []buttonDefinition{
+				{Name: "新增", Sort: 1, Permission: "system:dict:add"},
+				{Name: "编辑", Sort: 2, Permission: "system:dict:edit"},
+				{Name: "删除", Sort: 3, Permission: "system:dict:delete"},
+			},
+		},
+		{
+			Name:       "API管理",
+			Path:       "/system/api",
+			Component:  "system/api/index",
+			Icon:       "api",
+			Sort:       6,
+			Permission: "system:api:list",
+			Buttons: []buttonDefinition{
+				{Name: "新增", Sort: 1, Permission: "system:api:add"},
+				{Name: "编辑", Sort: 2, Permission: "system:api:edit"},
+				{Name: "删除", Sort: 3, Permission: "system:api:delete"},
+				{Name: "同步", Sort: 4, Permission: "system:api:sync"},
+			},
+		},
+		{
+			Name:       "系统配置",
+			Path:       "/system/config",
+			Component:  "system/config/index",
+			Icon:       "setting",
+			Sort:       7,
+			Permission: "system:config:list",
+			Buttons: []buttonDefinition{
+				{Name: "编辑", Sort: 1, Permission: "system:config:edit"},
+				{Name: "测试", Sort: 2, Permission: "system:config:test"},
+			},
+		},
+		{
+			Name:       "文件管理",
+			Path:       "/system/file",
+			Component:  "system/file/index",
+			Icon:       "folder",
+			Sort:       8,
+			Permission: "system:file:list",
+			Buttons: []buttonDefinition{
+				{Name: "上传", Sort: 1, Permission: "system:file:upload"},
+				{Name: "删除", Sort: 2, Permission: "system:file:delete"},
+				{Name: "批量删除", Sort: 3, Permission: "system:file:batchDelete"},
+				{Name: "文件迁移", Sort: 4, Permission: "system:file:migrate"},
+			},
+		},
+	}
+
+	changed := false
+	menuIDs := make([]uint, 0, 32)
+	for _, definition := range pages {
+		pageMenu := model.SysMenu{
+			ParentID:   systemMenu.ID,
+			Name:       definition.Name,
+			Path:       definition.Path,
+			Component:  definition.Component,
+			Icon:       definition.Icon,
+			Sort:       definition.Sort,
+			Type:       2,
+			Permission: definition.Permission,
+			Status:     1,
+			Hidden:     0,
+		}
+		result := global.DB.
+			Where("permission = ? AND type = ?", pageMenu.Permission, pageMenu.Type).
+			Attrs(model.SysMenu{
+				ParentID:  pageMenu.ParentID,
+				Name:      pageMenu.Name,
+				Path:      pageMenu.Path,
+				Component: pageMenu.Component,
+				Icon:      pageMenu.Icon,
+				Sort:      pageMenu.Sort,
+				Status:    pageMenu.Status,
+				Hidden:    pageMenu.Hidden,
+			}).
+			FirstOrCreate(&pageMenu)
+		if err := result.Error; err != nil {
+			global.Log.Errorf("补齐系统管理页面菜单失败(%s): %v", definition.Permission, err)
+			continue
+		}
+		if result.RowsAffected > 0 {
+			changed = true
+		}
+		menuIDs = append(menuIDs, pageMenu.ID)
+
+		for _, button := range definition.Buttons {
+			buttonMenu := model.SysMenu{
+				ParentID:   pageMenu.ID,
+				Name:       button.Name,
+				Sort:       button.Sort,
+				Type:       3,
+				Permission: button.Permission,
+				Status:     1,
+				Hidden:     0,
+			}
+			result := global.DB.
+				Where("permission = ?", buttonMenu.Permission).
+				Attrs(model.SysMenu{
+					ParentID: buttonMenu.ParentID,
+					Name:     buttonMenu.Name,
+					Sort:     buttonMenu.Sort,
+					Type:     buttonMenu.Type,
+					Status:   buttonMenu.Status,
+					Hidden:   buttonMenu.Hidden,
+				}).
+				FirstOrCreate(&buttonMenu)
+			if err := result.Error; err != nil {
+				global.Log.Errorf("补齐系统管理按钮权限失败(%s): %v", button.Permission, err)
+				continue
+			}
+			if result.RowsAffected > 0 {
+				changed = true
+			}
+			menuIDs = append(menuIDs, buttonMenu.ID)
+		}
+	}
+
+	grantMenusToRoleCodes(menuIDs, []string{"admin"})
+	if changed {
+		if err := service.Cache.ClearAllUserInfoCache(); err != nil {
+			global.Log.Errorf("清理系统管理按钮权限缓存失败: %v", err)
+		}
+	}
 }
 
 func ensureAIToolMenus() {
@@ -937,6 +1211,8 @@ func ensureAIToolMenus() {
 	}
 
 	menuIDs := []uint{aiToolsMenu.ID}
+	var chatMenuID uint
+	var configMenuID uint
 	var historyMenuID uint
 	for _, definition := range menuDefinitions {
 		menu := definition
@@ -958,14 +1234,171 @@ func ensureAIToolMenus() {
 			continue
 		}
 		menuIDs = append(menuIDs, menu.ID)
-		if definition.Permission == "ai:history:list" {
+		switch definition.Permission {
+		case "ai:chat:list":
+			chatMenuID = menu.ID
+		case "ai:config:list":
+			configMenuID = menu.ID
+		case "ai:history:list":
 			historyMenuID = menu.ID
 		}
 	}
 
-	// AI对话历史按钮权限（Type=3）
+	pageButtonDefinitions := map[uint][]model.SysMenu{}
+	if chatMenuID > 0 {
+		pageButtonDefinitions[chatMenuID] = []model.SysMenu{
+			{
+				ParentID:   chatMenuID,
+				Name:       "新建对话",
+				Sort:       1,
+				Type:       3,
+				Permission: "ai:chat:create",
+				Status:     1,
+				Hidden:     0,
+			},
+			{
+				ParentID:   chatMenuID,
+				Name:       "发送对话",
+				Sort:       2,
+				Type:       3,
+				Permission: "ai:chat:send",
+				Status:     1,
+				Hidden:     0,
+			},
+			{
+				ParentID:   chatMenuID,
+				Name:       "编辑标题",
+				Sort:       3,
+				Type:       3,
+				Permission: "ai:chat:update",
+				Status:     1,
+				Hidden:     0,
+			},
+			{
+				ParentID:   chatMenuID,
+				Name:       "删除对话",
+				Sort:       4,
+				Type:       3,
+				Permission: "ai:chat:delete",
+				Status:     1,
+				Hidden:     0,
+			},
+			{
+				ParentID:   chatMenuID,
+				Name:       "批量删除",
+				Sort:       5,
+				Type:       3,
+				Permission: "ai:chat:batchDelete",
+				Status:     1,
+				Hidden:     0,
+			},
+			{
+				ParentID:   chatMenuID,
+				Name:       "清空上下文",
+				Sort:       6,
+				Type:       3,
+				Permission: "ai:chat:clearContext",
+				Status:     1,
+				Hidden:     0,
+			},
+			{
+				ParentID:   chatMenuID,
+				Name:       "上传附件",
+				Sort:       7,
+				Type:       3,
+				Permission: "ai:chat:upload",
+				Status:     1,
+				Hidden:     0,
+			},
+		}
+	}
+	if configMenuID > 0 {
+		pageButtonDefinitions[configMenuID] = []model.SysMenu{
+			{
+				ParentID:   configMenuID,
+				Name:       "新增平台",
+				Sort:       1,
+				Type:       3,
+				Permission: "ai:config:createProvider",
+				Status:     1,
+				Hidden:     0,
+			},
+			{
+				ParentID:   configMenuID,
+				Name:       "编辑平台",
+				Sort:       2,
+				Type:       3,
+				Permission: "ai:config:editProvider",
+				Status:     1,
+				Hidden:     0,
+			},
+			{
+				ParentID:   configMenuID,
+				Name:       "删除平台",
+				Sort:       3,
+				Type:       3,
+				Permission: "ai:config:deleteProvider",
+				Status:     1,
+				Hidden:     0,
+			},
+			{
+				ParentID:   configMenuID,
+				Name:       "新增模型",
+				Sort:       4,
+				Type:       3,
+				Permission: "ai:config:createModel",
+				Status:     1,
+				Hidden:     0,
+			},
+			{
+				ParentID:   configMenuID,
+				Name:       "编辑模型",
+				Sort:       5,
+				Type:       3,
+				Permission: "ai:config:editModel",
+				Status:     1,
+				Hidden:     0,
+			},
+			{
+				ParentID:   configMenuID,
+				Name:       "删除模型",
+				Sort:       6,
+				Type:       3,
+				Permission: "ai:config:deleteModel",
+				Status:     1,
+				Hidden:     0,
+			},
+			{
+				ParentID:   configMenuID,
+				Name:       "导入模型",
+				Sort:       7,
+				Type:       3,
+				Permission: "ai:config:importModel",
+				Status:     1,
+				Hidden:     0,
+			},
+			{
+				ParentID:   configMenuID,
+				Name:       "测试模型",
+				Sort:       8,
+				Type:       3,
+				Permission: "ai:config:test",
+				Status:     1,
+				Hidden:     0,
+			},
+			{
+				ParentID:   configMenuID,
+				Name:       "保存配置",
+				Sort:       9,
+				Type:       3,
+				Permission: "ai:config:save",
+				Status:     1,
+				Hidden:     0,
+			},
+		}
+	}
 	if historyMenuID > 0 {
-		buttonDefinitions := []model.SysMenu{
+		pageButtonDefinitions[historyMenuID] = []model.SysMenu{
 			{
 				ParentID:   historyMenuID,
 				Name:       "查看消息",
@@ -985,6 +1418,8 @@ func ensureAIToolMenus() {
 				Hidden:     0,
 			},
 		}
+	}
+	for _, buttonDefinitions := range pageButtonDefinitions {
 		for _, definition := range buttonDefinitions {
 			menu := definition
 			if err := global.DB.
@@ -998,75 +1433,158 @@ func ensureAIToolMenus() {
 					Hidden:   menu.Hidden,
 				}).
 				FirstOrCreate(&menu).Error; err != nil {
-				global.Log.Errorf("补齐AI对话历史按钮失败(%s): %v", definition.Permission, err)
+				global.Log.Errorf("补齐AI工具按钮失败(%s): %v", definition.Permission, err)
 				continue
 			}
 			menuIDs = append(menuIDs, menu.ID)
 		}
 	}
 
-	grantMenusToRoleCodes(menuIDs, []string{"admin", "system_admin"})
+	grantMenusToRoleCodes(menuIDs, []string{"admin"})
 }
 
-func ensureLogAuditMenus() {
-	var systemMenu model.SysMenu
-	if err := global.DB.Where("path = ? AND type = ?", "/system", 1).First(&systemMenu).Error; err != nil {
-		global.Log.Errorf("查询系统管理目录失败: %v", err)
+type menuApiBinding struct {
+	MenuPermission string
+	APIPath        string
+	APIMethod      string
+}
+
+func ensureAIMenuApiBindings() {
+	ensureMenuApiBindings([]menuApiBinding{
+		{MenuPermission: "ai:chat:list", APIPath: "/api/v1/ai/conversations", APIMethod: "GET"},
+		{MenuPermission: "ai:chat:list", APIPath: "/api/v1/ai/conversations/:id", APIMethod: "GET"},
+		{MenuPermission: "ai:chat:list", APIPath: "/api/v1/ai/conversations/:id/messages", APIMethod: "GET"},
+		{MenuPermission: "ai:chat:create", APIPath: "/api/v1/ai/conversations", APIMethod: "POST"},
+		{MenuPermission: "ai:chat:send", APIPath: "/api/v1/ai/chat", APIMethod: "POST"},
+		{MenuPermission: "ai:chat:send", APIPath: "/api/v1/ai/chat/stream", APIMethod: "POST"},
+		{MenuPermission: "ai:chat:update", APIPath: "/api/v1/ai/conversations/:id", APIMethod: "PUT"},
+		{MenuPermission: "ai:chat:delete", APIPath: "/api/v1/ai/conversations/:id", APIMethod: "DELETE"},
+		{MenuPermission: "ai:chat:batchDelete", APIPath: "/api/v1/ai/conversations/batch", APIMethod: "DELETE"},
+		{MenuPermission: "ai:chat:clearContext", APIPath: "/api/v1/ai/conversations/:id/clear-context", APIMethod: "POST"},
+		{MenuPermission: "ai:chat:upload", APIPath: "/api/v1/files/credential", APIMethod: "POST"},
+		{MenuPermission: "ai:chat:upload", APIPath: "/api/v1/files/check-md5", APIMethod: "POST"},
+		{MenuPermission: "ai:chat:upload", APIPath: "/api/v1/files/save", APIMethod: "POST"},
+		{MenuPermission: "ai:chat:upload", APIPath: "/api/v1/files/multipart/init", APIMethod: "POST"},
+		{MenuPermission: "ai:chat:upload", APIPath: "/api/v1/files/multipart/parts", APIMethod: "GET"},
+		{MenuPermission: "ai:chat:upload", APIPath: "/api/v1/files/multipart/complete", APIMethod: "POST"},
+		{MenuPermission: "ai:chat:upload", APIPath: "/api/v1/files/multipart/abort", APIMethod: "POST"},
+		{MenuPermission: "ai:chat:upload", APIPath: "/api/v1/files/upload/local", APIMethod: "POST"},
+		{MenuPermission: "ai:chat:upload", APIPath: "/api/v1/files/upload/chunk", APIMethod: "POST"},
+		{MenuPermission: "ai:config:list", APIPath: "/api/v1/ai/config", APIMethod: "GET"},
+		{MenuPermission: "ai:config:save", APIPath: "/api/v1/ai/config", APIMethod: "PUT"},
+		{MenuPermission: "ai:config:test", APIPath: "/api/v1/ai/test", APIMethod: "POST"},
+		{MenuPermission: "ai:config:importModel", APIPath: "/api/v1/ai/providers/models/fetch", APIMethod: "POST"},
+		{MenuPermission: "ai:history:list", APIPath: "/api/v1/ai/admin/users", APIMethod: "GET"},
+		{MenuPermission: "ai:history:list", APIPath: "/api/v1/ai/admin/conversations", APIMethod: "GET"},
+		{MenuPermission: "ai:history:view", APIPath: "/api/v1/ai/admin/conversations/:id/messages", APIMethod: "GET"},
+		{MenuPermission: "ai:history:delete", APIPath: "/api/v1/ai/admin/conversations/:id", APIMethod: "DELETE"},
+	})
+}
+
+func ensureMenuApiBindings(bindings []menuApiBinding) {
+	changedMenuIDs := make(map[uint]bool)
+	for _, binding := range bindings {
+		var menu model.SysMenu
+		if err := global.DB.Where("permission = ?", binding.MenuPermission).First(&menu).Error; err != nil {
+			global.Log.Errorf("查询菜单权限失败(%s): %v", binding.MenuPermission, err)
+			continue
+		}
+
+		var api model.SysApi
+		if err := global.DB.Where("path = ? AND method = ?", binding.APIPath, binding.APIMethod).First(&api).Error; err != nil {
+			global.Log.Errorf("查询API权限失败(%s %s): %v", binding.APIMethod, binding.APIPath, err)
+			continue
+		}
+
+		var count int64
+		if err := global.DB.Table("sys_menu_api").
+			Where("sys_menu_id = ? AND sys_api_id = ?", menu.ID, api.ID).
+			Count(&count).Error; err != nil {
+			global.Log.Errorf("查询菜单API绑定失败(%s -> %s %s): %v", binding.MenuPermission, binding.APIMethod, binding.APIPath, err)
+			continue
+		}
+		if count > 0 {
+			continue
+		}
+
+		if err := global.DB.Exec("INSERT INTO sys_menu_api (sys_menu_id, sys_api_id) VALUES (?, ?)", menu.ID, api.ID).Error; err != nil {
+			global.Log.Errorf("补齐菜单API绑定失败(%s -> %s %s): %v", binding.MenuPermission, binding.APIMethod, binding.APIPath, err)
+			continue
+		}
+		changedMenuIDs[menu.ID] = true
+	}
+
+	if len(changedMenuIDs) == 0 {
 		return
 	}
 
-	changed := false
-	auditMenu := model.SysMenu{
-		ParentID:  systemMenu.ID,
-		Name:      "操作审计",
-		Path:      "/system/operation-audit",
+	menuIDs := make([]uint, 0, len(changedMenuIDs))
+	for id := range changedMenuIDs {
+		menuIDs = append(menuIDs, id)
+	}
+	if err := service.Role.SyncRolePoliciesForMenus(menuIDs); err != nil {
+		global.Log.Errorf("同步菜单继承API策略失败: %v", err)
+	}
+}
+
+func ensureMonitorRootMenu() (model.SysMenu, bool, error) {
+	monitorRoot := model.SysMenu{
+		ParentID:  0,
+		Name:      "运维监控",
+		Path:      "/monitor",
 		Component: "Layout",
-		Icon:      "audit",
-		Sort:      8,
+		Icon:      "MonitorOutlined",
+		Sort:      30,
 		Type:      1,
 		Status:    1,
 		Hidden:    0,
 	}
 	result := global.DB.
-		Where("path = ? AND type = ?", auditMenu.Path, auditMenu.Type).
+		Where("path = ? AND type = ?", monitorRoot.Path, monitorRoot.Type).
 		Attrs(model.SysMenu{
-			ParentID:  auditMenu.ParentID,
-			Name:      auditMenu.Name,
-			Component: auditMenu.Component,
-			Icon:      auditMenu.Icon,
-			Sort:      auditMenu.Sort,
-			Status:    auditMenu.Status,
-			Hidden:    auditMenu.Hidden,
+			ParentID:  monitorRoot.ParentID,
+			Name:      monitorRoot.Name,
+			Component: monitorRoot.Component,
+			Icon:      monitorRoot.Icon,
+			Sort:      monitorRoot.Sort,
+			Status:    monitorRoot.Status,
+			Hidden:    monitorRoot.Hidden,
 		}).
-		FirstOrCreate(&auditMenu)
-	if err := result.Error; err != nil {
-		global.Log.Errorf("补齐操作审计目录失败: %v", err)
+		FirstOrCreate(&monitorRoot)
+	if result.Error != nil {
+		return model.SysMenu{}, false, result.Error
+	}
+	return monitorRoot, result.RowsAffected > 0, nil
+}
+
+func ensureLogAuditMenus() {
+	monitorRoot, created, err := ensureMonitorRootMenu()
+	if err != nil {
+		global.Log.Errorf("补齐运维监控目录失败: %v", err)
 		return
 	}
-	if result.RowsAffected > 0 {
-		changed = true
-	}
+	changed := created
 
 	menuDefinitions := []model.SysMenu{
 		{
-			ParentID:   auditMenu.ID,
+			ParentID:   monitorRoot.ID,
 			Name:       "操作日志",
 			Path:       "/monitor/operation-log",
 			Component:  "monitor/operation-log/index",
 			Icon:       "file-text",
-			Sort:       1,
+			Sort:       2,
 			Type:       2,
 			Permission: "monitor:operation-log:list",
 			Status:     1,
 			Hidden:     0,
 		},
 		{
-			ParentID:   auditMenu.ID,
+			ParentID:   monitorRoot.ID,
 			Name:       "登录日志",
 			Path:       "/monitor/login-log",
 			Component:  "monitor/login-log/index",
 			Icon:       "login",
-			Sort:       2,
+			Sort:       3,
 			Type:       2,
 			Permission: "monitor:login-log:list",
 			Status:     1,
@@ -1074,7 +1592,7 @@ func ensureLogAuditMenus() {
 		},
 	}
 
-	menuIDs := []uint{auditMenu.ID}
+	menuIDs := []uint{monitorRoot.ID}
 	for _, definition := range menuDefinitions {
 		menu := definition
 		result := global.DB.
@@ -1098,21 +1616,402 @@ func ensureLogAuditMenus() {
 			changed = true
 		}
 
-		if menu.ParentID != auditMenu.ID {
-			if err := global.DB.Model(&menu).Update("parent_id", auditMenu.ID).Error; err != nil {
+		if menu.ParentID != monitorRoot.ID {
+			if err := global.DB.Model(&menu).Update("parent_id", monitorRoot.ID).Error; err != nil {
 				global.Log.Errorf("迁移日志审计菜单父级失败(%s): %v", definition.Permission, err)
 				continue
 			}
-			menu.ParentID = auditMenu.ID
+			menu.ParentID = monitorRoot.ID
 			changed = true
 		}
 		menuIDs = append(menuIDs, menu.ID)
 	}
 
-	grantMenusToRoleCodes(menuIDs, []string{"admin", "system_admin"})
+	if hideEmptyLegacyOperationAuditMenu() {
+		changed = true
+	}
+
+	grantMenusToRoleCodes(menuIDs, []string{"admin"})
 	if changed {
 		if err := service.Cache.ClearAllUserInfoCache(); err != nil {
 			global.Log.Errorf("清理用户菜单缓存失败: %v", err)
+		}
+	}
+}
+
+func hideEmptyLegacyOperationAuditMenu() bool {
+	var auditMenu model.SysMenu
+	err := global.DB.
+		Where("path = ? AND type = ?", "/system/operation-audit", 1).
+		First(&auditMenu).Error
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			global.Log.Errorf("查询历史操作审计目录失败: %v", err)
+		}
+		return false
+	}
+
+	var childCount int64
+	if err := global.DB.Model(&model.SysMenu{}).
+		Where("parent_id = ?", auditMenu.ID).
+		Count(&childCount).Error; err != nil {
+		global.Log.Errorf("查询历史操作审计子菜单失败: %v", err)
+		return false
+	}
+	if childCount > 0 || auditMenu.Hidden == 1 {
+		return false
+	}
+	if err := global.DB.Model(&auditMenu).Update("hidden", 1).Error; err != nil {
+		global.Log.Errorf("隐藏空操作审计目录失败: %v", err)
+		return false
+	}
+	return true
+}
+
+func ensureServerMonitorMenuApi() {
+	changed := false
+	monitorRoot, created, err := ensureMonitorRootMenu()
+	if err != nil {
+		global.Log.Errorf("补齐运维监控目录失败: %v", err)
+		return
+	}
+	if created {
+		changed = true
+	}
+
+	serverMenu := model.SysMenu{
+		ParentID:   monitorRoot.ID,
+		Name:       "服务监控",
+		Path:       "/monitor/server",
+		Component:  "monitor/server/index",
+		Icon:       "DashboardOutlined",
+		Sort:       1,
+		Type:       2,
+		Permission: "monitor:server:list",
+		Status:     1,
+		Hidden:     0,
+	}
+	result := global.DB.
+		Where("permission = ? AND type = ?", serverMenu.Permission, serverMenu.Type).
+		Attrs(model.SysMenu{
+			ParentID:  serverMenu.ParentID,
+			Name:      serverMenu.Name,
+			Path:      serverMenu.Path,
+			Component: serverMenu.Component,
+			Icon:      serverMenu.Icon,
+			Sort:      serverMenu.Sort,
+			Status:    serverMenu.Status,
+			Hidden:    serverMenu.Hidden,
+		}).
+		FirstOrCreate(&serverMenu)
+	if err := result.Error; err != nil {
+		global.Log.Errorf("补齐服务监控菜单失败: %v", err)
+		return
+	}
+	if result.RowsAffected > 0 {
+		changed = true
+	}
+	if serverMenu.ParentID != monitorRoot.ID {
+		if err := global.DB.Model(&serverMenu).Update("parent_id", monitorRoot.ID).Error; err != nil {
+			global.Log.Errorf("迁移服务监控菜单父级失败: %v", err)
+			return
+		}
+		serverMenu.ParentID = monitorRoot.ID
+		changed = true
+	}
+
+	buttons := []model.SysMenu{
+		{ParentID: serverMenu.ID, Name: "查看系统", Type: 3, Permission: "monitor:server:view", Sort: 1, Status: 1},
+		{ParentID: serverMenu.ID, Name: "查看运行时", Type: 3, Permission: "monitor:runtime:view", Sort: 2, Status: 1},
+		{ParentID: serverMenu.ID, Name: "查看数据库", Type: 3, Permission: "monitor:db:view", Sort: 3, Status: 1},
+		{ParentID: serverMenu.ID, Name: "查看缓存", Type: 3, Permission: "monitor:cache:view", Sort: 4, Status: 1},
+		{ParentID: serverMenu.ID, Name: "清理缓存", Type: 3, Permission: "monitor:cache:clear", Sort: 5, Status: 1},
+		{ParentID: serverMenu.ID, Name: "查看 OSS", Type: 3, Permission: "monitor:oss:view", Sort: 6, Status: 1},
+		{ParentID: serverMenu.ID, Name: "健康概览", Type: 3, Permission: "monitor:dependency:view", Sort: 7, Status: 1},
+	}
+	menuIDs := []uint{monitorRoot.ID, serverMenu.ID}
+	for _, definition := range buttons {
+		menu := definition
+		result := global.DB.
+			Where("permission = ? AND type = ?", menu.Permission, menu.Type).
+			Attrs(model.SysMenu{
+				ParentID: menu.ParentID,
+				Name:     menu.Name,
+				Sort:     menu.Sort,
+				Status:   menu.Status,
+				Hidden:   menu.Hidden,
+			}).
+			FirstOrCreate(&menu)
+		if err := result.Error; err != nil {
+			global.Log.Errorf("补齐服务监控按钮失败(%s): %v", definition.Permission, err)
+			continue
+		}
+		if result.RowsAffected > 0 {
+			changed = true
+		}
+		if menu.ParentID != serverMenu.ID {
+			if err := global.DB.Model(&menu).Update("parent_id", serverMenu.ID).Error; err != nil {
+				global.Log.Errorf("迁移服务监控按钮父级失败(%s): %v", definition.Permission, err)
+				continue
+			}
+			menu.ParentID = serverMenu.ID
+			changed = true
+		}
+		menuIDs = append(menuIDs, menu.ID)
+	}
+
+	apiDefinitions := serverMonitorAPIDefinitions()
+	for _, definition := range apiDefinitions {
+		ensureApiAccessForRoleCodes(definition, []string{"admin"})
+	}
+	ensureMenuApiBindings(serverMonitorMenuApiBindings())
+	grantMenusToRoleCodes(menuIDs, []string{"admin"})
+	if changed {
+		if err := service.Cache.ClearAllUserInfoCache(); err != nil {
+			global.Log.Errorf("清理服务监控菜单缓存失败: %v", err)
+		}
+	}
+}
+
+func serverMonitorAPIDefinitions() []model.SysApi {
+	return []model.SysApi{
+		{Path: "/api/v1/monitor/server", Method: "GET", Group: "服务监控", Description: "服务器指标", NeedAuth: true},
+		{Path: "/api/v1/monitor/runtime", Method: "GET", Group: "服务监控", Description: "运行时指标", NeedAuth: true},
+		{Path: "/api/v1/monitor/db", Method: "GET", Group: "服务监控", Description: "数据库连接池指标", NeedAuth: true},
+		{Path: "/api/v1/monitor/redis", Method: "GET", Group: "服务监控", Description: "Redis 缓存指标", NeedAuth: true},
+		{Path: "/api/v1/monitor/redis/clear", Method: "POST", Group: "服务监控", Description: "清理 Redis 缓存", NeedAuth: true},
+		{Path: "/api/v1/monitor/oss", Method: "GET", Group: "服务监控", Description: "对象存储健康", NeedAuth: true},
+		{Path: "/api/v1/monitor/dependency", Method: "GET", Group: "服务监控", Description: "依赖健康概览", NeedAuth: true},
+	}
+}
+
+func serverMonitorMenuApiBindings() []menuApiBinding {
+	return []menuApiBinding{
+		{MenuPermission: "monitor:server:view", APIPath: "/api/v1/monitor/server", APIMethod: "GET"},
+		{MenuPermission: "monitor:runtime:view", APIPath: "/api/v1/monitor/runtime", APIMethod: "GET"},
+		{MenuPermission: "monitor:db:view", APIPath: "/api/v1/monitor/db", APIMethod: "GET"},
+		{MenuPermission: "monitor:cache:view", APIPath: "/api/v1/monitor/redis", APIMethod: "GET"},
+		{MenuPermission: "monitor:cache:clear", APIPath: "/api/v1/monitor/redis/clear", APIMethod: "POST"},
+		{MenuPermission: "monitor:oss:view", APIPath: "/api/v1/monitor/oss", APIMethod: "GET"},
+		{MenuPermission: "monitor:dependency:view", APIPath: "/api/v1/monitor/dependency", APIMethod: "GET"},
+	}
+}
+
+func ensureCronTaskMenuApi() {
+	changed := false
+	monitorRoot, created, err := ensureMonitorRootMenu()
+	if err != nil {
+		global.Log.Errorf("补齐运维监控目录失败: %v", err)
+		return
+	}
+	if created {
+		changed = true
+	}
+
+	taskMenu := model.SysMenu{
+		ParentID:   monitorRoot.ID,
+		Name:       "定时任务",
+		Path:       "/monitor/cron-task",
+		Component:  "monitor/cron-task/index",
+		Icon:       "ScheduleOutlined",
+		Sort:       4,
+		Type:       2,
+		Permission: "monitor:cron:list",
+		Status:     1,
+		Hidden:     0,
+	}
+	result := global.DB.
+		Where("permission = ? AND type = ?", taskMenu.Permission, taskMenu.Type).
+		Attrs(model.SysMenu{
+			ParentID:  taskMenu.ParentID,
+			Name:      taskMenu.Name,
+			Path:      taskMenu.Path,
+			Component: taskMenu.Component,
+			Icon:      taskMenu.Icon,
+			Sort:      taskMenu.Sort,
+			Status:    taskMenu.Status,
+			Hidden:    taskMenu.Hidden,
+		}).
+		FirstOrCreate(&taskMenu)
+	if err := result.Error; err != nil {
+		global.Log.Errorf("补齐定时任务菜单失败: %v", err)
+		return
+	}
+	if result.RowsAffected > 0 {
+		changed = true
+	}
+	if taskMenu.ParentID != monitorRoot.ID {
+		if err := global.DB.Model(&taskMenu).Update("parent_id", monitorRoot.ID).Error; err != nil {
+			global.Log.Errorf("迁移定时任务菜单父级失败: %v", err)
+			return
+		}
+		taskMenu.ParentID = monitorRoot.ID
+		changed = true
+	}
+
+	logMenu := model.SysMenu{
+		ParentID:   monitorRoot.ID,
+		Name:       "任务执行日志",
+		Path:       "/monitor/cron-log",
+		Component:  "monitor/cron-log/index",
+		Icon:       "HistoryOutlined",
+		Sort:       5,
+		Type:       2,
+		Permission: "monitor:cron:logs:list",
+		Status:     1,
+		Hidden:     0,
+	}
+	result = global.DB.
+		Where("permission = ? AND type = ?", logMenu.Permission, logMenu.Type).
+		Attrs(model.SysMenu{
+			ParentID:  logMenu.ParentID,
+			Name:      logMenu.Name,
+			Path:      logMenu.Path,
+			Component: logMenu.Component,
+			Icon:      logMenu.Icon,
+			Sort:      logMenu.Sort,
+			Status:    logMenu.Status,
+			Hidden:    logMenu.Hidden,
+		}).
+		FirstOrCreate(&logMenu)
+	if err := result.Error; err != nil {
+		global.Log.Errorf("补齐任务执行日志菜单失败: %v", err)
+		return
+	}
+	if result.RowsAffected > 0 {
+		changed = true
+	}
+	if logMenu.ParentID != monitorRoot.ID {
+		if err := global.DB.Model(&logMenu).Update("parent_id", monitorRoot.ID).Error; err != nil {
+			global.Log.Errorf("迁移任务执行日志菜单父级失败: %v", err)
+			return
+		}
+		logMenu.ParentID = monitorRoot.ID
+		changed = true
+	}
+
+	buttons := []model.SysMenu{
+		{ParentID: taskMenu.ID, Name: "查看", Type: 3, Permission: "monitor:cron:view", Sort: 1, Status: 1},
+		{ParentID: taskMenu.ID, Name: "新增", Type: 3, Permission: "monitor:cron:create", Sort: 2, Status: 1},
+		{ParentID: taskMenu.ID, Name: "编辑", Type: 3, Permission: "monitor:cron:update", Sort: 3, Status: 1},
+		{ParentID: taskMenu.ID, Name: "删除", Type: 3, Permission: "monitor:cron:delete", Sort: 4, Status: 1},
+		{ParentID: taskMenu.ID, Name: "启用", Type: 3, Permission: "monitor:cron:enable", Sort: 5, Status: 1},
+		{ParentID: taskMenu.ID, Name: "停用", Type: 3, Permission: "monitor:cron:disable", Sort: 6, Status: 1},
+		{ParentID: taskMenu.ID, Name: "立即执行", Type: 3, Permission: "monitor:cron:runNow", Sort: 7, Status: 1},
+		{ParentID: logMenu.ID, Name: "查看日志", Type: 3, Permission: "monitor:cron:logs:view", Sort: 1, Status: 1},
+	}
+	menuIDs := []uint{monitorRoot.ID, taskMenu.ID, logMenu.ID}
+	for _, definition := range buttons {
+		menu := definition
+		result := global.DB.
+			Where("permission = ? AND type = ?", menu.Permission, menu.Type).
+			Attrs(model.SysMenu{
+				ParentID: menu.ParentID,
+				Name:     menu.Name,
+				Sort:     menu.Sort,
+				Status:   menu.Status,
+				Hidden:   menu.Hidden,
+			}).
+			FirstOrCreate(&menu)
+		if err := result.Error; err != nil {
+			global.Log.Errorf("补齐定时任务按钮失败(%s): %v", definition.Permission, err)
+			continue
+		}
+		if result.RowsAffected > 0 {
+			changed = true
+		}
+		if menu.ParentID != definition.ParentID {
+			if err := global.DB.Model(&menu).Update("parent_id", definition.ParentID).Error; err != nil {
+				global.Log.Errorf("迁移定时任务按钮父级失败(%s): %v", definition.Permission, err)
+				continue
+			}
+			menu.ParentID = definition.ParentID
+			changed = true
+		}
+		menuIDs = append(menuIDs, menu.ID)
+	}
+
+	for _, definition := range cronTaskAPIDefinitions() {
+		ensureApiAccessForRoleCodes(definition, []string{"admin"})
+	}
+	ensureMenuApiBindings(cronTaskMenuApiBindings())
+	ensureDefaultCronTasks()
+	grantMenusToRoleCodes(menuIDs, []string{"admin"})
+	if changed {
+		if err := service.Cache.ClearAllUserInfoCache(); err != nil {
+			global.Log.Errorf("清理定时任务菜单缓存失败: %v", err)
+		}
+	}
+}
+
+func cronTaskAPIDefinitions() []model.SysApi {
+	return []model.SysApi{
+		{Path: "/api/v1/monitor/cron-task", Method: "GET", Group: "定时任务", Description: "定时任务列表", NeedAuth: true},
+		{Path: "/api/v1/monitor/cron-task", Method: "POST", Group: "定时任务", Description: "创建定时任务", NeedAuth: true},
+		{Path: "/api/v1/monitor/cron-task/:id", Method: "PUT", Group: "定时任务", Description: "更新定时任务", NeedAuth: true},
+		{Path: "/api/v1/monitor/cron-task/:id", Method: "DELETE", Group: "定时任务", Description: "删除定时任务", NeedAuth: true},
+		{Path: "/api/v1/monitor/cron-task/:id/enable", Method: "POST", Group: "定时任务", Description: "启用定时任务", NeedAuth: true},
+		{Path: "/api/v1/monitor/cron-task/:id/disable", Method: "POST", Group: "定时任务", Description: "停用定时任务", NeedAuth: true},
+		{Path: "/api/v1/monitor/cron-task/:id/run", Method: "POST", Group: "定时任务", Description: "立即执行定时任务", NeedAuth: true},
+		{Path: "/api/v1/monitor/cron-task/registry", Method: "GET", Group: "定时任务", Description: "定时任务注册列表", NeedAuth: true},
+		{Path: "/api/v1/monitor/cron-log", Method: "GET", Group: "定时任务", Description: "定时任务执行日志", NeedAuth: true},
+		{Path: "/api/v1/monitor/cron-log/:id", Method: "GET", Group: "定时任务", Description: "定时任务执行日志详情", NeedAuth: true},
+	}
+}
+
+func cronTaskMenuApiBindings() []menuApiBinding {
+	return []menuApiBinding{
+		{MenuPermission: "monitor:cron:view", APIPath: "/api/v1/monitor/cron-task", APIMethod: "GET"},
+		{MenuPermission: "monitor:cron:view", APIPath: "/api/v1/monitor/cron-task/registry", APIMethod: "GET"},
+		{MenuPermission: "monitor:cron:create", APIPath: "/api/v1/monitor/cron-task", APIMethod: "POST"},
+		{MenuPermission: "monitor:cron:update", APIPath: "/api/v1/monitor/cron-task/:id", APIMethod: "PUT"},
+		{MenuPermission: "monitor:cron:delete", APIPath: "/api/v1/monitor/cron-task/:id", APIMethod: "DELETE"},
+		{MenuPermission: "monitor:cron:enable", APIPath: "/api/v1/monitor/cron-task/:id/enable", APIMethod: "POST"},
+		{MenuPermission: "monitor:cron:disable", APIPath: "/api/v1/monitor/cron-task/:id/disable", APIMethod: "POST"},
+		{MenuPermission: "monitor:cron:runNow", APIPath: "/api/v1/monitor/cron-task/:id/run", APIMethod: "POST"},
+		{MenuPermission: "monitor:cron:logs:view", APIPath: "/api/v1/monitor/cron-log", APIMethod: "GET"},
+		{MenuPermission: "monitor:cron:logs:view", APIPath: "/api/v1/monitor/cron-log/:id", APIMethod: "GET"},
+	}
+}
+
+func ensureDefaultCronTasks() {
+	defaults := []model.SysCronTask{
+		{
+			Code:     "cleanup_login_logs_default",
+			TaskCode: "cleanup_login_logs",
+			Name:     "清理登录日志",
+			CronExpr: "0 2 * * *",
+			Params:   datatypes.JSON([]byte(`{"batch_limit":1000,"retain_days":30}`)),
+			Status:   model.CronTaskStatusDisabled,
+			Remark:   "内置任务，默认停用",
+			Sort:     1,
+		},
+		{
+			Code:     "cleanup_operation_logs_default",
+			TaskCode: "cleanup_operation_logs",
+			Name:     "清理操作日志",
+			CronExpr: "0 2 * * *",
+			Params:   datatypes.JSON([]byte(`{"batch_limit":1000,"retain_days":30}`)),
+			Status:   model.CronTaskStatusDisabled,
+			Remark:   "内置任务，默认停用",
+			Sort:     2,
+		},
+	}
+	for _, definition := range defaults {
+		task := definition
+		if err := global.DB.
+			Where("code = ?", task.Code).
+			Attrs(model.SysCronTask{
+				TaskCode: task.TaskCode,
+				Name:     task.Name,
+				CronExpr: task.CronExpr,
+				Params:   task.Params,
+				Status:   task.Status,
+				Remark:   task.Remark,
+				Sort:     task.Sort,
+			}).
+			FirstOrCreate(&task).Error; err != nil {
+			global.Log.Errorf("补齐内置定时任务失败(%s): %v", definition.Code, err)
 		}
 	}
 }
@@ -1121,6 +2020,7 @@ func ensureAIApiAccess() {
 	apiDefinitions := []model.SysApi{
 		{Path: "/api/v1/ai/conversations", Method: "GET", Group: "AI对话", Description: "获取对话列表", NeedAuth: true},
 		{Path: "/api/v1/ai/conversations", Method: "POST", Group: "AI对话", Description: "创建对话", NeedAuth: true},
+		{Path: "/api/v1/ai/conversations/batch", Method: "DELETE", Group: "AI对话", Description: "批量删除对话", NeedAuth: true},
 		{Path: "/api/v1/ai/conversations/:id", Method: "GET", Group: "AI对话", Description: "获取对话详情", NeedAuth: true},
 		{Path: "/api/v1/ai/conversations/:id", Method: "PUT", Group: "AI对话", Description: "更新对话标题", NeedAuth: true},
 		{Path: "/api/v1/ai/conversations/:id", Method: "DELETE", Group: "AI对话", Description: "删除对话", NeedAuth: true},
@@ -1141,7 +2041,7 @@ func ensureAIApiAccess() {
 	}
 
 	for _, definition := range apiDefinitions {
-		ensureApiAccessForRoleCodes(definition, []string{"admin", "system_admin"})
+		ensureApiAccessForRoleCodes(definition, []string{"admin"})
 	}
 }
 
@@ -1170,7 +2070,7 @@ func ensureApiAccessInheritedFrom(api model.SysApi, sourcePath, sourceMethod str
 		return
 	}
 	if len(roles) == 0 {
-		if err := global.DB.Where("code IN ?", []string{"admin", "system_admin"}).Find(&roles).Error; err != nil {
+		if err := global.DB.Where("code IN ?", []string{"admin"}).Find(&roles).Error; err != nil {
 			global.Log.Errorf("查询内置角色失败: %v", err)
 			return
 		}
@@ -1242,6 +2142,24 @@ func ensureApiAccessForRoleCodes(api model.SysApi, roleCodes []string) {
 
 	if policyChanged && global.Enforcer != nil {
 		_ = global.Enforcer.SavePolicy()
+	}
+}
+
+func ensureFileUploadApiAccess() {
+	apiDefinitions := []model.SysApi{
+		{Path: "/api/v1/files/credential", Method: "POST", Group: "文件管理", Description: "获取上传凭证", NeedAuth: true},
+		{Path: "/api/v1/files/check-md5", Method: "POST", Group: "文件管理", Description: "MD5秒传检查", NeedAuth: true},
+		{Path: "/api/v1/files/save", Method: "POST", Group: "文件管理", Description: "保存上传文件", NeedAuth: true},
+		{Path: "/api/v1/files/multipart/init", Method: "POST", Group: "文件管理", Description: "初始化分片上传", NeedAuth: true},
+		{Path: "/api/v1/files/multipart/parts", Method: "GET", Group: "文件管理", Description: "获取已上传分片", NeedAuth: true},
+		{Path: "/api/v1/files/multipart/complete", Method: "POST", Group: "文件管理", Description: "完成分片上传", NeedAuth: true},
+		{Path: "/api/v1/files/multipart/abort", Method: "POST", Group: "文件管理", Description: "取消分片上传", NeedAuth: true},
+		{Path: "/api/v1/files/upload/local", Method: "POST", Group: "文件管理", Description: "本地文件上传", NeedAuth: true},
+		{Path: "/api/v1/files/upload/chunk", Method: "POST", Group: "文件管理", Description: "上传分片", NeedAuth: true},
+	}
+
+	for _, definition := range apiDefinitions {
+		ensureApiAccessForRoleCodes(definition, []string{"admin"})
 	}
 }
 

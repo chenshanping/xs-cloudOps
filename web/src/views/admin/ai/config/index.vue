@@ -10,6 +10,7 @@
       >
         <template #action>
           <a-button
+            v-permission="'ai:config:save'"
             type="primary"
             size="small"
             :loading="quickSaving"
@@ -39,7 +40,7 @@
         <a-space>
           <a-button @click="resolveLeavePrompt('cancel')">取消</a-button>
           <a-button danger @click="resolveLeavePrompt('discard')">直接离开</a-button>
-          <a-button type="primary" @click="resolveLeavePrompt('save')">保存并继续</a-button>
+          <a-button type="primary" @click="resolveLeavePrompt('save')" v-permission="'ai:config:save'">保存并继续</a-button>
         </a-space>
       </template>
     </a-modal>

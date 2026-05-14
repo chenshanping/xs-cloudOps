@@ -116,10 +116,10 @@
 
       <div class="migration-actions">
         <a-space>
-          <a-button :disabled="!canPreview" :loading="previewLoading" @click="handlePreview">
+          <a-button :disabled="!canPreview" :loading="previewLoading" @click="handlePreview" v-permission="'system:file:migrate'">
             预检查统计
           </a-button>
-          <a-button type="primary" :disabled="!canExecute" :loading="executeLoading" @click="handleExecute">
+          <a-button type="primary" :disabled="!canExecute" :loading="executeLoading" @click="handleExecute" v-permission="'system:file:migrate'">
             开始迁移
           </a-button>
         </a-space>

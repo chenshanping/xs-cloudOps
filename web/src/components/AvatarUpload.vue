@@ -1,5 +1,11 @@
 <template>
-  <div class="avatar-upload">
+  <div
+    ref="uploadRootRef"
+    class="avatar-upload"
+    tabindex="0"
+    @click="focusUploadRoot"
+    @paste="handlePaste"
+  >
     <a-upload
       :show-upload-list="false"
       :before-upload="handleBeforeUpload"
@@ -37,6 +43,7 @@ import { UserOutlined, CameraOutlined, LoadingOutlined } from '@ant-design/icons
 import type { UploadProps } from 'ant-design-vue'
 import type { FileInfo } from '@/types/file'
 import { calculateMD5, multipartUpload } from '@/utils/upload'
+import { getClipboardFiles, isEditablePasteTarget } from '@/utils/upload-paste'
 
 interface Props {
   fileId?: number
@@ -64,6 +71,7 @@ const emit = defineEmits<{
 const uploading = ref(false)
 const progress = ref(0)
 const localUrl = ref('')
+const uploadRootRef = ref<HTMLElement>()
 
 const currentUrl = computed(() => localUrl.value || props.url)
 
@@ -92,47 +100,82 @@ const handleBeforeUpload: UploadProps['beforeUpload'] = (file) => {
   return true
 }
 
-// 自定义上传
-const handleUpload: UploadProps['customRequest'] = async (options) => {
-  const file = options.file as File
+const uploadAvatar = async (
+  file: File,
+  callbacks?: {
+    onSuccess?: (result: FileInfo) => void
+    onError?: (error: Error) => void
+  }
+) => {
   uploading.value = true
   progress.value = 0
 
   try {
-    // 先显示本地预览
     const reader = new FileReader()
     reader.onload = (e) => {
       localUrl.value = e.target?.result as string
     }
     reader.readAsDataURL(file)
 
-    // 计算 MD5
     const md5 = await calculateMD5(file, (p) => {
-      progress.value = Math.round(p * 0.1) // MD5 计算占 10%
+      progress.value = Math.round(p * 0.1)
     })
 
-    // 执行上传
     const result = await multipartUpload(file, md5, undefined, (p) => {
-      progress.value = 10 + Math.round(p * 0.9) // 上传占 90%
+      progress.value = 10 + Math.round(p * 0.9)
     })
 
-    // 上传成功
     emit('update:fileId', result.id)
     emit('update:url', result.url)
     localUrl.value = result.url
     emit('success', result)
     message.success('头像上传成功')
-    options.onSuccess?.(result)
+    callbacks?.onSuccess?.(result)
+    return result
   } catch (error) {
-    // 上传失败，恢复原图
     localUrl.value = ''
     emit('error', error as Error)
     message.error((error as Error).message || '上传失败')
-    options.onError?.(error as Error)
+    callbacks?.onError?.(error as Error)
+    throw error
   } finally {
     uploading.value = false
     progress.value = 0
   }
+}
+
+// 自定义上传
+const handleUpload: UploadProps['customRequest'] = async (options) => {
+  const file = options.file as File
+  await uploadAvatar(file, {
+    onSuccess: (result) => options.onSuccess?.(result),
+    onError: (error) => options.onError?.(error),
+  })
+}
+
+const focusUploadRoot = () => {
+  uploadRootRef.value?.focus()
+}
+
+const handlePaste = async (event: ClipboardEvent) => {
+  if (isEditablePasteTarget(event.target)) {
+    return
+  }
+
+  const file = getClipboardFiles(event, {
+    multiple: false,
+  }).find(item => item.type.startsWith('image/'))
+
+  if (!file) {
+    return
+  }
+
+  if (!handleBeforeUpload(file)) {
+    return
+  }
+
+  event.preventDefault()
+  await uploadAvatar(file)
 }
 </script>
 

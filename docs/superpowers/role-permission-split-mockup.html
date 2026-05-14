@@ -1,0 +1,983 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>角色权限拆分交互效果稿</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --panel-soft: #f8fafd;
+      --line: #e8edf5;
+      --line-strong: #d7e1ef;
+      --text: #1f2a37;
+      --muted: #667085;
+      --subtle: #98a2b3;
+      --primary: #1677ff;
+      --primary-soft: #e8f2ff;
+      --success: #16a34a;
+      --success-soft: #eaf8ef;
+      --warning: #fa8c16;
+      --warning-soft: #fff4e5;
+      --danger: #ef4444;
+      --danger-soft: #fff0f0;
+      --shadow: 0 18px 48px rgba(31, 42, 55, 0.08);
+      --radius: 12px;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 12% 8%, rgba(22, 119, 255, 0.12), transparent 28%),
+        linear-gradient(180deg, #f8fbff 0%, var(--bg) 42%, #eef3fa 100%);
+      min-height: 100vh;
+    }
+
+    .page {
+      width: min(1260px, calc(100vw - 48px));
+      margin: 32px auto;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 18px;
+    }
+
+    .eyebrow {
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 26px;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .primary-button,
+    .ghost-button,
+    .link-button {
+      border: 0;
+      border-radius: 8px;
+      cursor: pointer;
+      font: inherit;
+      transition: 0.18s ease;
+      white-space: nowrap;
+    }
+
+    .primary-button {
+      padding: 9px 16px;
+      color: #fff;
+      background: var(--primary);
+      box-shadow: 0 10px 24px rgba(22, 119, 255, 0.24);
+    }
+
+    .primary-button:hover { filter: brightness(0.96); transform: translateY(-1px); }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .summary-card {
+      background: rgba(255, 255, 255, 0.86);
+      border: 1px solid rgba(232, 237, 245, 0.92);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 26px rgba(31, 42, 55, 0.045);
+      padding: 16px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      backdrop-filter: blur(8px);
+    }
+
+    .summary-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 11px;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      color: var(--primary);
+      background: var(--primary-soft);
+    }
+
+    .summary-card:nth-child(2) .summary-icon { color: var(--success); background: var(--success-soft); }
+    .summary-card:nth-child(3) .summary-icon { color: var(--warning); background: var(--warning-soft); }
+    .summary-card:nth-child(4) .summary-icon { color: #64748b; background: #eef2f7; }
+
+    .summary-label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .summary-value {
+      font-size: 22px;
+      font-weight: 750;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #fff 0%, var(--panel-soft) 100%);
+    }
+
+    .panel-title {
+      font-size: 16px;
+      font-weight: 750;
+    }
+
+    .panel-desc {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .search {
+      width: 280px;
+      height: 34px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      padding: 0 12px;
+      color: var(--text);
+      outline: none;
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th {
+      text-align: left;
+      color: var(--muted);
+      font-weight: 650;
+      background: #fbfcfe;
+      border-bottom: 1px solid var(--line);
+      padding: 12px 16px;
+    }
+
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+    }
+
+    tr:hover td { background: #fbfdff; }
+
+    .role-name {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 650;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--primary);
+      box-shadow: 0 0 0 4px var(--primary-soft);
+    }
+
+    .code {
+      margin-top: 5px;
+      color: var(--muted);
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid transparent;
+    }
+
+    .tag.orange { color: #b45309; background: var(--warning-soft); border-color: #fed7aa; }
+    .tag.green { color: #15803d; background: var(--success-soft); border-color: #bbf7d0; }
+    .tag.blue { color: #1d4ed8; background: var(--primary-soft); border-color: #bfdbfe; }
+    .tag.gray { color: #475467; background: #f2f4f7; border-color: #e4e7ec; }
+
+    .action-cell {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+      position: relative;
+    }
+
+    .link-button {
+      padding: 5px 8px;
+      color: var(--primary);
+      background: transparent;
+    }
+
+    .link-button:hover { background: var(--primary-soft); }
+    .link-button.danger { color: var(--danger); }
+    .link-button.danger:hover { background: var(--danger-soft); }
+
+    .more-wrap { position: relative; }
+
+    .more-menu {
+      position: absolute;
+      right: 0;
+      top: 34px;
+      width: 172px;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 18px 42px rgba(31, 42, 55, 0.14);
+      z-index: 5;
+    }
+
+    .more-item {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      border-radius: 8px;
+      padding: 9px 10px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--text);
+      cursor: pointer;
+      text-align: left;
+      font: inherit;
+    }
+
+    .more-item:hover { background: #f5f8ff; }
+    .more-item.api { color: #0f766e; }
+    .more-item.disabled { color: var(--subtle); cursor: not-allowed; }
+
+    .iconbox {
+      width: 22px;
+      height: 22px;
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      background: #eef4ff;
+      font-size: 12px;
+    }
+
+    .mock-note {
+      margin-top: 14px;
+      padding: 12px 14px;
+      background: #fff;
+      border: 1px dashed var(--line-strong);
+      border-radius: 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .drawer-mask {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.24);
+      opacity: 0;
+      pointer-events: none;
+      transition: 0.2s ease;
+      z-index: 20;
+    }
+
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: min(920px, 88vw);
+      height: 100vh;
+      background: #fff;
+      box-shadow: -22px 0 56px rgba(15, 23, 42, 0.16);
+      transform: translateX(102%);
+      transition: 0.24s cubic-bezier(.2,.75,.2,1);
+      z-index: 21;
+      display: flex;
+      flex-direction: column;
+    }
+
+    body.drawer-open .drawer-mask {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    body.drawer-open .drawer { transform: translateX(0); }
+
+    .drawer-head {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #fff 0%, #f8fafd 100%);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+    }
+
+    .drawer-kicker {
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .drawer-title {
+      font-size: 18px;
+      font-weight: 760;
+    }
+
+    .drawer-subtitle {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .close {
+      width: 32px;
+      height: 32px;
+      border: 0;
+      border-radius: 8px;
+      background: #eef2f7;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .drawer-body {
+      flex: 1;
+      overflow: auto;
+      padding: 18px 22px;
+      background: #f7f9fc;
+    }
+
+    .drawer-footer {
+      padding: 14px 22px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      background: #fff;
+    }
+
+    .drawer-layout {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 14px;
+    }
+
+    .side-list,
+    .permission-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .side-title {
+      padding: 12px 14px;
+      font-weight: 700;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfe;
+    }
+
+    .side-item {
+      padding: 11px 14px;
+      border-bottom: 1px solid #f0f3f8;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      cursor: pointer;
+      color: #344054;
+    }
+
+    button.side-item {
+      width: 100%;
+      border: 0;
+      border-bottom: 1px solid #f0f3f8;
+      background: transparent;
+      font: inherit;
+      text-align: left;
+    }
+
+    .side-item.active {
+      color: var(--primary);
+      background: var(--primary-soft);
+      border-left: 3px solid var(--primary);
+    }
+
+    .menu-rule-note {
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      color: #475467;
+      background: #fff;
+      border: 1px dashed var(--line-strong);
+      border-radius: 10px;
+      font-size: 12px;
+    }
+
+    .tab-strip {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+      padding: 6px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow-x: auto;
+    }
+
+    .tab-button {
+      border: 0;
+      border-radius: 9px;
+      padding: 8px 12px;
+      color: #475467;
+      background: transparent;
+      cursor: pointer;
+      font: inherit;
+      white-space: nowrap;
+      transition: 0.18s ease;
+    }
+
+    .tab-button:hover {
+      color: var(--primary);
+      background: #f5f8ff;
+    }
+
+    .tab-button.active {
+      color: var(--primary);
+      background: var(--primary-soft);
+      font-weight: 700;
+    }
+
+    .single-menu-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+      padding: 13px 15px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+
+    .single-menu-title {
+      font-weight: 760;
+      margin-bottom: 4px;
+    }
+
+    .single-menu-desc {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .permission-card + .permission-card { margin-top: 12px; }
+
+    .card-head {
+      padding: 13px 15px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfe;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 700;
+    }
+
+    .perm-list { padding: 6px 0; }
+
+    .perm-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 15px;
+      border-bottom: 1px solid #f3f5f9;
+    }
+
+    .perm-main {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .checkbox {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      border: 1px solid #b9c3d2;
+      background: #fff;
+      position: relative;
+      flex: 0 0 auto;
+    }
+
+    .checkbox.checked {
+      background: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .checkbox.checked::after {
+      content: "";
+      position: absolute;
+      left: 5px;
+      top: 2px;
+      width: 4px;
+      height: 8px;
+      border: solid #fff;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+
+    .perm-code {
+      color: var(--subtle);
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+    }
+
+    .api-method {
+      width: 58px;
+      text-align: center;
+      border-radius: 999px;
+      padding: 3px 0;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 750;
+    }
+
+    .api-method.get { background: #16a34a; }
+    .api-method.post { background: #1677ff; }
+    .api-method.put { background: #fa8c16; }
+    .api-method.delete { background: #ef4444; }
+
+    .api-path {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      color: #344054;
+    }
+
+    .data-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .scope-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .scope-title {
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .radio-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0;
+      color: #344054;
+    }
+
+    .ghost-button {
+      padding: 9px 14px;
+      color: #344054;
+      background: #f2f4f7;
+    }
+
+    @media (max-width: 920px) {
+      .summary-grid { grid-template-columns: repeat(2, 1fr); }
+      .drawer-layout { grid-template-columns: 1fr; }
+      .panel-header { align-items: flex-start; flex-direction: column; }
+      .search { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="topbar">
+      <div>
+        <div class="eyebrow">RBAC permission split mockup</div>
+        <h1>角色管理 · 权限入口拆分效果</h1>
+        <div class="subtitle">操作列保留编辑、删除，更多菜单承载菜单权限、API权限、数据权限。</div>
+      </div>
+      <button class="primary-button">＋ 新增角色</button>
+    </div>
+
+    <section class="summary-grid">
+      <div class="summary-card"><div class="summary-icon">R</div><div><div class="summary-label">角色总数</div><div class="summary-value">6</div></div></div>
+      <div class="summary-card"><div class="summary-icon">✓</div><div><div class="summary-label">启用角色</div><div class="summary-value">5</div></div></div>
+      <div class="summary-card"><div class="summary-icon">★</div><div><div class="summary-label">超管角色</div><div class="summary-value">1</div></div></div>
+      <div class="summary-card"><div class="summary-icon">U</div><div><div class="summary-label">关联用户</div><div class="summary-value">18</div></div></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">角色列表</div>
+          <div class="panel-desc">日常授权走菜单权限；高级 API 直授只给超管进入。</div>
+        </div>
+        <input class="search" placeholder="搜索角色名称 / 编码" />
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 28%">角色</th>
+            <th>状态</th>
+            <th>默认数据范围</th>
+            <th>关联用户</th>
+            <th style="text-align: right; width: 280px">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="role-name"><span class="dot"></span>超级管理员 <span class="tag orange">超管</span></div>
+              <div class="code">admin</div>
+            </td>
+            <td><span class="tag green">启用</span></td>
+            <td>全部数据</td>
+            <td>1 人</td>
+            <td>
+              <div class="action-cell">
+                <button class="link-button">编辑</button>
+                <button class="link-button danger">删除</button>
+                <div class="more-wrap">
+                  <button class="link-button">更多 ▾</button>
+                  <div class="more-menu">
+                    <button class="more-item" onclick="openDrawer('menu')"><span class="iconbox">M</span>菜单权限</button>
+                    <button class="more-item api" onclick="openDrawer('api')"><span class="iconbox">A</span>API 权限</button>
+                    <button class="more-item" onclick="openDrawer('data')"><span class="iconbox">D</span>数据权限</button>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div class="role-name"><span class="dot"></span>业务管理员</div>
+              <div class="code">business_admin</div>
+            </td>
+            <td><span class="tag green">启用</span></td>
+            <td>本部门及以下</td>
+            <td>5 人</td>
+            <td>
+              <div class="action-cell">
+                <button class="link-button">编辑</button>
+                <button class="link-button danger">删除</button>
+                <div class="more-wrap">
+                  <button class="link-button">更多 ▾</button>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div class="role-name"><span class="dot"></span>AI 运营</div>
+              <div class="code">ai_operator</div>
+            </td>
+            <td><span class="tag green">启用</span></td>
+            <td>自定义部门</td>
+            <td>3 人</td>
+            <td>
+              <div class="action-cell">
+                <button class="link-button">编辑</button>
+                <button class="link-button danger">删除</button>
+                <button class="link-button" onclick="openDrawer('menu')">更多 ▾</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <div class="mock-note">效果稿说明：第一行下拉菜单保持展开，方便直观看到“更多”里拆出的三个授权入口；点击菜单项可切换右侧抽屉内容。</div>
+  </main>
+
+  <div class="drawer-mask" onclick="closeDrawer()"></div>
+  <aside class="drawer" aria-live="polite">
+    <div class="drawer-head">
+      <div>
+        <div class="drawer-kicker" id="drawerKicker">菜单权限</div>
+        <div class="drawer-title" id="drawerTitle">菜单权限 - 超级管理员</div>
+        <div class="drawer-subtitle" id="drawerSubtitle">只管理菜单/按钮，API 由菜单绑定自动继承。</div>
+      </div>
+      <button class="close" onclick="closeDrawer()">×</button>
+    </div>
+    <div class="drawer-body" id="drawerBody"></div>
+    <div class="drawer-footer">
+      <button class="ghost-button" onclick="closeDrawer()">取消</button>
+      <button class="primary-button">保存</button>
+    </div>
+  </aside>
+
+  <script>
+    const menuSections = {
+      system: {
+        title: '系统管理',
+        mode: 'tabs',
+        note: '一级菜单下有多个二级菜单：右侧使用 Tabs 显示二级菜单，避免一个页面里堆太长。',
+        tabs: [
+          {
+            key: 'role',
+            label: '角色管理',
+            count: 5,
+            html: `
+              <div class="permission-card">
+                <div class="card-head"><span>角色管理</span><span class="tag blue">二级菜单 Tab</span></div>
+                <div class="perm-list">
+                  <div class="perm-row"><div class="perm-main"><span class="checkbox checked"></span><strong>角色列表</strong></div><span class="perm-code">system:role:list</span></div>
+                  <div class="perm-row"><div class="perm-main"><span class="checkbox checked"></span><span>新增</span></div><span class="perm-code">system:role:add</span></div>
+                  <div class="perm-row"><div class="perm-main"><span class="checkbox checked"></span><span>编辑</span></div><span class="perm-code">system:role:edit</span></div>
+                  <div class="perm-row"><div class="perm-main"><span class="checkbox checked"></span><span>删除</span></div><span class="perm-code">system:role:delete</span></div>
+                  <div class="perm-row"><div class="perm-main"><span class="checkbox checked"></span><span>菜单权限</span></div><span class="perm-code">system:role:assign</span></div>
+                </div>
+              </div>`
+          },
+          {
+            key: 'menu',
+            label: '菜单管理',
+            count: 4,
+            html: `
+              <div class="permission-card">
+                <div class="card-head"><span>菜单管理</span><span class="tag gray">二级菜单 Tab</span></div>
+                <div class="perm-list">
+                  <div class="perm-row"><div class="perm-main"><span class="checkbox checked"></span><strong>菜单列表</strong></div><span class="perm-code">system:menu:list</span></div>
+                  <div class="perm-row"><div class="perm-main"><span class="checkbox checked"></span><span>新增</span></div><span class="perm-code">system:menu:add</span></div>
+                  <div class="perm-row"><div class="perm-main"><span class="checkbox checked"></span><span>编辑</span></div><span class="perm-code">system:menu:edit</span></div>
+                  <div class="perm-row"><div class="perm-main"><span class="checkbox"></span><span>绑定 API</span></div><span class="perm-code">system:menu:api</span></div>
+                </div>
+              </div>`
+          },
+          {
+            key: 'api',
+            label: 'API 管理',
+            count: 3,
+            html: `
+              <div class="permission-card">
+                <div class="card-head"><span>API 管理</span><span class="tag gray">二级菜单 Tab</span></div>
+                <div class="perm-list">
+                  <div class="perm-row"><div class="perm-main"><span class="checkbox checked"></span><strong>API 列表</strong></div><span class="perm-code">system:api:list</span></div>
+                  <div class="perm-row"><div class="perm-main"><span class="checkbox"></span><span>同步接口</span></div><span class="perm-code">system:api:sync</span></div>
+                  <div class="perm-row"><div class="perm-main"><span class="checkbox checked"></span><span>编辑</span></div><span class="perm-code">system:api:edit</span></div>
+                </div>
+              </div>`
+          }
+        ]
+      },
+      dashboard: {
+        title: '工作台',
+        mode: 'single',
+        note: '一级菜单本身就是页面，并且没有子菜单：不显示 Tabs，直接展示当前菜单和按钮权限。',
+        html: `
+          <div class="single-menu-heading">
+            <div>
+              <div class="single-menu-title">工作台</div>
+              <div class="single-menu-desc">无子菜单一级页面，直接显示权限卡片。</div>
+            </div>
+            <span class="tag blue">无 Tabs</span>
+          </div>
+          <div class="permission-card">
+            <div class="card-head"><span>工作台权限</span><span class="tag blue">一级页面</span></div>
+            <div class="perm-list">
+              <div class="perm-row"><div class="perm-main"><span class="checkbox checked"></span><strong>工作台页面</strong></div><span class="perm-code">dashboard:list</span></div>
+              <div class="perm-row"><div class="perm-main"><span class="checkbox checked"></span><span>刷新数据</span></div><span class="perm-code">dashboard:refresh</span></div>
+              <div class="perm-row"><div class="perm-main"><span class="checkbox"></span><span>导出概览</span></div><span class="perm-code">dashboard:export</span></div>
+            </div>
+          </div>`
+      },
+      file: {
+        title: '文件管理',
+        mode: 'single',
+        note: '如果一级菜单只有一个实际页面，也可以按无子菜单方式直接展示，避免只有一个 Tab 的空耗。',
+        html: `
+          <div class="single-menu-heading">
+            <div>
+              <div class="single-menu-title">文件管理</div>
+              <div class="single-menu-desc">单页面菜单：直接列出上传、预览、删除等按钮权限。</div>
+            </div>
+            <span class="tag green">直接卡片</span>
+          </div>
+          <div class="permission-card">
+            <div class="card-head"><span>文件管理权限</span><span class="tag blue">一级页面</span></div>
+            <div class="perm-list">
+              <div class="perm-row"><div class="perm-main"><span class="checkbox checked"></span><strong>文件列表</strong></div><span class="perm-code">system:file:list</span></div>
+              <div class="perm-row"><div class="perm-main"><span class="checkbox checked"></span><span>上传</span></div><span class="perm-code">system:file:upload</span></div>
+              <div class="perm-row"><div class="perm-main"><span class="checkbox checked"></span><span>预览</span></div><span class="perm-code">system:file:preview</span></div>
+              <div class="perm-row"><div class="perm-main"><span class="checkbox"></span><span>删除</span></div><span class="perm-code">system:file:delete</span></div>
+            </div>
+          </div>`
+      }
+    };
+
+    let activeTopMenu = 'system';
+    let activeSecondMenu = 'role';
+
+    function renderMenuHtml() {
+      const section = menuSections[activeTopMenu];
+      const topItems = Object.entries(menuSections).map(([key, value]) => `
+        <button class="side-item ${key === activeTopMenu ? 'active' : ''}" onclick="switchTopMenu('${key}')">
+          <span>${value.title}</span>
+          <span class="tag ${key === activeTopMenu ? 'blue' : 'gray'}">${value.mode === 'tabs' ? value.tabs.length + ' 个二级' : '无子菜单'}</span>
+        </button>
+      `).join('');
+
+      let content = `<div class="menu-rule-note">${section.note}</div>`;
+      if (section.mode === 'tabs') {
+        const currentTab = section.tabs.find(tab => tab.key === activeSecondMenu) || section.tabs[0];
+        content += `
+          <div class="tab-strip">
+            ${section.tabs.map(tab => `
+              <button class="tab-button ${tab.key === currentTab.key ? 'active' : ''}" onclick="switchSecondMenu('${tab.key}')">
+                ${tab.label} <span class="tag gray">${tab.count}</span>
+              </button>
+            `).join('')}
+          </div>
+          ${currentTab.html}`;
+      } else {
+        content += section.html;
+      }
+
+      return `
+        <div class="drawer-layout">
+          <div class="side-list">
+            <div class="side-title">一级菜单</div>
+            ${topItems}
+          </div>
+          <div>${content}</div>
+        </div>`;
+    }
+
+    function switchTopMenu(key) {
+      activeTopMenu = key;
+      const section = menuSections[activeTopMenu];
+      if (section.mode === 'tabs') {
+        activeSecondMenu = section.tabs[0].key;
+      }
+      document.getElementById('drawerBody').innerHTML = renderMenuHtml();
+    }
+
+    function switchSecondMenu(key) {
+      activeSecondMenu = key;
+      document.getElementById('drawerBody').innerHTML = renderMenuHtml();
+    }
+
+    const apiHtml = `
+      <div class="drawer-layout">
+        <div class="side-list">
+          <div class="side-title">API 分组</div>
+          <div class="side-item active"><span>角色管理</span><span class="tag blue">6</span></div>
+          <div class="side-item"><span>AI 配置</span><span class="tag gray">9</span></div>
+          <div class="side-item"><span>未分类 API</span><span class="tag orange">2</span></div>
+        </div>
+        <div class="permission-card">
+          <div class="card-head"><span>高级 API 直授</span><span class="tag orange">仅超管</span></div>
+          <div class="perm-list">
+            <div class="perm-row"><div class="perm-main"><span class="checkbox checked"></span><span class="api-method get">GET</span><span class="api-path">/api/v1/roles</span></div><span class="tag green">继承</span></div>
+            <div class="perm-row"><div class="perm-main"><span class="checkbox checked"></span><span class="api-method put">PUT</span><span class="api-path">/api/v1/roles/:id/permissions</span></div><span class="tag blue">直接</span></div>
+            <div class="perm-row"><div class="perm-main"><span class="checkbox"></span><span class="api-method post">POST</span><span class="api-path">/api/v1/ai/test</span></div><span class="tag gray">未选</span></div>
+            <div class="perm-row"><div class="perm-main"><span class="checkbox"></span><span class="api-method delete">DELETE</span><span class="api-path">/api/v1/ai/providers/:id</span></div><span class="tag gray">未选</span></div>
+          </div>
+        </div>
+      </div>`;
+
+    const dataHtml = `
+      <div class="data-grid">
+        <div class="scope-card">
+          <div class="scope-title">默认数据权限</div>
+          <div class="radio-line"><span class="checkbox checked"></span>全部数据</div>
+          <div class="radio-line"><span class="checkbox"></span>本部门及以下</div>
+          <div class="radio-line"><span class="checkbox"></span>仅本人</div>
+        </div>
+        <div class="scope-card">
+          <div class="scope-title">用户管理</div>
+          <div class="radio-line"><span class="checkbox"></span>继承默认范围</div>
+          <div class="radio-line"><span class="checkbox checked"></span>自定义部门</div>
+          <div class="tag blue">技术部</div> <div class="tag blue">运营部</div>
+        </div>
+        <div class="scope-card">
+          <div class="scope-title">文件管理</div>
+          <div class="radio-line"><span class="checkbox checked"></span>本部门及以下</div>
+          <div class="radio-line"><span class="checkbox"></span>仅本人</div>
+        </div>
+        <div class="scope-card">
+          <div class="scope-title">AI 历史记录</div>
+          <div class="radio-line"><span class="checkbox checked"></span>仅本人</div>
+          <div class="radio-line"><span class="checkbox"></span>全部数据</div>
+        </div>
+      </div>`;
+
+    function openDrawer(type) {
+      const kicker = document.getElementById('drawerKicker');
+      const title = document.getElementById('drawerTitle');
+      const subtitle = document.getElementById('drawerSubtitle');
+      const body = document.getElementById('drawerBody');
+
+      if (type === 'api') {
+        kicker.textContent = 'API 权限';
+        title.textContent = 'API 权限 - 超级管理员';
+        subtitle.textContent = '只管理 direct_api_ids；保留已有菜单/按钮权限，仅超管可进入。';
+        body.innerHTML = apiHtml;
+      } else if (type === 'data') {
+        kicker.textContent = '数据权限';
+        title.textContent = '数据权限 - 超级管理员';
+        subtitle.textContent = '沿用现有数据范围抽屉，独立处理业务数据可见范围。';
+        body.innerHTML = dataHtml;
+      } else {
+        kicker.textContent = '菜单权限';
+        title.textContent = '菜单权限 - 超级管理员';
+        subtitle.textContent = '只管理菜单/按钮；已有 API 直授不会被清空。';
+        body.innerHTML = renderMenuHtml();
+      }
+      document.body.classList.add('drawer-open');
+    }
+
+    function closeDrawer() {
+      document.body.classList.remove('drawer-open');
+    }
+
+    openDrawer('menu');
+  </script>
+</body>
+</html>

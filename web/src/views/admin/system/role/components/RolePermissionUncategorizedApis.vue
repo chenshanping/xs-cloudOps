@@ -7,7 +7,7 @@
         :indeterminate="indeterminate"
         @change="emit('toggle-all', $event.target.checked)"
       >
-        全选当前分组直授 API
+        全选当前分组
       </a-checkbox>
     </div>
     <div class="uncategorized-body">
@@ -23,16 +23,17 @@
           >
             <div class="api-content">
               <a-tag :color="getMethodColor(api.method)" size="small">{{ api.method }}</a-tag>
-              <span class="api-group">{{ api.group || '未分组' }}</span>
-              <span class="api-path">{{ api.path }}</span>
-              <span class="api-desc">{{ api.description }}</span>
-              <a-tag v-if="checkedApiIds.includes(api.id)" color="blue">直接授权</a-tag>
-              <a-tag v-if="inheritedApiIds.includes(api.id)" color="green">菜单继承</a-tag>
+              <div class="api-main">
+                <span class="api-path">{{ api.path }}</span>
+                <span class="api-desc">{{ api.description || '-' }}</span>
+              </div>
+              <a-tag v-if="checkedApiIds.includes(api.id)" color="blue">直授</a-tag>
+              <a-tag v-if="inheritedApiIds.includes(api.id)" color="green">继承</a-tag>
               <span
                 v-if="inheritedApiIds.includes(api.id) && inheritedApiSourceMap[api.id]?.length"
                 class="api-source"
               >
-                来源：{{ inheritedApiSourceMap[api.id].join('、') }}
+                {{ inheritedApiSourceMap[api.id].join('、') }}
               </span>
             </div>
           </a-checkbox>
@@ -77,6 +78,9 @@ const getMethodColor = (method: string) => {
 
 <style scoped>
 .uncategorized-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   border: 1px solid var(--permission-border);
   border-radius: 8px;
   overflow: hidden;
@@ -95,6 +99,9 @@ const getMethodColor = (method: string) => {
 }
 
 .uncategorized-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   padding: 8px;
   display: flex;
   flex-direction: column;
@@ -119,14 +126,13 @@ const getMethodColor = (method: string) => {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
-.api-group {
-  color: var(--permission-text-default);
-  font-size: 12px;
-  background: var(--permission-code-bg);
-  padding: 2px 6px;
-  border-radius: 10px;
+.api-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .api-path {

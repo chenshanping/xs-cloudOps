@@ -1,195 +1,258 @@
 <template>
-  <div :class="['user-page', { 'user-page--dark': uiStore.isDark }]">
-    <div class="page-layout">
-      <div class="left-tree">
-        <div class="tree-header">
-          <span>部门用户</span>
-          <a-space :size="4">
-            <a-button type="link" size="small" @click="expandAllTree">全部展开</a-button>
-            <a-button type="link" size="small" @click="collapseAllTree">全部收缩</a-button>
-          </a-space>
+  <PageWrapper :class="['user-page', { 'user-page--dark': uiStore.isDark }]">
+    <div class="user-page__content">
+      <div class="user-summary">
+        <div class="summary-item summary-item--primary">
+          <div class="summary-item__icon">
+            <UserOutlined />
+          </div>
+          <div>
+            <div class="summary-item__label">当前用户</div>
+            <div class="summary-item__value">{{ pagination.total }}</div>
+          </div>
         </div>
-        <a-spin :spinning="deptLoading">
-          <a-tree
-            v-if="deptTreeNodes.length"
-            block-node
-            :tree-data="deptTreeNodes"
-            :selected-keys="selectedTreeKeys"
-            :expanded-keys="expandedTreeKeys"
-            @select="handleDeptSelect"
-            @expand="handleTreeExpand"
-          />
-          <a-empty v-else description="暂无部门" :image="simpleImage" />
-        </a-spin>
+        <div class="summary-item">
+          <div class="summary-item__icon summary-item__icon--success">
+            <ApartmentOutlined />
+          </div>
+          <div>
+            <div class="summary-item__label">可管理部门</div>
+            <div class="summary-item__value">{{ manageableDeptCount }}</div>
+          </div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-item__icon summary-item__icon--warning">
+            <UsergroupAddOutlined />
+          </div>
+          <div>
+            <div class="summary-item__label">未绑定用户</div>
+            <div class="summary-item__value">{{ unassignedUserCount }}</div>
+          </div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-item__icon summary-item__icon--muted">
+            <CheckCircleOutlined />
+          </div>
+          <div>
+            <div class="summary-item__label">已选用户</div>
+            <div class="summary-item__value">{{ selectedRowKeys.length }}</div>
+          </div>
+        </div>
       </div>
-      <div class="right-content">
-        <ProTable
-          :columns="columns"
-          :data-source="tableData"
-          :loading="loading"
-          :pagination="pagination"
-          row-key="id"
-          :scroll="{ x: 1400 }"
-          :row-selection="{ selectedRowKeys, onChange: onSelectChange }"
-          @search="handleSearch"
-          @reset="handleReset"
-          @change="handleTableChange"
-        >
-          <template #search>
-            <a-form-item label="用户名">
-              <a-input v-model:value="searchForm.username" placeholder="请输入用户名" allowClear />
-            </a-form-item>
-            <a-form-item label="状态">
-              <a-select v-model:value="searchForm.status" placeholder="请选择" allowClear style="width: 120px">
-                <a-select-option :value="1">启用</a-select-option>
-                <a-select-option :value="0">禁用</a-select-option>
-              </a-select>
-            </a-form-item>
-            <a-form-item label="性别">
-              <a-select v-model:value="searchForm.gender" placeholder="请选择性别" allowClear style="width: 120px">
-                <a-select-option v-for="option in genderOptions" :key="option.value" :value="option.value">
-                  {{ option.label }}
-                </a-select-option>
-              </a-select>
-            </a-form-item>
-            <a-form-item label="角色">
-              <a-select v-model:value="searchForm.roleId" placeholder="请选择角色" allowClear style="width: 150px">
-                <a-select-option v-for="role in roleList" :key="role.id" :value="role.id">
-                  {{ role.name }}
-                </a-select-option>
-              </a-select>
-            </a-form-item>
-          </template>
 
-          <template #toolbar>
-            <a-space>
-              <a-button type="primary" @click="handleAdd" v-permission="'system:user:add'">
-                <PlusOutlined /> 新增
-              </a-button>
-              <a-button
-                type="primary"
-                :disabled="selectedRowKeys.length === 0 || hasRestrictedManagedSelection"
-                @click="handleBatchStatusChange(1)"
-                v-permission="'system:user:batchEnable'"
-              >
-                批量启用
-                <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
-              </a-button>
-              <a-button
-                danger
-                :disabled="selectedRowKeys.length === 0 || hasRestrictedManagedSelection"
-                @click="handleBatchStatusChange(0)"
-                v-permission="'system:user:batchDisable'"
-              >
-                批量禁用
-                <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
-              </a-button>
-              <a-button
-                :disabled="selectedRowKeys.length === 0 || hasRestrictedManagedSelection"
-                @click="handleBatchResetPwd"
-                v-permission="'system:user:batchResetPwd'"
-              >
-                批量重置密码
-                <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
-              </a-button>
-              <a-button
-                type="primary"
-                danger
-                :disabled="selectedRowKeys.length === 0 || hasRestrictedManagedSelection"
-                @click="handleBatchDelete"
-                v-permission="'system:user:delete'"
-              >
-                <DeleteOutlined /> 批量删除
-                <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
-              </a-button>
-              <a-upload
-                v-permission="'system:user:import'"
-                :show-upload-list="false"
-                :before-upload="handleImportUpload"
-                :disabled="!hasDeptSelected"
-                accept=".xlsx,.xls"
-              >
-                <a-tooltip :title="hasDeptSelected ? '' : '请先选择部门'">
-                  <a-button :loading="importLoading" :disabled="!hasDeptSelected">
-                    <UploadOutlined /> 导入
-                  </a-button>
-                </a-tooltip>
-              </a-upload>
-              <a-dropdown v-permission="'system:user:import'">
-                <a-button>
-                  <DownloadOutlined /> 下载
-                </a-button>
-                <template #overlay>
-                  <a-menu @click="handleDownloadMenuClick">
-                    <a-menu-item key="template">导入模板</a-menu-item>
-                  </a-menu>
-                </template>
-              </a-dropdown>
-              <a-dropdown v-permission="'system:user:export'" :disabled="!hasDeptSelected">
-                <a-tooltip :title="hasDeptSelected ? '' : '请先选择部门'">
-                  <a-button :loading="exportLoading" :disabled="!hasDeptSelected">
-                    <DownloadOutlined /> 导出 <DownOutlined />
-                  </a-button>
-                </a-tooltip>
-                <template #overlay>
-                  <a-menu @click="handleExportMenuClick">
-                    <a-menu-item key="all">导出全部</a-menu-item>
-                    <a-menu-item key="selected" :disabled="selectedRowKeys.length === 0">导出选中 ({{ selectedRowKeys.length }})</a-menu-item>
-                  </a-menu>
-                </template>
-              </a-dropdown>
-            </a-space>
-          </template>
-
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'avatar'">
-              <a-avatar :size="40" :src="record.avatar_file_url">
-                <template #icon><UserOutlined /></template>
-              </a-avatar>
-            </template>
-            <template v-if="column.key === 'status'">
-              <a-switch
-                :checked="record.status === 1"
-                :disabled="!canMutateManagedRecord(record)"
-                @change="(checked: boolean) => handleStatusChange(record, checked)"
+      <AdminSplitLayout class="page-layout" :aside-width="260" :content-min-width="900">
+        <template #aside>
+          <div class="left-tree">
+            <div class="tree-header">
+              <div>
+                <div class="tree-header__eyebrow">组织视图</div>
+                <div class="tree-header__title">部门用户</div>
+              </div>
+              <a-space :size="4">
+                <a-button type="link" size="small" @click="expandAllTree">全部展开</a-button>
+                <a-button type="link" size="small" @click="collapseAllTree">全部收缩</a-button>
+              </a-space>
+            </div>
+            <div class="tree-scope-card">
+              <span>当前范围</span>
+              <strong>{{ currentScopeTitle }}</strong>
+            </div>
+            <a-spin :spinning="deptLoading">
+              <a-tree
+                v-if="deptTreeNodes.length"
+                block-node
+                :tree-data="deptTreeNodes"
+                :selected-keys="selectedTreeKeys"
+                :expanded-keys="expandedTreeKeys"
+                @select="handleDeptSelect"
+                @expand="handleTreeExpand"
               />
+              <a-empty v-else description="暂无部门" :image="simpleImage" />
+            </a-spin>
+          </div>
+        </template>
+        <div class="right-content">
+          <ProTable
+            :columns="columns"
+            :data-source="tableData"
+            :loading="loading"
+            :pagination="pagination"
+            row-key="id"
+            :scroll="{ x: 1400 }"
+            :row-selection="{ selectedRowKeys, onChange: onSelectChange }"
+            @search="handleSearch"
+            @reset="handleReset"
+            @change="handleTableChange"
+          >
+            <template #search>
+              <a-form-item label="用户名">
+                <a-input v-model:value="searchForm.username" placeholder="请输入用户名" allowClear />
+              </a-form-item>
+              <a-form-item label="状态">
+                <a-select v-model:value="searchForm.status" placeholder="请选择" allowClear style="width: 120px">
+                  <a-select-option :value="1">启用</a-select-option>
+                  <a-select-option :value="0">禁用</a-select-option>
+                </a-select>
+              </a-form-item>
+              <a-form-item label="性别">
+                <a-select v-model:value="searchForm.gender" placeholder="请选择性别" allowClear style="width: 120px">
+                  <a-select-option v-for="option in genderOptions" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </a-select-option>
+                </a-select>
+              </a-form-item>
+              <a-form-item label="角色">
+                <a-select v-model:value="searchForm.roleId" placeholder="请选择角色" allowClear style="width: 150px">
+                  <a-select-option v-for="role in roleList" :key="role.id" :value="role.id">
+                    {{ role.name }}
+                  </a-select-option>
+                </a-select>
+              </a-form-item>
             </template>
-            <template v-if="column.key === 'gender'">
-              <a-tag :color="getGenderOption(record.gender)?.tag_type || 'default'">
-                {{ getGenderOption(record.gender)?.label || '-' }}
-              </a-tag>
-            </template>
-            <template v-if="column.key === 'roles'">
-              <a-tag v-for="role in record.roles" :key="role.id" color="blue">
-                {{ role.name }}
-              </a-tag>
-            </template>
-            <template v-if="column.key === 'dept'">
-              <span v-if="record.dept?.name">{{ record.dept.name }}</span>
-              <a-tag v-else color="error">未绑定部门</a-tag>
-            </template>
-            <template v-if="column.key === 'created_at'">{{ formatTime(record.created_at) }}</template>
-            <template v-if="column.key === 'action'">
-              <a-space :size="0">
+
+            <template #toolbar>
+              <a-space>
+                <a-button type="primary" @click="handleAdd" v-permission="'system:user:add'">
+                  <PlusOutlined /> 新增
+                </a-button>
                 <a-button
-                  v-if="canMutateManagedRecord(record)"
-                  type="link"
-                  size="small"
-                  @click="handleEdit(record)"
-                  v-permission="'system:user:edit'"
-                >编辑</a-button>
-                <a-button v-if="showProfileButton" type="link" size="small" @click="handleViewProfiles(record)">身份</a-button>
-                <a-dropdown v-if="canMutateManagedRecord(record) && hasUserMoreActionPermission">
-                  <a-button type="link" size="small">更多 <DownOutlined /></a-button>
+                  type="primary"
+                  :disabled="selectedRowKeys.length === 0 || hasRestrictedManagedSelection"
+                  @click="handleBatchStatusChange(1)"
+                  v-permission="'system:user:batchEnable'"
+                >
+                  批量启用
+                  <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
+                </a-button>
+                <a-button
+                  danger
+                  :disabled="selectedRowKeys.length === 0 || hasRestrictedManagedSelection"
+                  @click="handleBatchStatusChange(0)"
+                  v-permission="'system:user:batchDisable'"
+                >
+                  批量禁用
+                  <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
+                </a-button>
+                <a-button
+                  :disabled="selectedRowKeys.length === 0 || hasRestrictedManagedSelection"
+                  @click="handleBatchResetPwd"
+                  v-permission="'system:user:batchResetPwd'"
+                >
+                  批量重置密码
+                  <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
+                </a-button>
+                <a-button
+                  type="primary"
+                  danger
+                  :disabled="selectedRowKeys.length === 0 || hasRestrictedManagedSelection"
+                  @click="handleBatchDelete"
+                  v-permission="'system:user:delete'"
+                >
+                  <DeleteOutlined /> 批量删除
+                  <span v-if="selectedRowKeys.length > 0">({{ selectedRowKeys.length }})</span>
+                </a-button>
+                <a-upload
+                  v-permission="'system:user:import'"
+                  :show-upload-list="false"
+                  :before-upload="handleImportUpload"
+                  :disabled="!hasDeptSelected"
+                  accept=".xlsx,.xls"
+                >
+                  <a-tooltip :title="hasDeptSelected ? '' : '请先选择部门'">
+                    <a-button :loading="importLoading" :disabled="!hasDeptSelected">
+                      <UploadOutlined /> 导入
+                    </a-button>
+                  </a-tooltip>
+                </a-upload>
+                <a-dropdown v-permission="'system:user:import'">
+                  <a-button>
+                    <DownloadOutlined /> 下载
+                  </a-button>
                   <template #overlay>
-                    <a-menu :items="getUserMoreMenuItems(record)" @click="handleUserMoreAction(record, $event)" />
+                    <a-menu @click="handleDownloadMenuClick">
+                      <a-menu-item key="template">导入模板</a-menu-item>
+                    </a-menu>
+                  </template>
+                </a-dropdown>
+                <a-dropdown v-permission="'system:user:export'" :disabled="!hasDeptSelected">
+                  <a-tooltip :title="hasDeptSelected ? '' : '请先选择部门'">
+                    <a-button :loading="exportLoading" :disabled="!hasDeptSelected">
+                      <DownloadOutlined /> 导出 <DownOutlined />
+                    </a-button>
+                  </a-tooltip>
+                  <template #overlay>
+                    <a-menu @click="handleExportMenuClick">
+                      <a-menu-item key="all">导出全部</a-menu-item>
+                      <a-menu-item key="selected" :disabled="selectedRowKeys.length === 0">导出选中 ({{ selectedRowKeys.length }})</a-menu-item>
+                    </a-menu>
                   </template>
                 </a-dropdown>
               </a-space>
             </template>
-          </template>
-        </ProTable>
-      </div>
+
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'avatar'">
+                <a-avatar :size="40" :src="record.avatar_file_url">
+                  <template #icon><UserOutlined /></template>
+                </a-avatar>
+              </template>
+              <template v-if="column.key === 'username'">
+                <div class="user-name-cell">
+                  <div class="user-name-cell__main">
+                    <span class="user-name-cell__dot"></span>
+                    <span>{{ record.username }}</span>
+                    <a-tag v-if="isCurrentUserRecord(record)" color="processing">当前账号</a-tag>
+                    <a-tag v-else-if="isProtectedDeleteRecord(record)" color="orange">受保护</a-tag>
+                  </div>
+                </div>
+              </template>
+              <template v-if="column.key === 'status'">
+                <a-switch
+                  :checked="record.status === 1"
+                  :disabled="!canMutateManagedRecord(record)"
+                  @change="(checked: boolean) => handleStatusChange(record, checked)"
+                />
+              </template>
+              <template v-if="column.key === 'gender'">
+                <a-tag :color="getGenderOption(record.gender)?.tag_type || 'default'">
+                  {{ getGenderOption(record.gender)?.label || '-' }}
+                </a-tag>
+              </template>
+              <template v-if="column.key === 'roles'">
+                <a-space v-if="record.roles?.length" :size="[4, 4]" wrap>
+                  <a-tag v-for="role in record.roles" :key="role.id" color="blue">
+                    {{ role.name }}
+                  </a-tag>
+                </a-space>
+                <span v-else class="user-empty-text">-</span>
+              </template>
+              <template v-if="column.key === 'dept'">
+                <span v-if="record.dept?.name" class="user-dept-pill">{{ record.dept.name }}</span>
+                <a-tag v-else color="error">未绑定部门</a-tag>
+              </template>
+              <template v-if="column.key === 'created_at'">{{ formatTime(record.created_at) }}</template>
+              <template v-if="column.key === 'action'">
+                <a-space :size="0">
+                  <a-button
+                    v-if="canMutateManagedRecord(record)"
+                    type="link"
+                    size="small"
+                    @click="handleEdit(record)"
+                    v-permission="'system:user:edit'"
+                  >编辑</a-button>
+                  <a-button v-if="showProfileButton" type="link" size="small" @click="handleViewProfiles(record)">身份</a-button>
+                  <a-dropdown v-if="canMutateManagedRecord(record) && hasUserMoreActionPermission">
+                    <a-button type="link" size="small">更多 <DownOutlined /></a-button>
+                    <template #overlay>
+                      <a-menu :items="getUserMoreMenuItems(record)" @click="handleUserMoreAction(record, $event)" />
+                    </template>
+                  </a-dropdown>
+                </a-space>
+              </template>
+            </template>
+          </ProTable>
+        </div>
+      </AdminSplitLayout>
     </div>
 
     <UserFormDrawer
@@ -214,15 +277,28 @@
       v-model:open="importResultVisible"
       :result="importResult"
     />
-  </div>
+  </PageWrapper>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { h } from 'vue'
 import { Empty, message, Modal } from 'ant-design-vue'
-import { ExclamationCircleOutlined, PlusOutlined, UserOutlined, DownOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons-vue'
+import {
+  ApartmentOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+  PlusOutlined,
+  UserOutlined,
+  DownOutlined,
+  DeleteOutlined,
+  UploadOutlined,
+  DownloadOutlined,
+  UsergroupAddOutlined
+} from '@ant-design/icons-vue'
 import { createVNode } from 'vue'
+import AdminSplitLayout from '@/components/AdminSplitLayout.vue'
+import PageWrapper from '@/components/page/PageWrapper.vue'
 import ProTable from '@/components/ProTable.vue'
 import UserFormDrawer from './components/UserFormDrawer.vue'
 import UserProfilesDrawer from './components/UserProfilesDrawer.vue'
@@ -379,6 +455,22 @@ const deptTreeNodes = computed<DeptTreeNode[]>(() => {
 })
 
 const deptSelectOptions = computed<TreeSelectOption[]>(() => buildDeptSelectOptions(deptSelectTree.value))
+const flattenDeptTree = (depts: Dept[]): Dept[] =>
+  depts.flatMap(dept => [dept, ...(dept.children ? flattenDeptTree(dept.children) : [])])
+const manageableDeptCount = computed(() => flattenDeptTree(deptTree.value).length)
+const currentScopeTitle = computed(() => {
+  if (selectedTreeKey.value === 'all') {
+    return '全部部门'
+  }
+  if (selectedTreeKey.value === 'unassigned') {
+    return '未绑定部门'
+  }
+  const deptId = getSelectedDeptId()
+  if (!deptId) {
+    return '全部部门'
+  }
+  return findDeptById(deptTree.value, deptId)?.name || '当前部门'
+})
 
 const drawerInitialValue = ref<Record<string, any>>({})
 
@@ -1004,39 +1096,161 @@ onMounted(async () => {
 
 <style scoped>
 .user-page {
+  --user-card-surface: #ffffff;
+  --user-card-border: #edf0f5;
+  --user-card-shadow: 0 4px 16px rgb(15 23 42 / 4%);
+  --user-title-color: #262626;
+  --user-muted-color: #8c8c8c;
   --user-tree-surface: #ffffff;
   --user-tree-border: #f0f0f0;
   --user-tree-header-border: #f0f0f0;
 }
 
 .user-page--dark {
+  --user-card-surface: #101826;
+  --user-card-border: rgba(148, 163, 184, 0.18);
+  --user-card-shadow: none;
+  --user-title-color: rgba(255, 255, 255, 0.88);
+  --user-muted-color: rgba(255, 255, 255, 0.45);
   --user-tree-surface: #101826;
   --user-tree-border: rgba(148, 163, 184, 0.18);
   --user-tree-header-border: rgba(148, 163, 184, 0.18);
 }
 
-.page-layout {
+.user-page__content {
   display: flex;
+  flex-direction: column;
   gap: 16px;
 }
 
+.user-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.summary-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 88px;
+  padding: 16px;
+  background: var(--user-card-surface);
+  border: 1px solid var(--user-card-border);
+  border-radius: 8px;
+  box-shadow: var(--user-card-shadow);
+}
+
+.summary-item--primary {
+  border-color: #d6e4ff;
+}
+
+.summary-item__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  color: #1677ff;
+  font-size: 20px;
+  background: #eef5ff;
+  border-radius: 8px;
+}
+
+.summary-item__icon--success {
+  color: #389e0d;
+  background: #f0f8e8;
+}
+
+.summary-item__icon--warning {
+  color: #d46b08;
+  background: #fff4e6;
+}
+
+.summary-item__icon--muted {
+  color: #45556c;
+  background: #f3f5f8;
+}
+
+.summary-item__label {
+  color: var(--user-muted-color);
+  font-size: 12px;
+}
+
+.summary-item__value {
+  margin-top: 4px;
+  color: var(--user-title-color);
+  font-size: 24px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.page-layout {
+  width: 100%;
+}
+
 .left-tree {
-  width: 260px;
-  flex-shrink: 0;
   background: var(--user-tree-surface);
-  border-radius: 4px;
+  border-radius: 8px;
   padding: 12px;
   border: 1px solid var(--user-tree-border);
+  box-shadow: var(--user-card-shadow);
 }
 
 .tree-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-weight: 500;
   margin-bottom: 12px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--user-tree-header-border);
+}
+
+.tree-header__eyebrow {
+  color: #1677ff;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.tree-header__title {
+  margin-top: 2px;
+  color: var(--user-title-color);
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.tree-scope-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: #f6faff;
+  border: 1px solid #e6f0ff;
+  border-radius: 8px;
+}
+
+.tree-scope-card span {
+  color: var(--user-muted-color);
+  font-size: 12px;
+}
+
+.tree-scope-card strong {
+  overflow: hidden;
+  color: #0958d9;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-page--dark .tree-scope-card {
+  background: rgba(22, 119, 255, 0.12);
+  border-color: rgba(22, 119, 255, 0.24);
+}
+
+.user-page--dark .tree-scope-card strong {
+  color: #69b1ff;
 }
 
 .left-tree :deep(.ant-tree) {
@@ -1045,12 +1259,71 @@ onMounted(async () => {
 }
 
 .right-content {
-  flex: 1;
   min-width: 0;
+}
+
+.right-content :deep(.ant-table-thead > tr > th) {
+  color: #595959;
+  font-size: 12px;
+  font-weight: 650;
+  background: #fafafa;
+}
+
+.user-name-cell__main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--user-title-color);
+  font-weight: 600;
+}
+
+.user-name-cell__dot {
+  width: 8px;
+  height: 8px;
+  background: #1677ff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px #e6f4ff;
+}
+
+.user-dept-pill {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  height: 24px;
+  padding: 0 10px;
+  overflow: hidden;
+  color: #0958d9;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: #e6f4ff;
+  border: 1px solid #bae0ff;
+  border-radius: 999px;
+}
+
+.user-empty-text {
+  color: #bfbfbf;
 }
 
 .left-tree :deep(.unassigned-tree-node) {
   color: #cf1322;
   font-weight: 500;
+}
+
+@media (max-width: 1180px) {
+  .user-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .user-page__content {
+    gap: 12px;
+  }
+
+  .user-summary {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

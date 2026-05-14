@@ -19,7 +19,8 @@ type UpdateApiRequest struct {
 // API列表请求
 type ApiListRequest struct {
 	PageRequest
-	Path   string `json:"path" form:"path" comment:"API路径"`
-	Method string `json:"method" form:"method" comment:"请求方法"`
-	Group  string `json:"group" form:"group" comment:"API分组"`
+	Path     string `json:"path" form:"path" comment:"API路径"`
+	Method   string `json:"method" form:"method" comment:"请求方法"`
+	Group    string `json:"group" form:"group" comment:"API分组"`
+	NeedAuth *bool  `json:"need_auth" form:"need_auth" comment:"是否需要认证"`
 }

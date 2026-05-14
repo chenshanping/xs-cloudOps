@@ -37,6 +37,7 @@ import { message } from 'ant-design-vue'
 import { LockOutlined, ReloadOutlined, LogoutOutlined } from '@ant-design/icons-vue'
 import { useUserStore } from '@/store/user'
 import { useConfigStore } from '@/store/config'
+import { filterVisibleMenus, firstNavigableMenuPath } from '@/layouts/components/layout-menu'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -49,7 +50,7 @@ const handleRefresh = async () => {
     await userStore.getUserInfoAction()
     if (userStore.menus && userStore.menus.length > 0) {
       message.success('权限已更新，正在跳转...')
-      router.replace('/dashboard')
+      router.replace(firstNavigableMenuPath(filterVisibleMenus(userStore.menus)) || '/no-permission')
     } else {
       message.info('暂无新权限，请联系管理员')
     }

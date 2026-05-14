@@ -4,7 +4,13 @@
     <div class="conversation-sidebar">
       <div class="sidebar-header">
         <div class="sidebar-header-top">
-          <a-button v-if="!batchMode" type="primary" class="new-chat-btn" @click="handleNewChat">
+          <a-button
+            v-if="!batchMode"
+            v-permission="frontStyle ? undefined : 'ai:chat:create'"
+            type="primary"
+            class="new-chat-btn"
+            @click="handleNewChat"
+          >
             <template #icon><PlusOutlined /></template>
             新对话
           </a-button>
@@ -21,7 +27,7 @@
 
           <div class="sidebar-actions">
             <a-popconfirm
-              v-if="batchMode"
+              v-if="batchMode && canUseChatAction('ai:chat:batchDelete')"
               :title="`确定删除选中的 ${selectedConversationIds.length} 个对话吗？`"
               @confirm="handleBatchDeleteConversations"
             >
@@ -29,7 +35,11 @@
                 删除选中
               </a-button>
             </a-popconfirm>
-            <a-button size="small" @click="toggleBatchMode">
+            <a-button
+              v-if="canUseChatAction('ai:chat:batchDelete')"
+              size="small"
+              @click="toggleBatchMode"
+            >
               {{ batchMode ? '完成' : '批量删除' }}
             </a-button>
           </div>
@@ -74,12 +84,17 @@
             @blur="saveConvTitle(conv.id)"
             ref="titleInputRef"
           />
-          <span v-else class="conv-title" @dblclick.stop="!batchMode && startEditTitle(conv)">
+          <span v-else class="conv-title" @dblclick.stop="!batchMode && canUseChatAction('ai:chat:update') && startEditTitle(conv)">
             {{ conv.title }}
           </span>
           <div v-if="!batchMode" class="conv-actions">
-            <EditOutlined class="edit-icon" @click.stop="startEditTitle(conv)" />
+            <EditOutlined
+              v-if="canUseChatAction('ai:chat:update')"
+              class="edit-icon"
+              @click.stop="startEditTitle(conv)"
+            />
             <a-popconfirm
+              v-if="canUseChatAction('ai:chat:delete')"
               title="确定删除这个对话吗？"
               @confirm="handleDeleteConversation(conv.id)"
               placement="right"
@@ -175,7 +190,7 @@
                     <template #icon><CopyOutlined /></template>
                   </a-button>
                 </a-tooltip>
-                <a-tooltip v-if="idx === aiStore.messages.length - 1 && !aiStore.streaming" title="重新生成">
+                <a-tooltip v-if="idx === aiStore.messages.length - 1 && !aiStore.streaming && canUseChatAction('ai:chat:send')" title="重新生成">
                   <a-button type="text" size="small" @click="handleRegenerate">
                     <template #icon><ReloadOutlined /></template>
                   </a-button>
@@ -229,7 +244,7 @@
           </div>
         </div>
         <div class="input-wrapper">
-          <a-tooltip title="上传文件">
+          <a-tooltip v-if="canUseChatAction('ai:chat:upload')" title="上传文件">
             <a-button type="text" class="attach-btn" @click="triggerFileInput" :disabled="aiStore.streaming || attachments.length >= 5">
               <template #icon><PaperClipOutlined /></template>
             </a-button>
@@ -247,11 +262,11 @@
             placeholder="输入消息，按 Enter 发送，Shift + Enter 换行"
             :auto-size="{ minRows: 1, maxRows: 6 }"
             @keydown="handleKeydown"
-            :disabled="aiStore.streaming"
+            :disabled="aiStore.streaming || !canUseChatAction('ai:chat:send')"
           />
           <div class="input-actions">
             <a-popconfirm
-              v-if="aiStore.currentConversation && aiStore.messages.length > 0"
+              v-if="aiStore.currentConversation && aiStore.messages.length > 0 && canUseChatAction('ai:chat:clearContext')"
               title="清空上下文后，AI将不记得之前的对话内容"
               @confirm="handleClearContext"
               placement="top"
@@ -273,6 +288,7 @@
             </a-button>
             <a-button
               v-else
+              v-permission="frontStyle ? undefined : 'ai:chat:send'"
               type="primary"
               @click="handleSend"
               :loading="aiStore.streaming"
@@ -493,6 +509,7 @@ function handleMermaidClick(e: MouseEvent) {
 
 const aiStore = useAIStore()
 const userStore = useUserStore()
+const canUseChatAction = (permission: string) => props.frontStyle || userStore.hasPermission(permission)
 const inputMessage = ref('')
 const messageListRef = ref<HTMLElement | null>(null)
 const expandedReasoning = reactive<Record<number, boolean>>({})
@@ -517,6 +534,10 @@ const editingTitle = ref('')
 const titleInputRef = ref<any>(null)
 
 function startEditTitle(conv: any) {
+  if (!canUseChatAction('ai:chat:update')) {
+    message.warning('无权编辑对话标题')
+    return
+  }
   editingConvId.value = conv.id
   editingTitle.value = conv.title
   nextTick(() => {
@@ -527,6 +548,10 @@ function startEditTitle(conv: any) {
 }
 
 async function saveConvTitle(id: number) {
+  if (!canUseChatAction('ai:chat:update')) {
+    editingConvId.value = null
+    return
+  }
   if (!editingTitle.value.trim()) {
     editingConvId.value = null
     return
@@ -564,10 +589,18 @@ function formatSize(bytes: number) {
 }
 
 function triggerFileInput() {
+  if (!canUseChatAction('ai:chat:upload')) {
+    message.warning('无权上传文件')
+    return
+  }
   fileInputRef.value?.click()
 }
 
 async function handleFileSelect(e: Event) {
+  if (!canUseChatAction('ai:chat:upload')) {
+    message.warning('无权上传文件')
+    return
+  }
   const input = e.target as HTMLInputElement
   const files = Array.from(input.files || [])
   input.value = '' // reset
@@ -625,6 +658,10 @@ function handleCopyMessage(content: string) {
 
 // 重新生成
 function handleRegenerate() {
+  if (!canUseChatAction('ai:chat:send')) {
+    message.warning('无权发送 AI 对话')
+    return
+  }
   aiStore.regenerateLastMessage()
 }
 
@@ -681,6 +718,10 @@ function scrollToBottom() {
 
 // 新建对话
 function handleNewChat() {
+  if (!canUseChatAction('ai:chat:create')) {
+    message.warning('无权新建对话')
+    return
+  }
   if (batchMode.value) {
     exitBatchMode()
   }
@@ -707,6 +748,10 @@ async function handleSelectConversation(id: number) {
 
 // 删除对话
 async function handleDeleteConversation(id: number) {
+  if (!canUseChatAction('ai:chat:delete')) {
+    message.warning('无权删除对话')
+    return
+  }
   try {
     await aiStore.removeConversation(id)
     message.success('删除成功')
@@ -716,6 +761,10 @@ async function handleDeleteConversation(id: number) {
 }
 
 function toggleBatchMode() {
+  if (!canUseChatAction('ai:chat:batchDelete')) {
+    message.warning('无权批量删除对话')
+    return
+  }
   if (batchMode.value) {
     exitBatchMode()
     return
@@ -753,6 +802,10 @@ function handleToggleSelectAllVisible() {
 }
 
 async function handleBatchDeleteConversations() {
+  if (!canUseChatAction('ai:chat:batchDelete')) {
+    message.warning('无权批量删除对话')
+    return
+  }
   if (selectedConversationIds.value.length === 0) {
     return
   }
@@ -779,6 +832,10 @@ function handleModelChange(modelId: string) {
 
 // 发送消息
 function handleSend() {
+  if (!canUseChatAction('ai:chat:send')) {
+    message.warning('无权发送 AI 对话')
+    return
+  }
   if (!inputMessage.value.trim()) return
   // 检查是否有文件正在上传
   if (attachments.value.some(a => a.uploading)) {
@@ -811,6 +868,10 @@ function toggleReasoning(msgId: number) {
 
 // 清空上下文（保留聊天记录）
 async function handleClearContext() {
+  if (!canUseChatAction('ai:chat:clearContext')) {
+    message.warning('无权清空上下文')
+    return
+  }
   try {
     await aiStore.clearCurrentContext()
     message.success('上下文已清空，AI将不记得之前的对话')

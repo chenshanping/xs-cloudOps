@@ -1,6 +1,7 @@
 <template>
-  <div class="config-page">
-    <a-card :loading="loading">
+  <PageWrapper class="config-page">
+    <div class="config-page__content">
+      <a-card :loading="loading">
       <a-alert
         v-if="hasUnsavedChanges"
         class="unsaved-alert"
@@ -15,6 +16,7 @@
             :disabled="!currentTabDirty || quickSaving"
             :loading="quickSaving"
             @click="handleQuickSave"
+            v-permission="'system:config:edit'"
           >
             保存当前页签
           </a-button>
@@ -75,31 +77,33 @@
           />
         </a-tab-pane>
       </a-tabs>
-    </a-card>
+      </a-card>
 
-    <a-modal
-      :open="leavePromptOpen"
-      title="当前配置有未保存修改"
-      :maskClosable="false"
-      :closable="false"
-      @cancel="resolveLeavePrompt('cancel')"
-    >
-      <p class="leave-prompt-text">继续操作前请先确认是否保存当前修改。</p>
+      <a-modal
+        :open="leavePromptOpen"
+        title="当前配置有未保存修改"
+        :maskClosable="false"
+        :closable="false"
+        @cancel="resolveLeavePrompt('cancel')"
+      >
+        <p class="leave-prompt-text">继续操作前请先确认是否保存当前修改。</p>
 
-      <template #footer>
-        <a-space>
-          <a-button @click="resolveLeavePrompt('cancel')">取消</a-button>
-          <a-button danger @click="resolveLeavePrompt('discard')">直接离开</a-button>
-          <a-button type="primary" @click="resolveLeavePrompt('save')">保存并继续</a-button>
-        </a-space>
-      </template>
-    </a-modal>
-  </div>
+        <template #footer>
+          <a-space>
+            <a-button @click="resolveLeavePrompt('cancel')">取消</a-button>
+            <a-button danger @click="resolveLeavePrompt('discard')">直接离开</a-button>
+            <a-button type="primary" @click="resolveLeavePrompt('save')" v-permission="'system:config:edit'">保存并继续</a-button>
+          </a-space>
+        </template>
+      </a-modal>
+    </div>
+  </PageWrapper>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
+import PageWrapper from '@/components/page/PageWrapper.vue'
 import { useConfigStore } from '@/store/config'
 import SystemConfig from './components/SystemConfig.vue'
 import FileSettings from './components/FileSettings.vue'
@@ -284,8 +288,8 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.config-page {
-  height: 100%;
+.config-page__content {
+  min-width: 0;
 }
 
 .unsaved-alert {

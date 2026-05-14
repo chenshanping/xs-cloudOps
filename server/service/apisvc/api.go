@@ -28,6 +28,9 @@ func (s *ApiService) GetApiList(req *request.ApiListRequest) ([]model.SysApi, in
 	if req.Group != "" {
 		db = db.Where("`group` = ?", req.Group)
 	}
+	if req.NeedAuth != nil {
+		db = db.Where("need_auth = ?", *req.NeedAuth)
+	}
 
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err

@@ -23,7 +23,7 @@ func setupInitializeTestDB(t *testing.T) *gorm.DB {
 	if err := db.AutoMigrate(&model.SysMenu{}, &model.SysRole{}, &model.SysDept{}, &model.SysUser{}); err != nil {
 		t.Fatalf("auto migrate base role/menu: %v", err)
 	}
-	if err := db.AutoMigrate(&model.SysApi{}, &model.SysConfig{}, &model.AIProviderConfig{}, &model.LegacyStorageRecord{}, &model.SysFile{}, &model.SysFileChunk{}, &model.SysDictType{}, &model.SysDictData{}); err != nil {
+	if err := db.AutoMigrate(&model.SysApi{}, &model.SysCronTask{}, &model.SysCronLog{}, &model.SysConfig{}, &model.AIProviderConfig{}, &model.LegacyStorageRecord{}, &model.SysFile{}, &model.SysFileChunk{}, &model.SysDictType{}, &model.SysDictData{}); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
 	if err := db.Exec("ALTER TABLE sys_file ADD COLUMN storage_id integer").Error; err != nil {
@@ -97,6 +97,109 @@ func TestEnsureDeptMenusDoesNotOverwriteCustomizedIcon(t *testing.T) {
 	}
 	if updated.Icon != "custom-icon" {
 		t.Fatalf("dept menu icon = %s, want %s", updated.Icon, "custom-icon")
+	}
+}
+
+func TestEnsureSystemAdminButtonMenusCreatesMissingButtonsWithoutOverwritingPage(t *testing.T) {
+	db := setupInitializeTestDB(t)
+
+	roles := []model.SysRole{
+		{Name: "Admin", Code: "admin", Status: 1},
+		{Name: "System Admin", Code: "system_admin", Status: 1},
+	}
+	if err := db.Create(&roles).Error; err != nil {
+		t.Fatalf("create roles: %v", err)
+	}
+	adminRole := roles[0]
+	systemAdminRole := roles[1]
+
+	systemMenu := model.SysMenu{
+		ParentID:  0,
+		Name:      "系统管理",
+		Path:      "/system",
+		Component: "Layout",
+		Icon:      "setting",
+		Sort:      1,
+		Type:      1,
+		Status:    1,
+	}
+	if err := db.Create(&systemMenu).Error; err != nil {
+		t.Fatalf("create system menu: %v", err)
+	}
+
+	roleMenu := model.SysMenu{
+		ParentID:   systemMenu.ID,
+		Name:       "自定义角色管理",
+		Path:       "/system/role",
+		Component:  "system/role/index",
+		Icon:       "custom-role-icon",
+		Sort:       88,
+		Type:       2,
+		Permission: "system:role:list",
+		Status:     1,
+		Hidden:     0,
+	}
+	if err := db.Create(&roleMenu).Error; err != nil {
+		t.Fatalf("create role menu: %v", err)
+	}
+
+	ensureSystemAdminButtonMenus()
+
+	var updatedRoleMenu model.SysMenu
+	if err := db.First(&updatedRoleMenu, roleMenu.ID).Error; err != nil {
+		t.Fatalf("reload role menu: %v", err)
+	}
+	if updatedRoleMenu.Name != roleMenu.Name || updatedRoleMenu.Icon != roleMenu.Icon || updatedRoleMenu.Sort != roleMenu.Sort {
+		t.Fatalf("role page menu was overwritten: got name=%s icon=%s sort=%d", updatedRoleMenu.Name, updatedRoleMenu.Icon, updatedRoleMenu.Sort)
+	}
+
+	expectedPermissions := []string{
+		"system:role:add",
+		"system:role:edit",
+		"system:role:delete",
+		"system:role:assign",
+		"system:menu:add",
+		"system:menu:edit",
+		"system:menu:delete",
+		"system:dict:add",
+		"system:dict:edit",
+		"system:dict:delete",
+		"system:api:add",
+		"system:api:edit",
+		"system:api:delete",
+		"system:api:sync",
+		"system:config:edit",
+		"system:config:test",
+		"system:file:upload",
+		"system:file:delete",
+		"system:file:batchDelete",
+		"system:file:migrate",
+	}
+
+	var count int64
+	if err := db.Model(&model.SysMenu{}).
+		Where("permission IN ? AND type = ?", expectedPermissions, 3).
+		Count(&count).Error; err != nil {
+		t.Fatalf("count button menus: %v", err)
+	}
+	if count != int64(len(expectedPermissions)) {
+		t.Fatalf("button menu count = %d, want %d", count, len(expectedPermissions))
+	}
+
+	var adminRelationCount int64
+	if err := db.Raw("SELECT COUNT(*) FROM sys_role_menu srm JOIN sys_menu sm ON sm.id = srm.sys_menu_id WHERE srm.sys_role_id = ? AND sm.permission = ?", adminRole.ID, "system:role:assign").Scan(&adminRelationCount).Error; err != nil {
+		t.Fatalf("count admin role menu relation: %v", err)
+	}
+	if adminRelationCount != 1 {
+		t.Fatalf("admin role menu relation count = %d, want 1", adminRelationCount)
+	}
+
+	var systemAdminRelationCount int64
+	if err := db.Raw("SELECT COUNT(*) FROM sys_role_menu srm JOIN sys_menu sm ON sm.id = srm.sys_menu_id WHERE srm.sys_role_id = ? AND sm.permission = ?", systemAdminRole.ID, "system:role:assign").Scan(&systemAdminRelationCount).Error; err != nil {
+		t.Fatalf("count system admin role menu relation: %v", err)
+	}
+	if systemAdminRelationCount != 0 {
+		t.Fatalf("system_admin role menu relation count = %d, want 0", systemAdminRelationCount)
 	}
 }
 
@@ -288,7 +391,7 @@ func TestBackfillDepartmentFoundationAppliesCompatibleDefaultsOnlyToLegacyRows(t
 	}
 }
 
-func TestEnsureBuiltInDataMarksHistoricalAdminRolesAsExplicitSuperAdmin(t *testing.T) {
+func TestEnsureBuiltInDataOnlyMarksAdminRoleAsExplicitSuperAdmin(t *testing.T) {
 	db := setupInitializeTestDB(t)
 	ensureInitializeRoleSuperAdminColumn(t, db)
 
@@ -321,8 +424,8 @@ func TestEnsureBuiltInDataMarksHistoricalAdminRolesAsExplicitSuperAdmin(t *testi
 	if flags["admin"] != 1 {
 		t.Fatalf("admin is_super_admin = %d, want 1", flags["admin"])
 	}
-	if flags["system_admin"] != 1 {
-		t.Fatalf("system_admin is_super_admin = %d, want 1", flags["system_admin"])
+	if flags["system_admin"] != 0 {
+		t.Fatalf("system_admin is_super_admin = %d, want 0", flags["system_admin"])
 	}
 	if flags["auditor"] != 0 {
 		t.Fatalf("auditor is_super_admin = %d, want 0", flags["auditor"])
@@ -415,12 +518,12 @@ func TestEnsureDeptApiAccessDoesNotOverwriteCustomizedApiMetadata(t *testing.T) 
 	}
 }
 
-func TestEnsureBuiltInDataGrantsProviderModelFetchApiToAdminRoles(t *testing.T) {
+func TestEnsureBuiltInDataGrantsProviderModelFetchApiToAdminOnly(t *testing.T) {
 	db := setupInitializeTestDB(t)
 
 	roles := []model.SysRole{
-		{Name: "超级管理员", Code: "admin", Status: 1},
-		{Name: "系统管理员", Code: "system_admin", Status: 1},
+		{Name: "Admin", Code: "admin", Status: 1},
+		{Name: "System Admin", Code: "system_admin", Status: 1},
 	}
 	if err := db.Create(&roles).Error; err != nil {
 		t.Fatalf("create roles: %v", err)
@@ -447,6 +550,10 @@ func TestEnsureBuiltInDataGrantsProviderModelFetchApiToAdminRoles(t *testing.T) 
 		t.Fatalf("load provider model fetch api: %v", err)
 	}
 
+	expectedCounts := map[string]int64{
+		"admin":        1,
+		"system_admin": 0,
+	}
 	for _, role := range roles {
 		var relationCount int64
 		if err := db.Table("sys_role_api").
@@ -454,18 +561,19 @@ func TestEnsureBuiltInDataGrantsProviderModelFetchApiToAdminRoles(t *testing.T) 
 			Count(&relationCount).Error; err != nil {
 			t.Fatalf("count role api relation (%s): %v", role.Code, err)
 		}
-		if relationCount != 1 {
-			t.Fatalf("%s fetch api relation count = %d, want 1", role.Code, relationCount)
+		want := expectedCounts[role.Code]
+		if relationCount != want {
+			t.Fatalf("%s fetch api relation count = %d, want %d", role.Code, relationCount, want)
 		}
 	}
 }
 
-func TestEnsureBuiltInDataGrantsAIConfigReadWriteApisToAdminRoles(t *testing.T) {
+func TestEnsureBuiltInDataGrantsAIConfigReadWriteApisToAdminOnly(t *testing.T) {
 	db := setupInitializeTestDB(t)
 
 	roles := []model.SysRole{
-		{Name: "超级管理员", Code: "admin", Status: 1},
-		{Name: "系统管理员", Code: "system_admin", Status: 1},
+		{Name: "Admin", Code: "admin", Status: 1},
+		{Name: "System Admin", Code: "system_admin", Status: 1},
 	}
 	if err := db.Create(&roles).Error; err != nil {
 		t.Fatalf("create roles: %v", err)
@@ -494,6 +602,10 @@ func TestEnsureBuiltInDataGrantsAIConfigReadWriteApisToAdminRoles(t *testing.T) 
 		{path: "/api/v1/ai/config", method: "GET"},
 		{path: "/api/v1/ai/config", method: "PUT"},
 	}
+	expectedCounts := map[string]int64{
+		"admin":        1,
+		"system_admin": 0,
+	}
 
 	for _, item := range expected {
 		var api model.SysApi
@@ -508,8 +620,9 @@ func TestEnsureBuiltInDataGrantsAIConfigReadWriteApisToAdminRoles(t *testing.T) 
 				Count(&relationCount).Error; err != nil {
 				t.Fatalf("count role api relation (%s %s %s): %v", role.Code, item.method, item.path, err)
 			}
-			if relationCount != 1 {
-				t.Fatalf("%s ai config api relation count (%s %s) = %d, want 1", role.Code, item.method, item.path, relationCount)
+			want := expectedCounts[role.Code]
+			if relationCount != want {
+				t.Fatalf("%s ai config api relation count (%s %s) = %d, want %d", role.Code, item.method, item.path, relationCount, want)
 			}
 		}
 	}
@@ -603,6 +716,135 @@ func TestEnsureAIToolMenusDoesNotOverwriteCustomizedMetadata(t *testing.T) {
 	}
 	if updatedConfigMenu.Component != aiConfigMenu.Component {
 		t.Fatalf("ai config component overwritten = %s, want %s", updatedConfigMenu.Component, aiConfigMenu.Component)
+	}
+}
+
+func TestEnsureServerMonitorMenuApiCreatesMenusBindingsAndAdminGrants(t *testing.T) {
+	db := setupInitializeTestDB(t)
+
+	adminRole := model.SysRole{Name: "超级管理员", Code: "admin", Status: 1}
+	systemAdminRole := model.SysRole{Name: "系统管理员", Code: "system_admin", Status: 1}
+	if err := db.Create(&[]model.SysRole{adminRole, systemAdminRole}).Error; err != nil {
+		t.Fatalf("create roles: %v", err)
+	}
+	if err := db.Where("code = ?", "admin").First(&adminRole).Error; err != nil {
+		t.Fatalf("reload admin role: %v", err)
+	}
+	if err := db.Where("code = ?", "system_admin").First(&systemAdminRole).Error; err != nil {
+		t.Fatalf("reload system admin role: %v", err)
+	}
+
+	ensureServerMonitorMenuApi()
+
+	expectedPermissions := []string{
+		"monitor:server:list",
+		"monitor:server:view",
+		"monitor:runtime:view",
+		"monitor:db:view",
+		"monitor:cache:view",
+		"monitor:cache:clear",
+		"monitor:oss:view",
+		"monitor:dependency:view",
+	}
+	for _, permission := range expectedPermissions {
+		var count int64
+		if err := db.Model(&model.SysMenu{}).Where("permission = ?", permission).Count(&count).Error; err != nil {
+			t.Fatalf("count menu %s: %v", permission, err)
+		}
+		if count != 1 {
+			t.Fatalf("menu %s count = %d, want 1", permission, count)
+		}
+	}
+
+	for _, api := range serverMonitorAPIDefinitions() {
+		var found model.SysApi
+		if err := db.Where("path = ? AND method = ?", api.Path, api.Method).First(&found).Error; err != nil {
+			t.Fatalf("find api %s %s: %v", api.Method, api.Path, err)
+		}
+		if !found.NeedAuth {
+			t.Fatalf("api %s %s need_auth = false, want true", api.Method, api.Path)
+		}
+	}
+
+	var bindingCount int64
+	if err := db.Table("sys_menu_api").Count(&bindingCount).Error; err != nil {
+		t.Fatalf("count sys_menu_api: %v", err)
+	}
+	if bindingCount != int64(len(serverMonitorMenuApiBindings())) {
+		t.Fatalf("binding count = %d, want %d", bindingCount, len(serverMonitorMenuApiBindings()))
+	}
+
+	for _, permission := range expectedPermissions {
+		var count int64
+		if err := db.Raw("SELECT COUNT(*) FROM sys_role_menu srm JOIN sys_menu sm ON sm.id = srm.sys_menu_id WHERE srm.sys_role_id = ? AND sm.permission = ?", adminRole.ID, permission).Scan(&count).Error; err != nil {
+			t.Fatalf("count admin role menu %s: %v", permission, err)
+		}
+		if count != 1 {
+			t.Fatalf("admin role menu %s count = %d, want 1", permission, count)
+		}
+		if err := db.Raw("SELECT COUNT(*) FROM sys_role_menu srm JOIN sys_menu sm ON sm.id = srm.sys_menu_id WHERE srm.sys_role_id = ? AND sm.permission = ?", systemAdminRole.ID, permission).Scan(&count).Error; err != nil {
+			t.Fatalf("count system_admin role menu %s: %v", permission, err)
+		}
+		if count != 0 {
+			t.Fatalf("system_admin role menu %s count = %d, want 0", permission, count)
+		}
+	}
+}
+
+func TestEnsureServerMonitorMenuApiDoesNotOverwriteCustomizedMetadata(t *testing.T) {
+	db := setupInitializeTestDB(t)
+
+	customAPI := model.SysApi{
+		Path:        "/api/v1/monitor/server",
+		Method:      "GET",
+		Group:       "自定义服务监控",
+		Description: "保留已有服务器指标描述",
+		NeedAuth:    false,
+	}
+	if err := db.Create(&customAPI).Error; err != nil {
+		t.Fatalf("create custom monitor api: %v", err)
+	}
+	customMenu := model.SysMenu{
+		ParentID:   0,
+		Name:       "自定义服务监控",
+		Path:       "/custom-monitor/server",
+		Component:  "custom/monitor/server/index",
+		Icon:       "custom-monitor-icon",
+		Sort:       99,
+		Type:       2,
+		Permission: "monitor:server:list",
+		Status:     1,
+		Hidden:     1,
+	}
+	if err := db.Create(&customMenu).Error; err != nil {
+		t.Fatalf("create custom monitor menu: %v", err)
+	}
+
+	ensureServerMonitorMenuApi()
+
+	var updatedAPI model.SysApi
+	if err := db.First(&updatedAPI, customAPI.ID).Error; err != nil {
+		t.Fatalf("reload monitor api: %v", err)
+	}
+	if updatedAPI.Group != customAPI.Group {
+		t.Fatalf("api group overwritten = %s, want %s", updatedAPI.Group, customAPI.Group)
+	}
+	if updatedAPI.Description != customAPI.Description {
+		t.Fatalf("api description overwritten = %s, want %s", updatedAPI.Description, customAPI.Description)
+	}
+	if updatedAPI.NeedAuth != customAPI.NeedAuth {
+		t.Fatalf("api need_auth overwritten = %t, want %t", updatedAPI.NeedAuth, customAPI.NeedAuth)
+	}
+
+	var updatedMenu model.SysMenu
+	if err := db.First(&updatedMenu, customMenu.ID).Error; err != nil {
+		t.Fatalf("reload monitor menu: %v", err)
+	}
+	if updatedMenu.Path != customMenu.Path {
+		t.Fatalf("menu path overwritten = %s, want %s", updatedMenu.Path, customMenu.Path)
+	}
+	if updatedMenu.Component != customMenu.Component {
+		t.Fatalf("menu component overwritten = %s, want %s", updatedMenu.Component, customMenu.Component)
 	}
 }
 
