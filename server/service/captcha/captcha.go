@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"math/big"
 	mathRand "math/rand"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -66,7 +67,16 @@ func (s *CaptchaService) GetCaptchaType() string {
 	if err != nil {
 		return "digit"
 	}
-	return config.Value
+	value := strings.TrimSpace(strings.ToLower(config.Value))
+	if value == "slider" {
+		// Current slider implementation leaks the target coordinate to the client.
+		// Fall back to digit captcha until a server-rendered slider challenge exists.
+		return "digit"
+	}
+	if value == "" {
+		return "digit"
+	}
+	return value
 }
 
 func (s *CaptchaService) GetSliderCaptchaBg() string {

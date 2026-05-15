@@ -1,0 +1,4 @@
+interface:
+  display_name: "Go-Base OpenSpec Propose"
+  short_description: "go-base 项目级 OpenSpec 提案、设计与任务生成流程"
+  default_prompt: "Use $go-base-openspec-propose to create proposal, design, and tasks for a high-risk go-base change."

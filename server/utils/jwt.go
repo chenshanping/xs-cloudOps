@@ -2,12 +2,13 @@ package utils
 
 import (
 	"context"
-	"server/global"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+
+	"server/global"
 )
 
 const (
@@ -49,7 +50,7 @@ func GenerateToken(userID uint, username string, roleIDs []uint, roleCodes []str
 	// 存入 Redis（白名单模式）
 	ctx := context.Background()
 	key := fmt.Sprintf("%s%d", TokenKey, userID)
-	err = global.Redis.Set(ctx, key, tokenString, time.Duration(cfg.Expires)*time.Second).Err()
+	err = global.Redis.Set(ctx, key, tokenString, tokenWhitelistTTL()).Err()
 	if err != nil {
 		return "", err
 	}
@@ -177,20 +178,8 @@ func RefreshToken(tokenString string) (string, error) {
 		}
 	}
 
-	ctx := context.Background()
-
-	// 检查 Token 是否在黑名单中（被强制下线）
-	blackKey := BlacklistKey + tokenString
-	exists, _ := global.Redis.Exists(ctx, blackKey).Result()
-	if exists > 0 {
-
-		// 检查用户 Token 是否在白名单中（如果被删除则不允许刷新）
-		ctx := context.Background()
-		key := fmt.Sprintf("%s%d", TokenKey, claims.UserID)
-		storedToken, err := global.Redis.Get(ctx, key).Result()
-		if err != nil || storedToken != tokenString {
-			return "", errors.New("token已失效，请重新登录")
-		}
+	if err := ValidateTokenInRedis(tokenString, claims.UserID); err != nil {
+		return "", errors.New("token已失效，请重新登录")
 	}
 
 	// 旧Token加入黑名单（如果还未过期）
@@ -200,4 +189,13 @@ func RefreshToken(tokenString string) (string, error) {
 	// 如果能走到这里，说明角色没有变化
 
 	return GenerateToken(claims.UserID, claims.Username, claims.RoleIDs, claims.RoleCodes)
+}
+
+func tokenWhitelistTTL() time.Duration {
+	cfg := global.Config.JWT
+	refreshWindow := cfg.RefreshWindow
+	if refreshWindow <= 0 {
+		refreshWindow = 7 * 24 * 3600
+	}
+	return time.Duration(cfg.Expires+refreshWindow) * time.Second
 }

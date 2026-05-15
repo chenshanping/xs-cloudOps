@@ -1,0 +1,4 @@
+interface:
+  display_name: "Go-Base OpenSpec Explore"
+  short_description: "go-base 项目级 OpenSpec 探索、澄清与分析模式"
+  default_prompt: "Use $go-base-openspec-explore to investigate and clarify a change in this go-base repository without implementing code."

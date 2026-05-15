@@ -616,6 +616,16 @@ func (s *UserService) managedUserDefaultPassword() string {
 	return password
 }
 
+func (s *UserService) IsRegisterEnabled() bool {
+	config, err := configsvc.Default.GetConfigByKey("enable_register")
+	if err != nil {
+		return false
+	}
+
+	value := strings.TrimSpace(strings.ToLower(config.Value))
+	return value == "1" || value == "true"
+}
+
 func (s *UserService) ResetManagedUserPassword(operatorID, id uint) error {
 	user, err := core.EnsureUserManageableForResource(operatorID, id, core.DataScopeResourceUserManagement)
 	if err != nil {
@@ -764,6 +774,10 @@ func (s *UserService) UpdateAvatar(id uint, fileID uint) error {
 }
 
 func (s *UserService) Register(username, password, email string) error {
+	if !s.IsRegisterEnabled() {
+		return errors.New("系统已关闭注册")
+	}
+
 	var count int64
 	global.DB.Model(&model.SysUser{}).Where("username = ?", username).Count(&count)
 	if count > 0 {

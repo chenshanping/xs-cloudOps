@@ -132,6 +132,13 @@ func TestResolveRegisterLogoAvatarFileIDPrefersBoundFileID(t *testing.T) {
 func TestRegisterWithoutDefaultAvatarStoresNullAvatarFileID(t *testing.T) {
 	setupUserServiceTestDB(t)
 
+	if err := global.DB.Create(&model.SysConfig{
+		Key:   "enable_register",
+		Value: "true",
+	}).Error; err != nil {
+		t.Fatalf("create enable_register config: %v", err)
+	}
+
 	if err := Default.Register("new-user", "123456", "new-user@example.com"); err != nil {
 		t.Fatalf("register error: %v", err)
 	}
@@ -147,5 +154,52 @@ func TestRegisterWithoutDefaultAvatarStoresNullAvatarFileID(t *testing.T) {
 	}
 	if avatarFileID.Valid {
 		t.Fatalf("registered user avatar_file_id should be NULL, got %d", avatarFileID.Int64)
+	}
+}
+
+func TestRegisterRejectsWhenRegisterDisabled(t *testing.T) {
+	setupUserServiceTestDB(t)
+
+	if err := global.DB.Create(&model.SysConfig{
+		Key:   "enable_register",
+		Value: "false",
+	}).Error; err != nil {
+		t.Fatalf("create enable_register config: %v", err)
+	}
+
+	err := Default.Register("closed-user", "123456", "closed-user@example.com")
+	if err == nil || err.Error() != "系统已关闭注册" {
+		t.Fatalf("expected register closed error, got %v", err)
+	}
+
+	var count int64
+	if err := global.DB.Model(&model.SysUser{}).Where("username = ?", "closed-user").Count(&count).Error; err != nil {
+		t.Fatalf("count user: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected no user created, got %d", count)
+	}
+}
+
+func TestRegisterAllowsWhenRegisterEnabled(t *testing.T) {
+	setupUserServiceTestDB(t)
+
+	if err := global.DB.Create(&model.SysConfig{
+		Key:   "enable_register",
+		Value: "true",
+	}).Error; err != nil {
+		t.Fatalf("create enable_register config: %v", err)
+	}
+
+	if err := Default.Register("open-user", "123456", "open-user@example.com"); err != nil {
+		t.Fatalf("register error: %v", err)
+	}
+
+	var count int64
+	if err := global.DB.Model(&model.SysUser{}).Where("username = ?", "open-user").Count(&count).Error; err != nil {
+		t.Fatalf("count user: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected one created user, got %d", count)
 	}
 }

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Go-Base Plans"
+  short_description: "go-base 项目级实现计划编写、拆解与落盘流程"
+  default_prompt: "Use $go-base-writing-plans to write an implementation plan for this go-base repository before coding."

@@ -38,26 +38,7 @@ func (a *CaptchaApi) GetCaptchaConfig(c *gin.Context) {
 
 // GetSliderCaptcha 获取滑动验证码
 func (a *CaptchaApi) GetSliderCaptcha(c *gin.Context) {
-	data, err := service.Captcha.GenerateSliderCaptcha()
-	if err != nil {
-		response.Fail(c, "生成验证码失败")
-		return
-	}
-	
-	// 获取目标位置用于前端生成图片
-	x, y, ok := service.Captcha.GetSliderCaptchaTarget(data.CaptchaID)
-	if !ok {
-		response.Fail(c, "获取验证码失败")
-		return
-	}
-	
-	response.OkWithData(c, gin.H{
-		"captcha_id": data.CaptchaID,
-		"bg_width":   data.BgWidth,
-		"bg_height":  data.BgHeight,
-		"slider_y":   y,
-		"target_x":   x, // 前端需要知道缺口位置来绘制图片
-	})
+	response.BadRequest(c, "当前版本暂不支持滑动验证码")
 }
 
 // VerifySliderCaptcha 验证滑动验证码

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Go-Base Brainstorm"
+  short_description: "go-base 项目级需求探索、方案比较与设计流程"
+  default_prompt: "Use $go-base-brainstorming to explore requirements and compare scoped design options for this go-base repository."

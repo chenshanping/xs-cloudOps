@@ -1,0 +1,4 @@
+interface:
+  display_name: "Go-Base Execute Plan"
+  short_description: "go-base 项目级按计划执行、核验推进与收口流程"
+  default_prompt: "Use -base-executing-plans to execute an approved implementation plan in this go-base repository."

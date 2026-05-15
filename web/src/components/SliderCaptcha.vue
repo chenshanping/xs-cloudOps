@@ -235,6 +235,9 @@ const loadCaptcha = async () => {
     await preloadBgImage()
     
     const res = await getSliderCaptcha()
+    if (typeof res.data?.target_x !== 'number') {
+      throw new Error('slider captcha unsupported')
+    }
     captchaId.value = res.data.captcha_id
     targetX.value = res.data.target_x
     sliderY.value = res.data.slider_y

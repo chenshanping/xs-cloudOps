@@ -21,7 +21,7 @@ var authFlow = service.NewAuthFlowService()
 func (a *AuthApi) Login(c *gin.Context) {
 	var req request.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "参数错误")
+		response.BadRequest(c, response.BindErrorMessage(err, req))
 		return
 	}
 
@@ -51,7 +51,11 @@ func (a *AuthApi) Login(c *gin.Context) {
 func (a *AuthApi) Register(c *gin.Context) {
 	var req request.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "参数错误")
+		response.BadRequest(c, response.BindErrorMessage(err, req))
+		return
+	}
+	if err := service.PublicAuth.CheckRegister(c.ClientIP(), req.Username, req.Email); err != nil {
+		response.TooManyRequests(c, err.Error())
 		return
 	}
 
@@ -92,7 +96,11 @@ func (a *AuthApi) Register(c *gin.Context) {
 func (a *AuthApi) SendEmailCode(c *gin.Context) {
 	var req request.SendEmailCodeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "参数错误")
+		response.BadRequest(c, response.BindErrorMessage(err, req))
+		return
+	}
+	if err := service.PublicAuth.CheckSendEmailCode(c.ClientIP(), req.Email); err != nil {
+		response.TooManyRequests(c, err.Error())
 		return
 	}
 
@@ -129,7 +137,11 @@ func (a *AuthApi) SendEmailCode(c *gin.Context) {
 func (a *AuthApi) ResetPasswordByToken(c *gin.Context) {
 	var req request.ResetPasswordByTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "参数错误")
+		response.BadRequest(c, response.BindErrorMessage(err, req))
+		return
+	}
+	if err := service.PublicAuth.CheckResetPasswordByToken(c.ClientIP(), req.Token); err != nil {
+		response.TooManyRequests(c, err.Error())
 		return
 	}
 
@@ -145,7 +157,11 @@ func (a *AuthApi) ResetPasswordByToken(c *gin.Context) {
 func (a *AuthApi) ResetPasswordByEmail(c *gin.Context) {
 	var req request.ResetPasswordByEmailRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "参数错误")
+		response.BadRequest(c, response.BindErrorMessage(err, req))
+		return
+	}
+	if err := service.PublicAuth.CheckResetPasswordByEmail(c.ClientIP(), req.Email); err != nil {
+		response.TooManyRequests(c, err.Error())
 		return
 	}
 
@@ -158,7 +174,7 @@ func (a *AuthApi) ResetPasswordByEmail(c *gin.Context) {
 	// 根据邮箱获取用户
 	user, err := service.User.GetUserByEmail(req.Email)
 	if err != nil {
-		response.Fail(c, "该邮箱未注册")
+		response.OkWithMessage(c, "密码重置成功")
 		return
 	}
 
@@ -175,19 +191,24 @@ func (a *AuthApi) ResetPasswordByEmail(c *gin.Context) {
 func (a *AuthApi) ResetPasswordByUserName(c *gin.Context) {
 	var req request.ResetPasswordByUserNameRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "参数错误")
+		response.BadRequest(c, response.BindErrorMessage(err, req))
+		return
+	}
+	if err := service.PublicAuth.CheckResetPasswordByUsername(c.ClientIP(), req.UserName); err != nil {
+		response.TooManyRequests(c, err.Error())
 		return
 	}
 	username := req.UserName
 	password := req.NewPassword
 	captchaId := req.CaptchaId
 	captchaCode := req.Captcha
-	// 检查验证码
-	if captchaId == "" {
-		if !service.Captcha.VerifyCaptcha(captchaId, captchaCode) {
-			response.Fail(c, "验证码错误")
-			return
-		}
+	if captchaId == "" || captchaCode == "" {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if !service.Captcha.VerifyCaptcha(captchaId, captchaCode) {
+		response.Fail(c, "验证码错误")
+		return
 	}
 	user, err := service.User.GetUserByUserName(username)
 	if err != nil {
@@ -238,6 +259,10 @@ func (a *AuthApi) RefreshToken(c *gin.Context) {
 	token := c.GetHeader("Authorization")
 	if len(token) > 7 {
 		token = token[7:]
+	}
+	if err := service.PublicAuth.CheckRefreshToken(c.ClientIP(), token); err != nil {
+		response.TooManyRequests(c, err.Error())
+		return
 	}
 
 	newToken, err := utils.RefreshToken(token)

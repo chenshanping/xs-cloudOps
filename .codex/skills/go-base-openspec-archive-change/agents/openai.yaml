@@ -1,0 +1,4 @@
+interface:
+  display_name: "Go-Base OpenSpec Archive"
+  short_description: "go-base 项目级 OpenSpec 变更归档与一致性检查流程"
+  default_prompt: "Use $go-base-openspec-archive-change to archive a completed OpenSpec change in this go-base repository."

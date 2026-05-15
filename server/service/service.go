@@ -43,6 +43,7 @@ var (
 	Echart        = echart.Default
 	Api           = apisvc.Default
 	Captcha       = captcha.Default
+	PublicAuth    = auth.PublicGuard
 )
 
 // Auth types

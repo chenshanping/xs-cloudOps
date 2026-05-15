@@ -1,0 +1,4 @@
+interface:
+  display_name: "Go-Base CRUD"
+  short_description: "Go-base 后台 CRUD、权限与前后端联动执行流程"
+  default_prompt: "Use $go-base-backend-crud-frontend to implement a go-base admin CRUD or linked backend/frontend module change."

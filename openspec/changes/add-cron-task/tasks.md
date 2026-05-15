@@ -12,7 +12,7 @@
 - [x] 2.2 创建 `server/model/sys_cron_log.go`：字段按 design.md D6；索引 `(task_id)`、`(started_at)`
 - [x] 2.3 在 `server/initialize/gorm.go`（或现有 AutoMigrate 聚合点）注册两张新表
 - [x] 2.4 baseline schema 文件（`server/sql/init.sql` 或对等）追加这两张表的 DDL
-- [x] 2.5 检查现有 `server/sql/` 升级脚本命名规则，遵循 `.windsurf/workflows/sql-upgrade-guardrails.md`
+- [x] 2.5 检查现有 `server/sql/` 升级脚本命名规则，遵循 `.codex/skills/go-base-sql-upgrade-guardrails/SKILL.md`
 
 ## 3. 后端 service 层
 

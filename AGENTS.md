@@ -19,7 +19,7 @@
 - Backend: `server/`
 - Frontend: `web/`
 - Specs and change management: `openspec/`
-- Local project workflows: `.windsurf/workflows/`
+- Local project Codex skills: `.codex/skills/`
 - Superpowers design/plan docs: `docs/superpowers/`
 
 ## Current Persistent Decisions
@@ -69,31 +69,33 @@ Use the full OpenSpec workflow for:
 
 If the user explicitly says `直接做`, prefer direct implementation unless the change is clearly high risk.
 
-## Workflow Auto-Trigger Rules
+## Skill Auto-Trigger Rules
 
-When the user's request matches one of these patterns, **automatically read the corresponding workflow file and follow its Steps** without the user needing to type the slash command:
+When the user's request matches one of these patterns, **automatically use the corresponding project-local Codex skill** without waiting for the user to type `$skill-name` explicitly:
 
-| Trigger condition | Workflow to read and follow |
+| Trigger condition | Skill to use |
 |---|---|
-| Creating/modifying backend API + frontend page, CRUD module, new admin page, adding buttons/actions, menu/permission work | `.windsurf/workflows/backend-crud-frontend.md` |
-| Writing or modifying SQL upgrade scripts under `server/sql/` | `.windsurf/workflows/sql-upgrade-guardrails.md` |
+| Creating/modifying backend API + frontend page, CRUD module, new admin page, adding buttons/actions, menu/permission work | `go-base-backend-crud-frontend` |
+| Writing or modifying SQL upgrade scripts under `server/sql/` | `go-base-sql-upgrade-guardrails` |
+| User asks to generate login/register config or login-page config copy | `go-base-generate-login-config` |
+| Bug fix, regression, failing test, or unexpected behavior investigation | `go-base-systematic-debugging` |
 
-- Read the workflow file with the `read_file` tool, then follow its `## Steps` sequentially.
-- If the user says "直接做" or the task is trivially small (one-line fix, typo, style tweak), skip the workflow and implement directly.
-- When in doubt, follow the workflow — it is cheaper to follow steps than to miss permissions or bootstrap.
+- Read the matching skill and follow its instructions.
+- If the user says "直接做" or the task is trivially small (one-line fix, typo, style tweak), skip the skill and implement directly.
+- When in doubt, prefer the skill — it is cheaper to follow project guardrails than to miss permissions, bootstrap, or validation rules.
 
-## Required Workflow For Non-Trivial Work
+## Required Skill Usage For Non-Trivial Work
 
 1. Read the relevant code and neighboring modules first. Do not invent structure from memory.
 2. First decide whether this request really needs OpenSpec by using the rule above. Do not enter `openspec-propose` automatically.
-3. If the request is unclear or has design tradeoffs, start with Superpowers exploration and planning:
-   - `brainstorming`
-   - `writing-plans`
+3. If the request is unclear or has design tradeoffs, start with project-local Codex exploration and planning skills:
+   - `go-base-brainstorming`
+   - `go-base-writing-plans`
 4. If the work is high risk or changes core behavior, API contract, permission model, audit semantics, data consistency, or architecture, create or update an OpenSpec change before coding:
-   - `openspec-explore`
-   - `openspec-propose`
-   - `openspec-apply-change`
-   - `openspec-archive-change`
+   - `go-base-openspec-explore`
+   - `go-base-openspec-propose`
+   - `go-base-openspec-apply-change`
+   - `go-base-openspec-archive-change`
 5. Otherwise, implement directly in small steps and keep the scope tight.
 6. Prefer an isolated branch or worktree for risky work.
 7. Run real verification commands before claiming completion.
@@ -310,7 +312,7 @@ Upgrade scripts must:
 
 ### SQL Script Authoring Rules
 
-- Any change under `server/sql/` must use the `/sql-upgrade-guardrails` workflow before writing or modifying the script.
+- Any change under `server/sql/` must use the `go-base-sql-upgrade-guardrails` skill before writing or modifying the script.
 - Treat this repository as `Oracle MySQL` by default, not MariaDB. Do not assume MySQL supports MariaDB DDL syntax.
 - **No foreign key constraints in DDL.** Do not add `FOREIGN KEY` or `REFERENCES` clauses in `CREATE TABLE` or `ALTER TABLE` statements. Use plain columns with indexes for cross-table references. Enforce referential integrity in application code only.
 - Before editing an incremental SQL script, inspect the baseline snapshot `go-base.sql` and the nearest related upgrade scripts.
@@ -331,12 +333,14 @@ Upgrade scripts must:
 - Planned work belongs in `openspec/changes/<change-name>/`.
 - Proposal/design/spec/tasks should be reviewed before implementation when the task is non-trivial.
 
-## Superpowers Conventions In This Repo
+## Codex Skill Conventions In This Repo
 
-- Workflow definitions live in `.windsurf/workflows/` and are invoked with slash commands (e.g. `/brainstorming`, `/writing-plans`, `/executing-plans`, `/openspec-propose`).
+- Project-local Codex skills live in `.codex/skills/`.
+- Use `$go-base-brainstorming`, `$go-base-writing-plans`, `$go-base-executing-plans`, `$go-base-openspec-propose`, `$go-base-openspec-apply-change`, `$go-base-openspec-archive-change`, `$go-base-systematic-debugging`, `$go-base-backend-crud-frontend`, and `$go-base-sql-upgrade-guardrails` when you need explicit skill invocation.
+- Implicit skill routing is allowed, but when the task is sensitive or ambiguous, prefer explicit `$go-base-*` invocation in the prompt or internal plan.
 - Brainstorm specs should be written to `docs/superpowers/specs/`.
 - Implementation plans should be written to `docs/superpowers/plans/`.
-- Prefer `/executing-plans` only after design and plan are approved.
+- Prefer `go-base-executing-plans` only after design and plan are approved.
 
 ## Scope Discipline
 

@@ -1,6 +1,6 @@
-# Windsurf + OpenSpec + Superpowers 使用说明
+# Codex + OpenSpec + 项目 Skills 使用说明
 
-本仓库已经接入项目级 AI 工作流，目标不是“让 AI 直接写代码”，而是让需求探索、规格留痕、实现执行、验证归档都有固定入口。
+本仓库已经切到项目级 Codex 工作方式。目标不是“让 AI 直接写代码”，而是让需求探索、规格留痕、实现执行、验证归档都有固定入口。
 
 ## 先看什么
 
@@ -12,13 +12,13 @@
 
 ## 这套组合怎么分工
 
-- Superpowers：负责探索、计划、执行、验证的方法
+- 项目 Skills：负责探索、计划、执行、验证的方法入口
 - OpenSpec：负责 proposal / design / spec / tasks 的落盘与追踪
-- Windsurf（Cascade）：负责读仓库、改代码、跑命令、验证结果
+- Codex：负责读仓库、改代码、跑命令、验证结果
 
 一句话：
 
-先用 Superpowers 想清楚，再用 OpenSpec 锁住边界，最后回到 Superpowers + Windsurf 执行。
+先用项目 Skills 想清楚，再用 OpenSpec 锁住边界，最后回到 Codex 执行。
 
 ## 本仓库推荐流程
 
@@ -32,23 +32,23 @@
 
 ### 标准任务
 
-按下面顺序执行（在 Windsurf Cascade 里输入斜杠命令即可）：
+按下面顺序执行（可以直接在对话里显式写 `$skill-name`，也可以依赖 Codex 自动触发）：
 
-1. `/brainstorming`
-2. `/openspec-propose` 或 `/openspec-explore`
-3. `/writing-plans`
-4. `/openspec-apply-change`
-5. `/openspec-archive-change`
+1. `$go-base-brainstorming`
+2. `$go-base-openspec-propose` 或 `$go-base-openspec-explore`
+3. `$go-base-writing-plans`
+4. `$go-base-openspec-apply-change`
+5. `$go-base-openspec-archive-change`
 
-## 本仓库已放入的本地工作流
+## 本仓库已放入的项目内 Skills
 
-位置：`.windsurf/workflows/`
+位置：`.codex/skills/`
 
-已接入（对应 Cascade 斜杠命令）：
+已接入（显式调用时使用 `$skill-name`）：
 
-- **OpenSpec**：`/openspec-explore`、`/openspec-propose`、`/openspec-apply-change`、`/openspec-archive-change`
-- **Superpowers**：`/brainstorming`、`/writing-plans`、`/executing-plans`、`/systematic-debugging`、`/finishing-branch`
-- **项目专用**：`/backend-crud-frontend`
+- **OpenSpec**：`$go-base-openspec-explore`、`$go-base-openspec-propose`、`$go-base-openspec-apply-change`、`$go-base-openspec-archive-change`
+- **计划与执行**：`$go-base-brainstorming`、`$go-base-writing-plans`、`$go-base-executing-plans`、`$go-base-systematic-debugging`、`$go-base-finishing-branch`
+- **项目专用**：`$go-base-backend-crud-frontend`、`$go-base-sql-upgrade-guardrails`、`$go-base-file-reference-guardrails`、`$go-base-generate-login-config`
 
 ## 建议提示词
 
@@ -57,7 +57,7 @@
 ```text
 请按本仓库 AGENTS.md 执行。
 先不要写代码，也不要直接开 OpenSpec。
-/brainstorming
+$go-base-brainstorming
 基于当前 caelor 项目做需求探索、方案比较和推荐设计。
 ```
 
@@ -65,7 +65,7 @@
 
 ```text
 设计已确认。
-/openspec-propose
+$go-base-openspec-propose
 为这个需求创建 change，补齐 proposal、design、delta spec 和 tasks，完成后暂停，不要开始编码。
 ```
 
@@ -73,15 +73,15 @@
 
 ```text
 OpenSpec 已确认。
-/writing-plans 生成实现计划，
-然后 /openspec-apply-change 执行并验证。
+$go-base-writing-plans 生成实现计划，
+然后 $go-base-openspec-apply-change 执行并验证。
 ```
 
 ### 4. 归档
 
 ```text
 请确认代码、测试、tasks、spec 一致。
-验证通过后 /openspec-archive-change 归档这个 change。
+验证通过后 $go-base-openspec-archive-change 归档这个 change。
 ```
 
 ## 本仓库约定
@@ -103,13 +103,9 @@ go test ./...
 
 ### Frontend
 
-```bash
-cd web
-npm run build
-npm run typecheck
-```
+前端默认不跑 `npm run build` / `npm run typecheck` 作为代理验证。
 
-说明：
-
-- 当前 `web` 的 `typecheck` 在某些环境下可能仍受已知 `vue-tsc` 工具链问题影响。
-- 如果出现该已知环境错误，要明确报告，不允许假装“验证通过”。
+- 先读回改动文件确认结构
+- 再做定点引用搜索
+- 最后交给用户在 dev server 做点击验证
+- 只有用户明确要求时，才跑 `build` 或 `typecheck`

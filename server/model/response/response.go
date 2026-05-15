@@ -31,6 +31,7 @@ const (
 	FORBIDDEN    = 403
 	NOT_FOUND    = 404
 	BAD_REQUEST  = 400
+	TOO_MANY_REQUESTS = 429
 )
 
 func Result(c *gin.Context, code int, message string, data interface{}) {
@@ -86,4 +87,8 @@ func NotFound(c *gin.Context, message string) {
 
 func BadRequest(c *gin.Context, message string) {
 	Result(c, BAD_REQUEST, message, nil)
+}
+
+func TooManyRequests(c *gin.Context, message string) {
+	Result(c, TOO_MANY_REQUESTS, message, nil)
 }

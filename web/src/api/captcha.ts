@@ -27,7 +27,7 @@ export function getSliderCaptcha() {
     bg_width: number
     bg_height: number
     slider_y: number
-    target_x: number
+    target_x?: number
   }>('/captcha/slider')
 }
 

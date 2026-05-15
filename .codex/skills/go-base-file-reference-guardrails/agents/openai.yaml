@@ -1,0 +1,4 @@
+interface:
+  display_name: "Go-Base File Refs"
+  short_description: "go-base 项目级文件引用绑定、预览与清理守卫"
+  default_prompt: "Use $go-base-file-reference-guardrails when a change touches sys_file, sys_file_reference, or uploaded file binding flows."

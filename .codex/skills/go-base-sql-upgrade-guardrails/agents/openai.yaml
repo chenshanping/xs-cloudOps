@@ -1,0 +1,4 @@
+interface:
+  display_name: "Go-Base SQL Guardrails"
+  short_description: "Go-base 增量 SQL 升级脚本的安全与幂等执行流程"
+  default_prompt: "Use $go-base-sql-upgrade-guardrails to create or modify a go-base server/sql upgrade script safely."

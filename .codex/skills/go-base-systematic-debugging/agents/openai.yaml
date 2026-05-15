@@ -1,0 +1,4 @@
+interface:
+  display_name: "Go-Base Debugging"
+  short_description: "go-base 项目级系统化排障、取证与根因定位流程"
+  default_prompt: "Use $go-base-systematic-debugging to debug a bug or failure in this go-base repository before attempting fixes."

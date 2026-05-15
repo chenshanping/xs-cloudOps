@@ -1,0 +1,4 @@
+interface:
+  display_name: "Go-Base OpenSpec Apply"
+  short_description: "go-base 项目级 OpenSpec 变更执行与任务推进流程"
+  default_prompt: "Use $go-base-openspec-apply-change to implement tasks from an approved OpenSpec change in this go-base repository."

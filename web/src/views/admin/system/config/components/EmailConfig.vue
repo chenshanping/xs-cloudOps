@@ -22,21 +22,8 @@
           <a-select-option value="digit">数字验证码</a-select-option>
           <a-select-option value="math">算术验证码</a-select-option>
           <a-select-option value="string">字符串验证码</a-select-option>
-          <a-select-option value="slider">滑动验证码</a-select-option>
         </a-select>
-        <div class="form-tip">仅开启验证码时可选</div>
-      </a-form-item>
-
-      <a-form-item label="滑动验证码背景" v-if="formData.login_captcha_type === 'slider'">
-        <ImageUpload 
-          v-model="formData.slider_captcha_bg" 
-          v-model:fileId="sliderCaptchaBgFileId"
-          :width="280" 
-          :height="160" 
-          :max-size="2*1024*1024"
-          placeholder="上传背景图"
-        />
-        <div class="form-tip">建议尺寸 280x160 像素，留空使用默认渐变背景</div>
+        <div class="form-tip">仅开启验证码时可选。当前版本已停用滑动验证码。</div>
       </a-form-item>
 
       <a-form-item label="最大重试次数">
@@ -133,7 +120,6 @@ import { message, Modal, Input } from 'ant-design-vue'
 import { MailOutlined, SettingOutlined } from '@ant-design/icons-vue'
 import { useConfigStore } from '@/store/config'
 import { sendTestEmail } from '@/api/config'
-import ImageUpload from '@/components/ImageUpload.vue'
 import { cloneFromSnapshot, createSnapshot, isSnapshotDirty } from '../config-tab-guard'
 
 const configStore = useConfigStore()
@@ -144,6 +130,8 @@ const saving = ref(false)
 const testing = ref(false)
 const smtpDrawerVisible = ref(false)
 
+const normalizeCaptchaType = (value: string) => value === 'slider' ? 'digit' : (value || 'digit')
+
 // 直接从 store 初始化数据
 const formData = reactive({
   email_smtp_host: configStore.get('email_smtp_host'),
@@ -152,18 +140,13 @@ const formData = reactive({
   email_password: configStore.get('email_password'),
   email_from_name: configStore.get('email_from_name'),
   login_captcha_enabled: configStore.get('login_captcha_enabled') || '0',
-  login_captcha_type: configStore.get('login_captcha_type') || 'digit',
+  login_captcha_type: normalizeCaptchaType(configStore.get('login_captcha_type')),
   login_max_retry: parseInt(configStore.get('login_max_retry')) || 5,
   login_lock_time: parseInt(configStore.get('login_lock_time')) || 15,
   register_email_verify: configStore.get('register_email_verify') || '0',
   frontend_url: configStore.get('frontend_url') || 'http://localhost:5173',
   slider_captcha_bg: configStore.get('slider_captcha_bg') || '',
   slider_captcha_bg_file_id: configStore.get('slider_captcha_bg_file_id') || '0'
-})
-
-const sliderCaptchaBgFileId = computed({
-  get: () => Number(formData.slider_captcha_bg_file_id) || 0,
-  set: (val) => { formData.slider_captcha_bg_file_id = String(val || 0) }
 })
 
 // 开关状态转换
@@ -200,7 +183,7 @@ const applyConfigState = (state: ReturnType<typeof getConfigState>) => {
   formData.email_password = state.email_password
   formData.email_from_name = state.email_from_name
   formData.login_captcha_enabled = state.login_captcha_enabled
-  formData.login_captcha_type = state.login_captcha_type
+  formData.login_captcha_type = normalizeCaptchaType(state.login_captcha_type)
   formData.login_max_retry = Number(state.login_max_retry) || 5
   formData.login_lock_time = Number(state.login_lock_time) || 15
   formData.register_email_verify = state.register_email_verify

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Go-Base Login Config"
+  short_description: "go-base 项目级登录页配置、文案与提示生成流程"
+  default_prompt: "Use $go-base-generate-login-config to generate accurate login and register config content for this go-base repository."

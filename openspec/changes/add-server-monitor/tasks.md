@@ -29,7 +29,7 @@ zai## 1. 探查 & 准备
 - [x] 4.1 在 `server/initialize/db_tables.go` 中实现 `ensureServerMonitorMenuApi()`：幂等创建/更新 `运维监控`（如缺）、`服务监控` 菜单、7 个按钮、7 条 SysApi（`need_auth=true`）、对应 sys_menu_api 绑定；保留已有 description/NeedAuth/metadata
 - [x] 4.2 在 `server/initialize/db_tables.go` 主初始化流程中调用 `ensureServerMonitorMenuApi()`，位置在角色权限刷新之前
 - [x] 4.3 给内置 `admin` 角色追加 7 个权限码（沿用现有 admin 自动授权模式；**不**触碰 `system_admin`）
-- [x] 4.4 创建 `server/sql/add_server_monitor.sql`：与 bootstrap 等价的存量库升级脚本（菜单 + 按钮 + SysApi + sys_menu_api + admin 角色授权 + 基于菜单按钮继承 API 的 Casbin 规则）；**已遵守** `.windsurf/workflows/sql-upgrade-guardrails.md`
+- [x] 4.4 创建 `server/sql/add_server_monitor.sql`：与 bootstrap 等价的存量库升级脚本（菜单 + 按钮 + SysApi + sys_menu_api + admin 角色授权 + 基于菜单按钮继承 API 的 Casbin 规则）；**已遵守** `.codex/skills/go-base-sql-upgrade-guardrails/SKILL.md`
 - [x] 4.5 集成测试：在 `server/initialize/db_tables_test.go` 加用例验证：（a）首次启动创建全部行；（b）二次启动不覆盖手工修改字段；（c）`admin` 角色获得全部权限且 `system_admin` 不被重授
 - [x] 4.6 调整日志菜单结构：`ensureLogAuditMenus()` 将 `操作日志` / `登录日志` 迁移到 `运维监控` 下，只更新父级；空的历史 `系统管理 > 操作审计` 目录自动隐藏；新增 `server/sql/move_log_audit_menus_to_monitor.sql` 覆盖存量库
 

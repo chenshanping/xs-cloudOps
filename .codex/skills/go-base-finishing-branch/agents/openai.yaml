@@ -1,0 +1,4 @@
+interface:
+  display_name: "Go-Base Finish"
+  short_description: "go-base 项目级交付前验证、收口确认与移交流程"
+  default_prompt: "Use -base-finishing-branch to verify and close out a change in this go-base repository."
