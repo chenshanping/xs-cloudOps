@@ -1849,47 +1849,6 @@ func ensureCronTaskMenuApi() {
 		changed = true
 	}
 
-	logMenu := model.SysMenu{
-		ParentID:   monitorRoot.ID,
-		Name:       "任务执行日志",
-		Path:       "/monitor/cron-log",
-		Component:  "monitor/cron-log/index",
-		Icon:       "HistoryOutlined",
-		Sort:       5,
-		Type:       2,
-		Permission: "monitor:cron:logs:list",
-		Status:     1,
-		Hidden:     0,
-	}
-	result = global.DB.
-		Where("permission = ? AND type = ?", logMenu.Permission, logMenu.Type).
-		Attrs(model.SysMenu{
-			ParentID:  logMenu.ParentID,
-			Name:      logMenu.Name,
-			Path:      logMenu.Path,
-			Component: logMenu.Component,
-			Icon:      logMenu.Icon,
-			Sort:      logMenu.Sort,
-			Status:    logMenu.Status,
-			Hidden:    logMenu.Hidden,
-		}).
-		FirstOrCreate(&logMenu)
-	if err := result.Error; err != nil {
-		global.Log.Errorf("补齐任务执行日志菜单失败: %v", err)
-		return
-	}
-	if result.RowsAffected > 0 {
-		changed = true
-	}
-	if logMenu.ParentID != monitorRoot.ID {
-		if err := global.DB.Model(&logMenu).Update("parent_id", monitorRoot.ID).Error; err != nil {
-			global.Log.Errorf("迁移任务执行日志菜单父级失败: %v", err)
-			return
-		}
-		logMenu.ParentID = monitorRoot.ID
-		changed = true
-	}
-
 	buttons := []model.SysMenu{
 		{ParentID: taskMenu.ID, Name: "查看", Type: 3, Permission: "monitor:cron:view", Sort: 1, Status: 1},
 		{ParentID: taskMenu.ID, Name: "新增", Type: 3, Permission: "monitor:cron:create", Sort: 2, Status: 1},
@@ -1898,9 +1857,9 @@ func ensureCronTaskMenuApi() {
 		{ParentID: taskMenu.ID, Name: "启用", Type: 3, Permission: "monitor:cron:enable", Sort: 5, Status: 1},
 		{ParentID: taskMenu.ID, Name: "停用", Type: 3, Permission: "monitor:cron:disable", Sort: 6, Status: 1},
 		{ParentID: taskMenu.ID, Name: "立即执行", Type: 3, Permission: "monitor:cron:runNow", Sort: 7, Status: 1},
-		{ParentID: logMenu.ID, Name: "查看日志", Type: 3, Permission: "monitor:cron:logs:view", Sort: 1, Status: 1},
+		{ParentID: taskMenu.ID, Name: "查看日志", Type: 3, Permission: "monitor:cron:logs:view", Sort: 8, Status: 1},
 	}
-	menuIDs := []uint{monitorRoot.ID, taskMenu.ID, logMenu.ID}
+	menuIDs := []uint{monitorRoot.ID, taskMenu.ID}
 	for _, definition := range buttons {
 		menu := definition
 		result := global.DB.

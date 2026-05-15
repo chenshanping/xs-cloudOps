@@ -87,7 +87,7 @@ export function useCronTaskPage() {
     drawerVisible.value = true
   }
 
-  const handleSubmit = async (payload: CronTaskPayload) => {
+  const handleSubmit = async (payload: CronTaskPayload, onSuccess?: () => void) => {
     submitting.value = true
     try {
       if (isEdit.value && currentRecord.value) {
@@ -98,13 +98,14 @@ export function useCronTaskPage() {
         message.success('创建成功')
       }
       drawerVisible.value = false
-      fetchData()
+      await fetchData()
+      onSuccess?.()
     } finally {
       submitting.value = false
     }
   }
 
-  const handleDelete = (record: CronTask) => {
+  const handleDelete = (record: CronTask, onSuccess?: () => void) => {
     Modal.confirm({
       title: '删除定时任务',
       content: `确认删除「${record.name}」吗？`,
@@ -114,21 +115,24 @@ export function useCronTaskPage() {
       async onOk() {
         await deleteCronTask(record.id)
         message.success('删除成功')
-        fetchData()
+        await fetchData()
+        onSuccess?.()
       },
     })
   }
 
-  const handleEnable = async (record: CronTask) => {
+  const handleEnable = async (record: CronTask, onSuccess?: () => void) => {
     await enableCronTask(record.id)
     message.success('启用成功')
-    fetchData()
+    await fetchData()
+    onSuccess?.()
   }
 
-  const handleDisable = async (record: CronTask) => {
+  const handleDisable = async (record: CronTask, onSuccess?: () => void) => {
     await disableCronTask(record.id)
     message.success('停用成功')
-    fetchData()
+    await fetchData()
+    onSuccess?.()
   }
 
   return {

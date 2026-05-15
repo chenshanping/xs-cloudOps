@@ -38,6 +38,25 @@ var skipLogPaths = []string{
 	"/api/v1/logs/",
 }
 
+var sensitiveGetSummaryKeywords = []string{
+	"详情",
+	"导出",
+	"下载",
+	"模板",
+	"预览",
+	"默认密码",
+	"根据key获取配置",
+}
+
+var sensitiveGetPathKeywords = []string{
+	"/export",
+	"/download",
+	"/preview",
+	"/import-template",
+	"/template",
+	"/configs/key/",
+}
+
 const (
 	maskedLogValue       = "***"
 	operationLogQueueCap = 256
@@ -67,6 +86,31 @@ func getRouteInfo(method, path string) (group, summary string) {
 		}
 	}
 	return "", ""
+}
+
+func shouldRecordOperationLog(method, path, routePath, summary string) bool {
+	if shouldSkipLog(path) {
+		return false
+	}
+	if method != "GET" {
+		return true
+	}
+	if summary != "" {
+		for _, keyword := range sensitiveGetSummaryKeywords {
+			if strings.Contains(summary, keyword) {
+				return true
+			}
+		}
+	}
+	targets := []string{strings.ToLower(path), strings.ToLower(routePath)}
+	for _, target := range targets {
+		for _, keyword := range sensitiveGetPathKeywords {
+			if strings.Contains(target, strings.ToLower(keyword)) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // parseBusinessCode 从响应体解析业务状态码
@@ -181,9 +225,11 @@ func enqueueOperationLog(log model.SysOperationLog) {
 func OperationLog() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		path := c.Request.URL.Path
+		routePath := c.FullPath()
+		group, summary := getRouteInfo(c.Request.Method, routePath)
 
-		// 跳过不需要记录的路径
-		if shouldSkipLog(path) {
+		// 默认跳过普通 GET，只保留敏感查询类审计日志。
+		if !shouldRecordOperationLog(c.Request.Method, path, routePath, summary) {
 			c.Next()
 			return
 		}
@@ -254,10 +300,6 @@ func OperationLog() gin.HandlerFunc {
 			// 限制响应体长度（按 rune 边界截断，避免破坏多字节字符导致 MySQL utf8mb4 校验失败）
 			responseBody = truncateUTF8(sanitizeLogPayload(fullResponseBody), 1000)
 		}
-
-		// 获取路由元信息（使用 FullPath 获取路由模板，如 /api/v1/roles/:id/menus）
-		routePath := c.FullPath()
-		group, summary := getRouteInfo(c.Request.Method, routePath)
 
 		log := model.SysOperationLog{
 			UserID:       GetUserID(c),

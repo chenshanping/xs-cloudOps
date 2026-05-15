@@ -40,7 +40,13 @@
       </template>
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'name'">
-          <div class="task-name"><strong>{{ record.name }}</strong><span>{{ record.code }}</span></div>
+          <a-button v-if="hasViewPermission" type="link" class="task-name-button" @click="handleViewTask(record)" v-permission="'monitor:cron:view'">
+            <div class="task-name">
+              <strong>{{ record.name }}</strong>
+              <span>{{ record.code }}</span>
+            </div>
+          </a-button>
+          <div v-else class="task-name"><strong>{{ record.name }}</strong><span>{{ record.code }}</span></div>
         </template>
         <template v-else-if="column.key === 'task_code'"><a-tag color="blue">{{ record.task_code }}</a-tag></template>
         <template v-else-if="column.key === 'cron_expr'"><code>{{ record.cron_expr }}</code></template>
@@ -54,7 +60,7 @@
             <a-button type="link" size="small" @click="handleEdit(record)" v-permission="'monitor:cron:update'">编辑</a-button>
             <a-button v-if="record.status !== 1" type="link" size="small" @click="handleEnable(record)" v-permission="'monitor:cron:enable'">启用</a-button>
             <a-button v-else type="link" size="small" danger @click="handleDisable(record)" v-permission="'monitor:cron:disable'">停用</a-button>
-            <a-button type="link" size="small" @click="handleRunNow(record)" v-permission="'monitor:cron:runNow'">执行</a-button>
+            <a-button type="link" size="small" @click="handleRunNow(record)" v-permission="'monitor:cron:runNow'">立即执行</a-button>
             <a-button type="link" size="small" @click="handleViewLogs(record)" v-permission="'monitor:cron:logs:view'">日志</a-button>
             <a-button type="link" size="small" danger @click="handleDelete(record)" v-permission="'monitor:cron:delete'">删除</a-button>
           </a-space>
@@ -63,30 +69,43 @@
     </ProTable>
 
       <CronTaskFormDrawer v-model:open="drawerVisible" :title="isEdit ? '编辑定时任务' : '新增定时任务'" :is-edit="isEdit" :record="currentRecord" :registry="registry" :submitting="submitting" @submit="handleSubmit" />
+      <CronTaskDetailDrawer
+        v-model:open="detailVisible"
+        :task="detailTask"
+        :registry="registry"
+        :initial-tab="detailInitialTab"
+        :initial-log-id="detailLogId"
+        @run-now="handleRunNow"
+      />
       <CronRunNowConfirm ref="runNowConfirmRef" @success="handleRunNowSuccess" />
     </div>
   </PageWrapper>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
 import { CheckCircleOutlined, CloseCircleOutlined, PlusOutlined, ScheduleOutlined, SyncOutlined } from '@ant-design/icons-vue'
 import ProTable from '@/components/ProTable.vue'
 import PageWrapper from '@/components/page/PageWrapper.vue'
 import { formatTime } from '@/utils/format'
 import type { CronTask } from '@/api/cron'
+import { useUserStore } from '@/store/user'
 import CronRunNowConfirm from './components/CronRunNowConfirm.vue'
+import CronTaskDetailDrawer from './components/CronTaskDetailDrawer.vue'
 import CronTaskFormDrawer from './components/CronTaskFormDrawer.vue'
 import { useCronTaskPage } from './useCronTaskPage'
 
-const router = useRouter()
+const userStore = useUserStore()
 const runNowConfirmRef = ref<InstanceType<typeof CronRunNowConfirm>>()
+const detailVisible = ref(false)
+const detailTask = ref<CronTask | null>(null)
+const detailInitialTab = ref<'detail' | 'logs'>('detail')
+const detailLogId = ref<number>()
 const {
   loading, submitting, tableData, registry, drawerVisible, isEdit, currentRecord,
   pagination, searchForm, enabledCount, failedCount, runningCount, fetchRegistry, fetchData,
   handleSearch, handleReset, handleTableChange, handleAdd, handleEdit, handleSubmit,
-  handleDelete, handleEnable, handleDisable,
+  handleDelete: baseHandleDelete, handleEnable: baseHandleEnable, handleDisable: baseHandleDisable,
 } = useCronTaskPage()
 
 const columns = [
@@ -104,16 +123,50 @@ const columns = [
 const getRunStatusColor = (status?: string) => ({ success: 'green', failure: 'red', running: 'processing', skipped: 'orange' }[status || ''] || 'default')
 const getRunStatusText = (status?: string) => ({ success: '成功', failure: '失败', running: '执行中', skipped: '已跳过' }[status || ''] || '-')
 const formatDuration = (duration?: number) => duration ? `${duration}ms` : '-'
-const handleRunNow = (record: CronTask) => runNowConfirmRef.value?.confirmRun(record)
-const handleRunNowSuccess = (logId: number, task: CronTask) => {
-  fetchData()
-  router.push({ path: '/monitor/cron-log', query: { task_id: String(task.id), log_id: String(logId) } })
+const hasViewPermission = computed(() => userStore.hasPermission('monitor:cron:view'))
+const syncDetailTask = (taskId: number) => {
+  const matched = tableData.value.find((item) => item.id === taskId) || null
+  if (detailVisible.value && detailTask.value?.id === taskId) {
+    detailTask.value = matched
+    if (!matched) {
+      detailVisible.value = false
+    }
+  }
+  return matched
 }
-const handleViewLogs = (record: CronTask) => router.push({ path: '/monitor/cron-log', query: { task_id: String(record.id) } })
+const openTaskDrawer = (task: CronTask, tab: 'detail' | 'logs' = 'detail', logId?: number) => {
+  detailTask.value = task
+  detailInitialTab.value = tab
+  detailLogId.value = logId
+  detailVisible.value = true
+}
+const handleViewTask = (record: CronTask) => openTaskDrawer(record, 'detail')
+const handleRunNow = (record: CronTask) => runNowConfirmRef.value?.confirmRun(record)
+const handleRunNowSuccess = async (logId: number, task: CronTask) => {
+  await fetchData()
+  openTaskDrawer(syncDetailTask(task.id) || task, 'logs', logId)
+}
+const handleViewLogs = (record: CronTask) => openTaskDrawer(record, 'logs')
+const handleEnable = async (record: CronTask) => {
+  await baseHandleEnable(record)
+  syncDetailTask(record.id)
+}
+const handleDisable = async (record: CronTask) => {
+  await baseHandleDisable(record)
+  syncDetailTask(record.id)
+}
+const handleDelete = (record: CronTask) => {
+  baseHandleDelete(record, () => {
+    if (detailTask.value?.id === record.id) {
+      detailTask.value = null
+      detailVisible.value = false
+    }
+  })
+}
 
 onMounted(async () => {
   await fetchRegistry()
-  fetchData()
+  await fetchData()
 })
 </script>
 
@@ -127,7 +180,13 @@ onMounted(async () => {
 .summary-item.danger :deep(.anticon) { color: #cf1322; background: rgba(255, 77, 79, 0.12); }
 .summary-item span { color: var(--app-text-muted); font-size: 13px; }
 .summary-item strong { font-size: 22px; font-weight: 650; }
+.task-name-button {
+  height: auto;
+  padding: 0;
+  text-align: left;
+}
 .task-name { display: flex; flex-direction: column; gap: 3px; }
+.task-name strong { color: var(--app-text-strong); }
 .task-name span { color: var(--app-text-muted); font-size: 12px; }
 code { padding: 2px 6px; color: #0958d9; background: rgba(22, 119, 255, 0.08); border-radius: 4px; }
 @media (max-width: 1200px) { .cron-summary { grid-template-columns: repeat(2, minmax(140px, 1fr)); } }

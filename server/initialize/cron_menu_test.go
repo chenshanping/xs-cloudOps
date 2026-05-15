@@ -29,7 +29,6 @@ func TestEnsureCronTaskMenuApiCreatesMenusButtonsApisAndSeeds(t *testing.T) {
 
 	expectedPermissions := []string{
 		"monitor:cron:list",
-		"monitor:cron:logs:list",
 		"monitor:cron:view",
 		"monitor:cron:create",
 		"monitor:cron:update",
@@ -45,6 +44,17 @@ func TestEnsureCronTaskMenuApiCreatesMenusButtonsApisAndSeeds(t *testing.T) {
 	}
 	if menuCount != int64(len(expectedPermissions)) {
 		t.Fatalf("cron menu count = %d, want %d", menuCount, len(expectedPermissions))
+	}
+	var taskMenu model.SysMenu
+	if err := db.Where("permission = ?", "monitor:cron:list").First(&taskMenu).Error; err != nil {
+		t.Fatalf("load cron task menu: %v", err)
+	}
+	var logButton model.SysMenu
+	if err := db.Where("permission = ?", "monitor:cron:logs:view").First(&logButton).Error; err != nil {
+		t.Fatalf("load cron log button: %v", err)
+	}
+	if logButton.ParentID != taskMenu.ID {
+		t.Fatalf("cron log button parent = %d, want %d", logButton.ParentID, taskMenu.ID)
 	}
 
 	var apiCount int64
