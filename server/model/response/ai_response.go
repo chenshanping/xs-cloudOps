@@ -3,6 +3,7 @@ package response
 type AIProviderModelItem struct {
 	ID               string   `json:"id"`
 	Name             string   `json:"name,omitempty"`
+	Group            string   `json:"group,omitempty"`
 	Description      string   `json:"description,omitempty"`
 	Object           string   `json:"object,omitempty"`
 	Created          int64    `json:"created,omitempty"`

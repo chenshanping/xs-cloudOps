@@ -11,7 +11,7 @@
       <div class="editor-summary">
         <div>
           <div class="editor-summary__title">{{ providerName || '未命名平台' }}</div>
-          <div class="editor-summary__subtitle">编辑当前平台下的模型能力、参数和描述</div>
+          <div class="editor-summary__subtitle">编辑当前平台下的模型分组、能力、参数和描述</div>
         </div>
         <div class="editor-summary__tags">
           <a-tag
@@ -36,6 +36,13 @@
           </a-form-item>
           <a-form-item label="显示名称" name="name">
             <a-input v-model:value="formState.name" placeholder="默认回退为模型 ID" />
+          </a-form-item>
+          <a-form-item label="模型分组" name="group">
+            <a-input
+              v-model:value="formState.group"
+              placeholder="例如：deepseek-v4、mimo-v2.5"
+              @update:value="handleGroupInput"
+            />
           </a-form-item>
         </div>
 
@@ -118,7 +125,9 @@ import type { FormInstance } from 'ant-design-vue'
 import {
   capabilityTagMetaMap,
   createEmptyModel,
+  getRemoteModelGroupName,
   getModelCapabilityTags,
+  isMeaningfulExplicitModelGroup,
   normalizeModel,
   searchStrategyOptions,
   type AIModel,
@@ -144,6 +153,26 @@ const emit = defineEmits<{
 const formRef = ref<FormInstance>()
 const formState = reactive<AIModel>(createEmptyModel())
 const capabilityTags = computed(() => getModelCapabilityTags(formState))
+const groupManualOverride = ref(false)
+const lastAutoDerivedGroup = ref('')
+
+const syncDerivedGroup = (force = false) => {
+  const nextGroup = getRemoteModelGroupName({
+    id: formState.id,
+    name: formState.name,
+  })
+  const shouldReplaceCurrentGroup = force
+    || !isMeaningfulExplicitModelGroup(formState.group)
+    || !groupManualOverride.value
+    || formState.group.trim() === lastAutoDerivedGroup.value
+
+  if (!shouldReplaceCurrentGroup) {
+    return
+  }
+
+  formState.group = nextGroup
+  lastAutoDerivedGroup.value = nextGroup
+}
 
 watch(
   () => [props.open, props.model],
@@ -151,10 +180,36 @@ watch(
     if (!props.open) {
       return
     }
-    Object.assign(formState, normalizeModel(props.model))
+    const normalized = normalizeModel(props.model)
+    Object.assign(formState, normalized)
+    const originalGroup = String(props.model?.group ?? '').trim()
+    groupManualOverride.value = isMeaningfulExplicitModelGroup(originalGroup)
+    lastAutoDerivedGroup.value = groupManualOverride.value ? '' : normalized.group
+    syncDerivedGroup(!groupManualOverride.value)
   },
   { immediate: true, deep: true },
 )
+
+watch(
+  () => [formState.id, formState.name],
+  () => {
+    if (!props.open) {
+      return
+    }
+    syncDerivedGroup()
+  },
+)
+
+const handleGroupInput = (value: string) => {
+  const normalizedValue = value.trim()
+  if (isMeaningfulExplicitModelGroup(normalizedValue) && normalizedValue !== lastAutoDerivedGroup.value) {
+    groupManualOverride.value = true
+    return
+  }
+
+  groupManualOverride.value = false
+  syncDerivedGroup(true)
+}
 
 const handleClose = () => {
   emit('update:open', false)
@@ -235,7 +290,7 @@ const handleTest = async () => {
 
 .editor-grid--basic,
 .editor-grid--params {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .editor-grid--switches {

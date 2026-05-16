@@ -61,7 +61,7 @@
             <div>
               <div class="import-panel__title">远端模型列表</div>
               <div class="import-panel__subtitle">
-                远端能力由后端识别；这里只负责筛选、选择并回写到当前页面
+                默认按模型分组收起；远端能力由后端识别，这里只负责筛选、选择并回写到当前页面
               </div>
             </div>
             <div class="import-panel__stats">
@@ -77,7 +77,7 @@
               v-model:value="keyword"
               allow-clear
               class="import-panel__search"
-              placeholder="搜索模型名称 / 标识 / 归属"
+              placeholder="搜索模型名称 / 标识 / 分组"
             />
             <a-space wrap>
               <a-button :loading="loading" :disabled="!canImport" @click="handleFetch">重新获取</a-button>
@@ -106,66 +106,108 @@
           <div class="import-panel__body">
             <a-spin :spinning="loading">
               <template v-if="groupedRemoteModels.length > 0">
-                <section
-                  v-for="group in groupedRemoteModels"
-                  :key="group.name"
-                  class="import-group"
-                >
-                  <div class="import-group__title">
-                    <span>{{ group.name }}</span>
-                    <span class="import-group__count">{{ group.items.length }}</span>
-                  </div>
-
-                  <div class="import-grid">
-                    <article
-                      v-for="model in group.items"
-                      :key="model.id"
-                      :class="[
-                        'import-card',
-                        targetKeySet.has(model.id) ? 'import-card--selected' : '',
-                        existingModelIDs.has(model.id) ? 'import-card--imported' : '',
-                      ]"
-                    >
-                      <div class="import-card__head">
-                        <a-checkbox
-                          :checked="targetKeySet.has(model.id)"
-                          :disabled="existingModelIDs.has(model.id)"
-                          @change="handleToggleModel(model.id)"
-                        />
-                        <div class="import-card__title-wrap">
-                          <div class="import-card__title">{{ model.name || model.id }}</div>
-                          <div class="import-card__key">{{ model.id }}</div>
-                        </div>
-                        <a-tag :color="existingModelIDs.has(model.id) ? 'default' : 'green'">
-                          {{ existingModelIDs.has(model.id) ? '已导入' : '待导入' }}
-                        </a-tag>
-                      </div>
-
-                      <div class="capability-tags capability-tags--card">
-                        <a-tag
-                          v-for="tag in getModelCapabilityTags(model)"
-                          :key="`${model.id}-${tag}`"
-                          :color="capabilityTagMetaMap[tag].color"
-                        >
-                          {{ capabilityTagMetaMap[tag].label }}
-                        </a-tag>
-                        <span v-if="getModelCapabilityTags(model).length === 0" class="capability-tags__empty">
-                          未识别
+                <a-collapse v-model:activeKey="expandedGroupKeys" ghost class="import-group-collapse">
+                  <a-collapse-panel
+                    v-for="group in groupedRemoteModels"
+                    :key="group.name"
+                    :header="group.name"
+                    class="import-group-panel"
+                  >
+                    <template #extra>
+                      <div class="import-group__extra" @click.stop>
+                        <span class="import-group__count">{{ group.items.length }}</span>
+                        <span v-if="group.importableCount > 0" class="import-group__meta">
+                          待导入 {{ group.importableCount }}
                         </span>
+                        <span v-if="group.importedCount > 0" class="import-group__meta">
+                          已导入 {{ group.importedCount }}
+                        </span>
+                        <span v-if="group.selectedCount > 0" class="import-group__meta import-group__meta--selected">
+                          已选 {{ group.selectedCount }}
+                        </span>
+                        <a-button
+                          v-if="group.importableCount > 0"
+                          type="link"
+                          size="small"
+                          class="import-group__action"
+                          @click.stop="handleSelectGroup(group.items)"
+                        >
+                          全选本组
+                        </a-button>
+                        <a-button
+                          v-if="group.selectedCount > 0"
+                          type="link"
+                          size="small"
+                          class="import-group__action"
+                          @click.stop="handleClearGroup(group.items)"
+                        >
+                          清空选择
+                        </a-button>
+                        <a-button
+                          v-if="group.importableCount > 0"
+                          type="link"
+                          size="small"
+                          class="import-group__action"
+                          @click.stop="handleImportGroup(group.items)"
+                        >
+                          导入本组
+                        </a-button>
                       </div>
+                    </template>
 
-                      <div class="import-card__meta">
-                        <span>联网 {{ formatSearchStrategyLabel(model.search_strategy) }}</span>
-                        <span>温度 {{ formatTemperature(model.temperature) }}</span>
-                        <span>上下文 {{ formatContextWindow(model.context_window) }}</span>
-                      </div>
+                    <div class="import-list">
+                      <article
+                        v-for="model in group.items"
+                        :key="model.id"
+                        :class="[
+                          'import-model-row',
+                          targetKeySet.has(model.id) ? 'import-model-row--selected' : '',
+                          existingModelIDs.has(model.id) ? 'import-model-row--imported' : '',
+                        ]"
+                        @click="handleToggleModel(model.id)"
+                      >
+                        <div class="import-model-row__head">
+                          <a-checkbox
+                            :checked="targetKeySet.has(model.id)"
+                            :disabled="existingModelIDs.has(model.id)"
+                            @click.stop
+                            @change="handleToggleModel(model.id)"
+                          />
+                          <div class="import-model-row__title-wrap">
+                            <div class="import-model-row__title">{{ model.name || model.id }}</div>
+                            <div class="import-model-row__key">{{ model.id }}</div>
+                          </div>
+                          <a-tag :color="existingModelIDs.has(model.id) ? 'default' : 'green'">
+                            {{ existingModelIDs.has(model.id) ? '已导入' : '待导入' }}
+                          </a-tag>
+                        </div>
 
-                      <div v-if="model.description" class="import-card__desc">
-                        {{ model.description }}
-                      </div>
-                    </article>
-                  </div>
-                </section>
+                        <div class="capability-tags capability-tags--row">
+                          <a-tag
+                            v-for="tag in getModelCapabilityTags(model)"
+                            :key="`${model.id}-${tag}`"
+                            :color="capabilityTagMetaMap[tag].color"
+                          >
+                            {{ capabilityTagMetaMap[tag].label }}
+                          </a-tag>
+                          <span v-if="getModelCapabilityTags(model).length === 0" class="capability-tags__empty">
+                            未识别
+                          </span>
+                        </div>
+
+                        <div class="import-model-row__meta">
+                          <span>联网 {{ formatSearchStrategyLabel(model.search_strategy) }}</span>
+                          <span>温度 {{ formatTemperature(model.temperature) }}</span>
+                          <span>上下文 {{ formatContextWindow(model.context_window) }}</span>
+                        </div>
+
+                        <div v-if="model.description" class="import-model-row__desc">
+                          {{ model.description }}
+                        </div>
+                      </article>
+                    </div>
+                  </a-collapse-panel>
+                </a-collapse>
               </template>
 
               <a-empty
@@ -202,7 +244,7 @@ import {
   filterModelsByCapabilityAndKeyword,
   formatSearchStrategyLabel,
   getModelCapabilityTags,
-  groupRemoteModelsByOwner,
+  groupRemoteModelsByDisplayGroup,
   matchesModelCapability,
   normalizeModel,
   normalizeRemoteProviderModel,
@@ -248,6 +290,7 @@ const primaryFilter = ref<PrimaryFilterKey>('all')
 const activeFeatureFilters = ref<FeatureFilterKey[]>([])
 const remoteModels = ref<RemoteProviderModel[]>([])
 const targetKeys = ref<string[]>([])
+const expandedGroupKeys = ref<string[]>([])
 
 const existingModelIDs = computed(() => new Set(props.existingModels.map(model => model.id).filter(Boolean)))
 const targetKeySet = computed(() => new Set(targetKeys.value))
@@ -267,7 +310,14 @@ const filteredImportableModels = computed(() => (
   filteredRemoteModels.value.filter(model => !existingModelIDs.value.has(model.id))
 ))
 
-const groupedRemoteModels = computed(() => groupRemoteModelsByOwner(filteredRemoteModels.value))
+const groupedRemoteModels = computed(() => (
+  groupRemoteModelsByDisplayGroup(filteredRemoteModels.value).map(group => ({
+    ...group,
+    importableCount: group.items.filter(model => !existingModelIDs.value.has(model.id)).length,
+    importedCount: group.items.filter(model => existingModelIDs.value.has(model.id)).length,
+    selectedCount: group.items.filter(model => targetKeySet.value.has(model.id)).length,
+  }))
+))
 
 const selectedModels = computed(() => (
   targetKeys.value
@@ -304,15 +354,35 @@ watch(
     if (!open) {
       handleResetFilters()
       targetKeys.value = []
+      expandedGroupKeys.value = []
       return
     }
     handleResetFilters()
     targetKeys.value = []
+    expandedGroupKeys.value = []
     if (props.apiKey.trim() && props.providerBaseUrl.trim()) {
       void handleFetch()
     }
   },
 )
+
+watch(
+  groupedRemoteModels,
+  groups => {
+    const validKeys = new Set(groups.map(group => group.name))
+    expandedGroupKeys.value = expandedGroupKeys.value.filter(key => validKeys.has(key))
+  },
+  { deep: true },
+)
+
+watch(keyword, value => {
+  if (!props.open) {
+    return
+  }
+  expandedGroupKeys.value = value.trim()
+    ? groupedRemoteModels.value.map(group => group.name)
+    : []
+})
 
 const getPrimaryFilterCount = (value: PrimaryFilterKey) => (
   filterModelsByCapabilityAndKeyword(remoteModels.value, value as AIModelCapabilityKey).length
@@ -338,6 +408,7 @@ const handleResetFilters = () => {
   keyword.value = ''
   primaryFilter.value = 'all'
   activeFeatureFilters.value = []
+  expandedGroupKeys.value = []
 }
 
 const removeFilterTag = (key: string) => {
@@ -410,15 +481,28 @@ const handleSelectFiltered = () => {
   targetKeys.value = Array.from(merged)
 }
 
+const handleSelectGroup = (models: RemoteProviderModel[]) => {
+  const importableIDs = models
+    .filter(model => !existingModelIDs.value.has(model.id))
+    .map(model => model.id)
+  const merged = new Set([...targetKeys.value, ...importableIDs])
+  targetKeys.value = Array.from(merged)
+}
+
+const handleClearGroup = (models: RemoteProviderModel[]) => {
+  const ids = new Set(models.map(model => model.id))
+  targetKeys.value = targetKeys.value.filter(id => !ids.has(id))
+}
+
 const handleClearSelection = () => {
   targetKeys.value = []
 }
 
-const handleConfirm = () => {
+const emitImportedModels = (models: RemoteProviderModel[]) => {
   if (!props.canImport) {
     return
   }
-  const modelsToImport = selectedModels.value
+  const modelsToImport = models.filter(model => !existingModelIDs.value.has(model.id))
   if (modelsToImport.length === 0) {
     message.warning('请先选择要导入的模型')
     return
@@ -428,6 +512,7 @@ const handleConfirm = () => {
     ...createEmptyModel(),
     id: model.id,
     name: model.name || model.id,
+    group: model.group || '',
     description: model.description || '',
     is_thinking: model.is_thinking,
     support_vision: model.support_vision,
@@ -442,6 +527,14 @@ const handleConfirm = () => {
 
   emit('import', importedModels)
   handleClose()
+}
+
+const handleImportGroup = (models: RemoteProviderModel[]) => {
+  emitImportedModels(models)
+}
+
+const handleConfirm = () => {
+  emitImportedModels(selectedModels.value)
 }
 </script>
 
@@ -550,7 +643,7 @@ const handleConfirm = () => {
 .import-panel__summary,
 .import-panel__toolbar,
 .import-drawer__footer,
-.import-card__head {
+.import-model-row__head {
   display: flex;
   gap: 16px;
   align-items: flex-start;
@@ -564,9 +657,9 @@ const handleConfirm = () => {
 }
 
 .import-panel__subtitle,
-.import-card__key,
-.import-card__meta,
-.import-card__desc,
+.import-model-row__key,
+.import-model-row__meta,
+.import-model-row__desc,
 .capability-tags__empty,
 .import-drawer__footer-summary {
   color: #64748b;
@@ -609,79 +702,121 @@ const handleConfirm = () => {
   gap: 8px;
 }
 
-.import-group + .import-group {
-  margin-top: 18px;
+.import-group-collapse {
+  background: transparent;
 }
 
-.import-group__title {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+.import-group-collapse :deep(.ant-collapse-item) {
   margin-bottom: 12px;
+  overflow: hidden;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+}
+
+.import-group-collapse :deep(.ant-collapse-item:last-child) {
+  margin-bottom: 0;
+}
+
+.import-group-collapse :deep(.ant-collapse-header) {
+  align-items: center !important;
+  padding: 14px 18px !important;
+}
+
+.import-group-collapse :deep(.ant-collapse-header-text) {
   font-size: 14px;
   font-weight: 600;
   color: #0f172a;
 }
 
-.import-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+.import-group-collapse :deep(.ant-collapse-content-box) {
+  padding: 0 !important;
 }
 
-.import-card {
-  padding: 16px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
-}
-
-.import-card:hover {
-  border-color: #93c5fd;
-  box-shadow: 0 12px 24px rgb(37 99 235 / 8%);
-  transform: translateY(-1px);
-}
-
-.import-card--selected {
-  border-color: #2563eb;
-  box-shadow: 0 12px 24px rgb(37 99 235 / 12%);
-}
-
-.import-card--imported {
-  background: linear-gradient(180deg, #fff 0%, #f8fbff 100%);
-}
-
-.import-card__title-wrap {
-  min-width: 0;
-  flex: 1;
-}
-
-.import-card__title {
-  font-weight: 600;
-  color: #0f172a;
-}
-
-.import-card__key,
-.import-card__meta,
-.import-card__desc {
-  margin-top: 6px;
-  font-size: 12px;
-  word-break: break-all;
-}
-
-.capability-tags,
-.import-card__meta {
+.import-group__extra {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
 }
 
-.capability-tags--card {
+.import-group__meta {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.import-group__meta--selected {
+  color: #2563eb;
+}
+
+.import-group__action {
+  padding-inline: 0;
+}
+
+.import-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.capability-tags,
+.import-model-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.import-model-row {
+  padding: 16px 18px;
+  background: #fff;
+  border-top: 1px solid #edf2f7;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.import-model-row:first-child {
+  border-top: 0;
+}
+
+.import-model-row:hover {
+  background: #f8fbff;
+}
+
+.import-model-row--selected {
+  background: #eff6ff;
+  box-shadow: inset 3px 0 0 #2563eb;
+}
+
+.import-model-row--imported {
+  background: #f8fafc;
+  cursor: default;
+}
+
+.import-model-row--imported:hover {
+  background: #f8fafc;
+}
+
+.import-model-row__title-wrap {
+  min-width: 0;
+  flex: 1;
+}
+
+.import-model-row__title {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.import-model-row__key,
+.import-model-row__meta,
+.import-model-row__desc {
+  margin-top: 6px;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.capability-tags--row {
   margin-top: 12px;
 }
 
@@ -711,13 +846,9 @@ const handleConfirm = () => {
   .import-panel__summary,
   .import-panel__toolbar,
   .import-drawer__footer,
-  .import-card__head {
+  .import-model-row__head {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .import-grid {
-    grid-template-columns: 1fr;
   }
 }
 </style>

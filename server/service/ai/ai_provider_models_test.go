@@ -352,3 +352,34 @@ func TestFetchProviderModelsAppliesXiaomiMimoPricingPageCapabilities(t *testing.
 		})
 	}
 }
+
+func TestFetchProviderModelsDerivesStableModelGroups(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"mimo-v2.5-pro","name":"MiMo V2.5 Pro","owned_by":"xiaomi"},{"id":"deepseek-v4-flash","name":"DeepSeek V4 Flash","owned_by":"system"},{"id":"deepseek-ai/DeepSeek-R1-0528","name":"DeepSeek R1 0528","owned_by":"deepseek"}]}`))
+	}))
+	defer server.Close()
+
+	models, err := Default.fetchProviderModelsWithClient(server.Client(), "sk-test", server.URL+"/v1", "OpenAI Compatible")
+	if err != nil {
+		t.Fatalf("fetch provider models: %v", err)
+	}
+	if len(models) != 3 {
+		t.Fatalf("models len = %d, want 3", len(models))
+	}
+
+	groupByID := make(map[string]string, len(models))
+	for _, item := range models {
+		groupByID[item.ID] = item.Group
+	}
+
+	if groupByID["mimo-v2.5-pro"] != "mimo-v2.5" {
+		t.Fatalf("mimo-v2.5-pro group = %q, want %q", groupByID["mimo-v2.5-pro"], "mimo-v2.5")
+	}
+	if groupByID["deepseek-v4-flash"] != "deepseek-v4" {
+		t.Fatalf("deepseek-v4-flash group = %q, want %q", groupByID["deepseek-v4-flash"], "deepseek-v4")
+	}
+	if groupByID["deepseek-ai/DeepSeek-R1-0528"] != "deepseek-ai" {
+		t.Fatalf("deepseek-ai/DeepSeek-R1-0528 group = %q, want %q", groupByID["deepseek-ai/DeepSeek-R1-0528"], "deepseek-ai")
+	}
+}

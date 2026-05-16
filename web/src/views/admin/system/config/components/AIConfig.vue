@@ -74,10 +74,6 @@
                 </div>
               </div>
               <a-space wrap>
-                <a-button @click="openEditProviderDrawer" v-permission="'ai:config:editProvider'">
-                  <template #icon><EditOutlined /></template>
-                  编辑平台
-                </a-button>
                 <a-button @click="openCreateModelDrawer" v-permission="'ai:config:createModel'">
                   <template #icon><PlusOutlined /></template>
                   新增模型
@@ -143,56 +139,23 @@
               <a-input-search
                 v-model:value="modelKeyword"
                 allow-clear
-                placeholder="搜索模型 ID / 名称 / 描述"
+                placeholder="搜索模型 ID / 名称 / 分组 / 描述"
                 class="workspace-search"
               />
             </div>
 
-            <div v-if="filteredProviderModels.length > 0" class="model-grid">
-              <article
-                v-for="entry in filteredProviderModels"
-                :key="`${entry.index}-${entry.model.id || entry.model.name || 'model'}`"
-                class="model-card"
-                :class="{ 'model-card--active': entry.index === activeModelIndex }"
-                @click="selectActiveModel(entry.index)"
-              >
-                <div class="model-card__head">
-                  <div class="model-card__title-wrap">
-                    <div class="model-card__name">{{ entry.model.name || entry.model.id || '未命名模型' }}</div>
-                    <div class="model-card__id">{{ entry.model.id || '待填写模型 ID' }}</div>
-                  </div>
-                  <a-checkbox
-                    :checked="selectedBatchSet.has(entry.index)"
-                    @click.stop
-                    @change="toggleBatchModel(entry.index)"
-                  />
-                </div>
-
-                <div class="model-card__tags">
-                  <a-tag
-                    v-for="tag in getModelCapabilityTags(entry.model)"
-                    :key="tag"
-                    :color="capabilityTagMetaMap[tag].color"
-                  >
-                    {{ capabilityTagMetaMap[tag].label }}
-                  </a-tag>
-                  <span v-if="getModelCapabilityTags(entry.model).length === 0" class="model-card__placeholder">未识别能力</span>
-                </div>
-
-                <div class="model-card__meta">
-                  <span>联网 {{ formatSearchStrategyLabel(entry.model.search_strategy) }}</span>
-                  <span>温度 {{ formatTemperature(entry.model.temperature) }}</span>
-                  <span>上下文 {{ formatContextWindow(entry.model.context_window) }}</span>
-                </div>
-
-                <div v-if="entry.model.description" class="model-card__desc">{{ entry.model.description }}</div>
-
-                <div class="model-card__footer">
-                  <span>排序 {{ entry.index + 1 }}</span>
-                  <a-button type="link" size="small" @click.stop="openEditModelDrawer(entry.index)" v-permission="'ai:config:editModel'">编辑</a-button>
-                </div>
-              </article>
-            </div>
+            <ProviderModelGroupList
+              v-if="filteredProviderModels.length > 0"
+              :entries="filteredProviderModels"
+              :active-model-index="activeModelIndex"
+              :selected-batch-indices="selectedBatchIndices"
+              :keyword="modelKeyword"
+              @select-model="selectActiveModel"
+              @edit-model="openEditModelDrawer"
+              @toggle-batch="toggleBatchModel"
+              @select-group="handleSelectGroup"
+              @clear-group="handleClearGroup"
+            />
 
             <a-empty v-else description="当前筛选条件下没有模型">
               <a-button type="primary" @click="openCreateModelDrawer" v-permission="'ai:config:createModel'">新增模型</a-button>
@@ -249,7 +212,6 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { Modal, message } from 'ant-design-vue'
 import {
   CloudDownloadOutlined,
-  EditOutlined,
   PlusOutlined,
   SaveOutlined,
 } from '@ant-design/icons-vue'
@@ -258,17 +220,15 @@ import PageWrapper from '@/components/page/PageWrapper.vue'
 import { aiTest, getAIConfig, updateAIConfig } from '@/api/ai'
 import { cloneFromSnapshot, createSnapshot, isSnapshotDirty } from '../config-tab-guard'
 import ProviderEditorDrawer from './ai-config/ProviderEditorDrawer.vue'
+import ProviderModelGroupList from './ai-config/ProviderModelGroupList.vue'
 import ProviderModelEditorDrawer from './ai-config/ProviderModelEditorDrawer.vue'
 import ProviderRemoteModelImportDrawer from './ai-config/ProviderRemoteModelImportDrawer.vue'
 import { usePermission } from '@/utils/permission'
 import {
   capabilityTabOptions,
-  capabilityTagMetaMap,
   createEmptyModel,
   createEmptyProvider,
   filterModelsByCapabilityAndKeyword,
-  formatSearchStrategyLabel,
-  getModelCapabilityTags,
   matchesModelCapability,
   mergeImportedModels,
   normalizeAIConfig,
@@ -456,6 +416,16 @@ const toggleBatchModel = (index: number) => {
     return
   }
   selectedBatchIndices.value = [...selectedBatchIndices.value, index].sort((a, b) => a - b)
+}
+
+const handleSelectGroup = (indices: number[]) => {
+  const merged = new Set([...selectedBatchIndices.value, ...indices])
+  selectedBatchIndices.value = Array.from(merged).sort((a, b) => a - b)
+}
+
+const handleClearGroup = (indices: number[]) => {
+  const removing = new Set(indices)
+  selectedBatchIndices.value = selectedBatchIndices.value.filter(index => !removing.has(index))
 }
 
 const isDefaultProvider = (index: number) => formData.providers[index]?.name === formData.default_provider
@@ -861,9 +831,6 @@ const getCapabilityCount = (capability: AIModelCapabilityKey) => {
   return provider.models.filter(model => matchesModelCapability(model, capability)).length
 }
 
-const formatTemperature = (value: number | null) => (typeof value === 'number' ? value.toFixed(1) : '-')
-const formatContextWindow = (value: number | null) => (typeof value === 'number' && value > 0 ? `${value}` : '-')
-
 const validateBeforeSave = () => {
   const providerNameSet = new Set<string>()
   for (const provider of formData.providers) {
@@ -985,9 +952,7 @@ defineExpose({
 .sidebar-header,
 .workspace-hero,
 .workspace-toolbar,
-.workspace-filters,
-.model-card__head,
-.model-card__footer {
+.workspace-filters {
   display: flex;
   gap: 16px;
   align-items: flex-start;
@@ -1005,12 +970,7 @@ defineExpose({
 .sidebar-subtitle,
 .workspace-hero__subtitle,
 .toolbar-meta,
-.summary-chip,
-.model-card__id,
-.model-card__meta,
-.model-card__desc,
-.model-card__placeholder,
-.model-card__footer {
+.summary-chip {
   color: var(--app-text-secondary);
 }
 
@@ -1079,8 +1039,7 @@ defineExpose({
   box-shadow: 0 12px 24px rgba(24, 144, 255, 0.12);
 }
 
-.provider-item__name,
-.model-card__name {
+.provider-item__name {
   font-weight: 600;
   color: var(--app-text-strong);
   min-width: 0;
@@ -1133,51 +1092,6 @@ defineExpose({
   flex-shrink: 0;
 }
 
-.model-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 14px;
-}
-
-.model-card {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--app-border-color);
-  border-radius: 18px;
-  background: linear-gradient(180deg, var(--app-surface-color) 0%, var(--app-surface-soft) 100%);
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.model-card:hover,
-.model-card--active {
-  border-color: var(--app-primary-color);
-  box-shadow: 0 16px 28px rgba(15, 23, 42, 0.1);
-  transform: translateY(-2px);
-}
-
-.model-card__title-wrap {
-  min-width: 0;
-  flex: 1;
-}
-
-.model-card__id,
-.model-card__meta,
-.model-card__desc {
-  font-size: 12px;
-  word-break: break-all;
-}
-
-.model-card__tags,
-.model-card__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
 .ai-config :deep(.ant-empty-description) {
   color: var(--app-text-secondary);
 }
@@ -1190,18 +1104,12 @@ defineExpose({
   .sidebar-header,
   .workspace-hero,
   .workspace-toolbar,
-  .workspace-filters,
-  .model-card__head,
-  .model-card__footer {
+  .workspace-filters {
     flex-direction: column;
   }
 
   .workspace-search {
     width: 100%;
-  }
-
-  .model-grid {
-    grid-template-columns: 1fr;
   }
 }
 </style>

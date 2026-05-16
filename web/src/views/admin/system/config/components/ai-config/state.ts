@@ -13,6 +13,7 @@ export type AISearchStrategy = 'none' | 'builtin' | 'tool'
 export interface AIModel {
   id: string
   name: string
+  group: string
   description: string
   is_thinking: boolean
   support_vision: boolean
@@ -50,9 +51,19 @@ export interface ImportMergeResult {
   skippedCount: number
 }
 
+export interface IndexedAIModelEntry {
+  model: AIModel
+  index: number
+}
+
 export interface RemoteModelGroup {
   name: string
   items: RemoteProviderModel[]
+}
+
+export interface IndexedAIModelGroup {
+  name: string
+  items: IndexedAIModelEntry[]
 }
 
 export const capabilityTabOptions: Array<{ label: string; value: AIModelCapabilityKey }> = [
@@ -119,6 +130,7 @@ export function createEmptyModel(): AIModel {
   return {
     id: '',
     name: '',
+    group: '',
     description: '',
     is_thinking: false,
     support_vision: false,
@@ -228,6 +240,7 @@ export function normalizeModel(input?: Partial<AIModel & { tags?: string[] }> | 
   const model: AIModel = {
     id: String(input?.id ?? '').trim(),
     name: String(input?.name ?? '').trim(),
+    group: String(input?.group ?? '').trim(),
     description: String(input?.description ?? '').trim(),
     is_thinking: normalizeBooleanFlag(input?.is_thinking),
     support_vision: normalizeBooleanFlag(input?.support_vision),
@@ -246,6 +259,9 @@ export function normalizeModel(input?: Partial<AIModel & { tags?: string[] }> | 
   applyLegacyTags(model, normalizeCapabilityTags((input as { tags?: string[] } | null | undefined)?.tags))
   if (!model.name) {
     model.name = model.id
+  }
+  if (!isMeaningfulExplicitModelGroup(model.group)) {
+    model.group = getRemoteModelGroupName(model as Partial<RemoteProviderModel>)
   }
   return model
 }
@@ -297,6 +313,104 @@ export function matchesModelCapability(model: AIModel, capability: AIModelCapabi
   return getModelCapabilityTags(model).includes(capability)
 }
 
+function extractRemoteModelNamespace(value?: string): string {
+  const segments = String(value ?? '')
+    .split('/')
+    .map(item => item.trim())
+    .filter(Boolean)
+  if (segments.length < 2) {
+    return ''
+  }
+  const ignoredSegments = new Set(['accounts', 'deployments', 'deployment', 'maas', 'model', 'models'])
+  for (let index = segments.length - 2; index >= 0; index -= 1) {
+    const segment = segments[index]
+    if (!ignoredSegments.has(segment.toLowerCase())) {
+      return segment
+    }
+  }
+  return ''
+}
+
+function extractRemoteModelSeries(value?: string): string {
+  const normalized = String(value ?? '').trim()
+  if (!normalized) {
+    return ''
+  }
+  const segments = normalized.split('/').map(item => item.trim()).filter(Boolean)
+  const baseName = (segments[segments.length - 1] || normalized).toLowerCase()
+  const patterns = [
+    /^(deepseek-(?:r|v)\d+(?:\.\d+)?)/i,
+    /^(mimo-v\d+(?:\.\d+)?)/i,
+    /^(glm-\d+(?:\.\d+)?(?:v)?)/i,
+    /^(gemini-\d+(?:\.\d+)?)/i,
+    /^(kimi-k\d+(?:\.\d+)?(?:-thinking)?)/i,
+    /^(qwen\d+(?:\.\d+)?(?:-coder)?)/i,
+    /^(claude-(?:opus|sonnet|haiku)-\d+(?:[.-]\d+)?)/i,
+    /^(gpt-\d+(?:\.\d+)?(?:-[a-z]+)?)/i,
+    /^(llama-\d+(?:\.\d+)?)/i,
+    /^(gemma-?\d+(?:\.\d+)?)/i,
+    /^([a-z0-9]+(?:-[a-z0-9]+)?-(?:v)?\d+(?:\.\d+)?(?:v)?)/i,
+  ]
+  for (const pattern of patterns) {
+    const match = baseName.match(pattern)
+    if (match?.[1]) {
+      return match[1]
+    }
+  }
+  return ''
+}
+
+function isMeaningfulRemoteModelOwner(value?: string): boolean {
+  const normalized = String(value ?? '').trim().toLowerCase()
+  if (!normalized) {
+    return false
+  }
+  return !['default', 'model', 'models', 'official', 'provider', 'providers', 'public', 'system'].includes(normalized)
+}
+
+export function isMeaningfulExplicitModelGroup(value?: string): boolean {
+  const normalized = String(value ?? '').trim().toLowerCase()
+  if (!normalized) {
+    return false
+  }
+  return !['其他', '其他分组', 'other', 'others', 'misc', 'unknown', '未分组', '默认分组'].includes(normalized)
+}
+
+export function getRemoteModelGroupName(model?: Partial<RemoteProviderModel> | null): string {
+  if (!model) {
+    return '其他'
+  }
+  const explicitGroup = String(model.group ?? '').trim()
+  if (isMeaningfulExplicitModelGroup(explicitGroup)) {
+    return explicitGroup
+  }
+  const namespaceFromID = extractRemoteModelNamespace(model.id)
+  if (namespaceFromID) {
+    return namespaceFromID
+  }
+  const seriesFromID = extractRemoteModelSeries(model.id)
+  if (seriesFromID) {
+    return seriesFromID
+  }
+  const namespaceFromName = extractRemoteModelNamespace(model.name)
+  if (namespaceFromName) {
+    return namespaceFromName
+  }
+  const seriesFromName = extractRemoteModelSeries(model.name)
+  if (seriesFromName) {
+    return seriesFromName
+  }
+  const owner = String(model.owned_by ?? '').trim()
+  if (isMeaningfulRemoteModelOwner(owner)) {
+    return owner
+  }
+  const fallbackBaseName = String(model.id ?? model.name ?? '').trim().split('/').filter(Boolean).pop() ?? ''
+  if (fallbackBaseName) {
+    return fallbackBaseName.toLowerCase()
+  }
+  return '其他'
+}
+
 export function filterModelsByCapabilityAndKeyword<T extends AIModel>(
   models: T[],
   capability: AIModelCapabilityKey,
@@ -310,20 +424,46 @@ export function filterModelsByCapabilityAndKeyword<T extends AIModel>(
     if (!search) {
       return true
     }
-    return [model.id, model.name, model.description]
+    const remoteModel = model as Partial<RemoteProviderModel>
+    const searchValues = [
+      model.id,
+      model.name,
+      model.description,
+      remoteModel.owned_by,
+      getRemoteModelGroupName(remoteModel),
+      ...(Array.isArray(remoteModel.tags) ? remoteModel.tags : []),
+    ]
+    return searchValues
       .some(value => String(value ?? '').toLowerCase().includes(search))
   })
 }
 
-export function groupRemoteModelsByOwner(models: RemoteProviderModel[]): RemoteModelGroup[] {
+export function groupRemoteModelsByDisplayGroup(models: RemoteProviderModel[]): RemoteModelGroup[] {
   const groups = new Map<string, RemoteProviderModel[]>()
 
   for (const model of models) {
-    const groupName = String(model.owned_by ?? '').trim() || '其他'
+    const groupName = getRemoteModelGroupName(model)
     if (!groups.has(groupName)) {
       groups.set(groupName, [])
     }
     groups.get(groupName)?.push(model)
+  }
+
+  return Array.from(groups.entries()).map(([name, items]) => ({
+    name,
+    items,
+  }))
+}
+
+export function groupIndexedModelsByDisplayGroup(entries: IndexedAIModelEntry[]): IndexedAIModelGroup[] {
+  const groups = new Map<string, IndexedAIModelEntry[]>()
+
+  for (const entry of entries) {
+    const groupName = getRemoteModelGroupName(entry.model as Partial<RemoteProviderModel>)
+    if (!groups.has(groupName)) {
+      groups.set(groupName, [])
+    }
+    groups.get(groupName)?.push(entry)
   }
 
   return Array.from(groups.entries()).map(([name, items]) => ({

@@ -78,6 +78,7 @@ type AIProvider struct {
 type AIModel struct {
 	ID               string   `mapstructure:"id" yaml:"id" json:"id"`
 	Name             string   `mapstructure:"name" yaml:"name" json:"name"`
+	Group            string   `mapstructure:"group" yaml:"group" json:"group,omitempty"`
 	Description      string   `mapstructure:"description" yaml:"description" json:"description"`
 	IsThinking       bool     `mapstructure:"is_thinking" yaml:"is_thinking" json:"is_thinking"`
 	SupportVision    bool     `mapstructure:"support_vision" yaml:"support_vision" json:"support_vision"`

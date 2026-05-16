@@ -3,6 +3,7 @@ package ai
 import (
 	"encoding/json"
 	"math"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -59,15 +60,33 @@ var capabilityTagAliases = map[string]string{
 	"工具":          "tool",
 }
 
+var modelSeriesPatterns = []*regexp.Regexp{
+	regexp.MustCompile(`^(deepseek-(?:r|v)\d+(?:\.\d+)?)`),
+	regexp.MustCompile(`^(mimo-v\d+(?:\.\d+)?)`),
+	regexp.MustCompile(`^(glm-\d+(?:\.\d+)?(?:v)?)`),
+	regexp.MustCompile(`^(gemini-\d+(?:\.\d+)?)`),
+	regexp.MustCompile(`^(kimi-k\d+(?:\.\d+)?(?:-thinking)?)`),
+	regexp.MustCompile(`^(qwen\d+(?:\.\d+)?(?:-coder)?)`),
+	regexp.MustCompile(`^(claude-(?:opus|sonnet|haiku)-\d+(?:[.-]\d+)?)`),
+	regexp.MustCompile(`^(gpt-\d+(?:\.\d+)?(?:-[a-z]+)?)`),
+	regexp.MustCompile(`^(llama-\d+(?:\.\d+)?)`),
+	regexp.MustCompile(`^(gemma-?\d+(?:\.\d+)?)`),
+	regexp.MustCompile(`^([a-z0-9]+(?:-[a-z0-9]+)?-(?:v)?\d+(?:\.\d+)?(?:v)?)`),
+}
+
 func normalizeAdminModel(input appconfig.AIModel) appconfig.AIModel {
 	model := input
 	model.ID = strings.TrimSpace(model.ID)
 	model.Name = strings.TrimSpace(model.Name)
+	model.Group = strings.TrimSpace(model.Group)
 	model.Description = strings.TrimSpace(model.Description)
 	model.SearchStrategy = normalizeSearchStrategy(model.SearchStrategy)
 	model.Tags = normalizeCapabilityTags(model.Tags)
 	if model.Name == "" {
 		model.Name = model.ID
+	}
+	if !isMeaningfulExplicitModelGroup(model.Group) {
+		model.Group = deriveAIModelGroup(model.ID, model.Name, "")
 	}
 
 	if !model.IsThinking && capabilityTagSet(model.Tags)["reasoning"] {
@@ -249,6 +268,7 @@ func normalizeRemoteProviderModelItem(raw map[string]any, capabilityContext prov
 	item := modelresponse.AIProviderModelItem{
 		ID:               modelID,
 		Name:             displayName,
+		Group:            strings.TrimSpace(extractString(raw, "group")),
 		Description:      description,
 		Object:           strings.TrimSpace(extractString(raw, "object")),
 		Created:          extractInt64(raw, "created"),
@@ -265,6 +285,9 @@ func normalizeRemoteProviderModelItem(raw map[string]any, capabilityContext prov
 	}
 	if item.Name == "" {
 		item.Name = item.ID
+	}
+	if item.Group == "" {
+		item.Group = deriveAIModelGroup(item.ID, item.Name, item.OwnedBy)
 	}
 	applyProviderCapabilityOverrides(&item, capabilityContext, lowerModelID)
 	item.Tags = buildCapabilityTags(
@@ -541,4 +564,130 @@ func containsAny(text string, keywords ...string) bool {
 		}
 	}
 	return false
+}
+
+func deriveAIModelGroup(id string, name string, owner string) string {
+	if explicit := strings.TrimSpace(owner); isMeaningfulModelGroupFallback(explicit) {
+		// owner 只作为最后兜底，不抢占更稳定的命名空间/系列组
+		owner = explicit
+	} else {
+		owner = ""
+	}
+
+	if namespace := extractModelNamespace(id); namespace != "" {
+		return namespace
+	}
+	if series := extractModelSeries(id); series != "" {
+		return series
+	}
+	if namespace := extractModelNamespace(name); namespace != "" {
+		return namespace
+	}
+	if series := extractModelSeries(name); series != "" {
+		return series
+	}
+	if owner != "" {
+		return owner
+	}
+	if fallback := extractModelLeaf(id); fallback != "" {
+		return fallback
+	}
+	if fallback := extractModelLeaf(name); fallback != "" {
+		return fallback
+	}
+	return "其他"
+}
+
+func isMeaningfulExplicitModelGroup(value string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	if normalized == "" {
+		return false
+	}
+	switch normalized {
+	case "其他", "其他分组", "other", "others", "misc", "unknown", "未分组", "默认分组":
+		return false
+	default:
+		return true
+	}
+}
+
+func extractModelNamespace(value string) string {
+	segments := make([]string, 0)
+	for _, item := range strings.Split(strings.TrimSpace(value), "/") {
+		item = strings.TrimSpace(item)
+		if item != "" {
+			segments = append(segments, item)
+		}
+	}
+	if len(segments) < 2 {
+		return ""
+	}
+	ignored := map[string]struct{}{
+		"accounts":    {},
+		"deployments": {},
+		"deployment":  {},
+		"maas":        {},
+		"model":       {},
+		"models":      {},
+	}
+	for index := len(segments) - 2; index >= 0; index-- {
+		segment := segments[index]
+		if _, found := ignored[strings.ToLower(segment)]; !found {
+			return segment
+		}
+	}
+	return ""
+}
+
+func extractModelSeries(value string) string {
+	normalized := strings.TrimSpace(value)
+	if normalized == "" {
+		return ""
+	}
+	segments := make([]string, 0)
+	for _, item := range strings.Split(normalized, "/") {
+		item = strings.TrimSpace(item)
+		if item != "" {
+			segments = append(segments, item)
+		}
+	}
+	baseName := normalized
+	if len(segments) > 0 {
+		baseName = segments[len(segments)-1]
+	}
+	baseName = strings.ToLower(baseName)
+	for _, pattern := range modelSeriesPatterns {
+		matches := pattern.FindStringSubmatch(baseName)
+		if len(matches) > 1 && strings.TrimSpace(matches[1]) != "" {
+			return matches[1]
+		}
+	}
+	return ""
+}
+
+func isMeaningfulModelGroupFallback(value string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	if normalized == "" {
+		return false
+	}
+	switch normalized {
+	case "default", "model", "models", "official", "provider", "providers", "public", "system":
+		return false
+	default:
+		return true
+	}
+}
+
+func extractModelLeaf(value string) string {
+	segments := make([]string, 0)
+	for _, item := range strings.Split(strings.TrimSpace(value), "/") {
+		item = strings.TrimSpace(item)
+		if item != "" {
+			segments = append(segments, item)
+		}
+	}
+	if len(segments) == 0 {
+		return ""
+	}
+	return strings.ToLower(segments[len(segments)-1])
 }

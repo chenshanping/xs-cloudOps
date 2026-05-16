@@ -197,6 +197,70 @@ func TestAIServiceGetAdminConfigNormalizesLegacyTagsToCapabilities(t *testing.T)
 	}
 }
 
+func TestAIServiceGetAdminConfigBackfillsMissingModelGroup(t *testing.T) {
+	db := testutil.SetupStorageServiceTestDB(t)
+
+	models, err := json.Marshal([]appconfig.AIModel{
+		{ID: "deepseek-v4-flash", Name: "DeepSeek V4 Flash", Description: "snapshot"},
+	})
+	if err != nil {
+		t.Fatalf("marshal models: %v", err)
+	}
+	if err := db.Create(&model.AIProviderConfig{
+		Name:       "OpenAI Compatible",
+		APIKey:     "sk-test",
+		BaseURL:    "https://api.example.com/v1",
+		ModelsJSON: string(models),
+		IsDefault:  true,
+		Sort:       0,
+	}).Error; err != nil {
+		t.Fatalf("create ai provider config: %v", err)
+	}
+
+	cfg, err := Default.GetAdminConfig()
+	if err != nil {
+		t.Fatalf("GetAdminConfig error: %v", err)
+	}
+	if len(cfg.Providers) != 1 || len(cfg.Providers[0].Models) != 1 {
+		t.Fatalf("cfg providers = %#v, want one provider with one model", cfg.Providers)
+	}
+	if cfg.Providers[0].Models[0].Group != "deepseek-v4" {
+		t.Fatalf("normalized group = %q, want %q", cfg.Providers[0].Models[0].Group, "deepseek-v4")
+	}
+}
+
+func TestAIServiceGetAdminConfigReplacesPlaceholderGroupWithDerivedSeries(t *testing.T) {
+	db := testutil.SetupStorageServiceTestDB(t)
+
+	models, err := json.Marshal([]appconfig.AIModel{
+		{ID: "qwen3-ddd", Name: "Qwen3 DDD", Group: "其他", Description: "custom"},
+	})
+	if err != nil {
+		t.Fatalf("marshal models: %v", err)
+	}
+	if err := db.Create(&model.AIProviderConfig{
+		Name:       "DashScope",
+		APIKey:     "sk-test",
+		BaseURL:    "https://dashscope.aliyuncs.com/compatible-mode/v1",
+		ModelsJSON: string(models),
+		IsDefault:  true,
+		Sort:       0,
+	}).Error; err != nil {
+		t.Fatalf("create ai provider config: %v", err)
+	}
+
+	cfg, err := Default.GetAdminConfig()
+	if err != nil {
+		t.Fatalf("GetAdminConfig error: %v", err)
+	}
+	if len(cfg.Providers) != 1 || len(cfg.Providers[0].Models) != 1 {
+		t.Fatalf("cfg providers = %#v, want one provider with one model", cfg.Providers)
+	}
+	if cfg.Providers[0].Models[0].Group != "qwen3" {
+		t.Fatalf("normalized group = %q, want %q", cfg.Providers[0].Models[0].Group, "qwen3")
+	}
+}
+
 func TestAIServiceGetAdminConfigReturnsEmptyConfigWhenMissing(t *testing.T) {
 	testutil.SetupStorageServiceTestDB(t)
 
@@ -314,6 +378,102 @@ func TestAIServiceSaveAdminConfigOnlyWritesProviders(t *testing.T) {
 	}
 	if legacy.Value != `{"default_provider":"Old","providers":[]}` {
 		t.Fatalf("legacy ai_config should stay untouched, got %s", legacy.Value)
+	}
+}
+
+func TestAIServiceSaveAdminConfigPersistsExplicitModelGroup(t *testing.T) {
+	db := testutil.SetupStorageServiceTestDB(t)
+
+	next := &appconfig.AI{
+		DefaultProvider: "Xiaomi MiMo",
+		Providers: []appconfig.AIProvider{
+			{
+				Name:    "Xiaomi MiMo",
+				APIKey:  "sk-mimo",
+				BaseURL: "https://api.example.com/v1",
+				Models: []appconfig.AIModel{
+					{
+						ID:             "mimo-v2.5-pro",
+						Name:           "MiMo V2.5 Pro",
+						Group:          "mimo-v2.5",
+						Description:    "reasoning",
+						IsThinking:     true,
+						SearchStrategy: "none",
+					},
+				},
+			},
+		},
+	}
+
+	if err := Default.SaveAdminConfig(next); err != nil {
+		t.Fatalf("SaveAdminConfig error: %v", err)
+	}
+
+	var stored model.AIProviderConfig
+	if err := db.First(&stored).Error; err != nil {
+		t.Fatalf("reload ai provider config: %v", err)
+	}
+
+	var persistedModels []appconfig.AIModel
+	if err := json.Unmarshal([]byte(stored.ModelsJSON), &persistedModels); err != nil {
+		t.Fatalf("unmarshal stored models_json: %v", err)
+	}
+	if len(persistedModels) != 1 {
+		t.Fatalf("persisted models len = %d, want 1", len(persistedModels))
+	}
+	if persistedModels[0].Group != "mimo-v2.5" {
+		t.Fatalf("persisted group = %q, want %q", persistedModels[0].Group, "mimo-v2.5")
+	}
+
+	cfg, err := Default.GetAdminConfig()
+	if err != nil {
+		t.Fatalf("GetAdminConfig error: %v", err)
+	}
+	if cfg.Providers[0].Models[0].Group != "mimo-v2.5" {
+		t.Fatalf("readback group = %q, want %q", cfg.Providers[0].Models[0].Group, "mimo-v2.5")
+	}
+}
+
+func TestAIServiceSaveAdminConfigReplacesPlaceholderGroupWithDerivedSeries(t *testing.T) {
+	db := testutil.SetupStorageServiceTestDB(t)
+
+	next := &appconfig.AI{
+		DefaultProvider: "DashScope",
+		Providers: []appconfig.AIProvider{
+			{
+				Name:    "DashScope",
+				APIKey:  "sk-dash",
+				BaseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+				Models: []appconfig.AIModel{
+					{
+						ID:          "qwen3-ddd",
+						Name:        "Qwen3 DDD",
+						Group:       "其他",
+						Description: "custom",
+					},
+				},
+			},
+		},
+	}
+
+	if err := Default.SaveAdminConfig(next); err != nil {
+		t.Fatalf("SaveAdminConfig error: %v", err)
+	}
+
+	var stored model.AIProviderConfig
+	if err := db.First(&stored).Error; err != nil {
+		t.Fatalf("reload ai provider config: %v", err)
+	}
+
+	var persistedModels []appconfig.AIModel
+	if err := json.Unmarshal([]byte(stored.ModelsJSON), &persistedModels); err != nil {
+		t.Fatalf("unmarshal stored models_json: %v", err)
+	}
+	if len(persistedModels) != 1 {
+		t.Fatalf("persisted models len = %d, want 1", len(persistedModels))
+	}
+	if persistedModels[0].Group != "qwen3" {
+		t.Fatalf("persisted group = %q, want %q", persistedModels[0].Group, "qwen3")
 	}
 }
 

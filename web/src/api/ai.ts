@@ -85,6 +85,7 @@ export interface AdminMessageListParams {
 export interface AIModelConfig {
   id: string
   name: string
+  group?: string
   description: string
   is_thinking?: boolean
   support_vision?: boolean
@@ -119,6 +120,7 @@ export interface AITestRequest {
 export interface AIProviderRemoteModel {
   id: string
   name?: string
+  group?: string
   description?: string
   object?: string
   created?: number
