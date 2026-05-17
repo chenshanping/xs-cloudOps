@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/go-base.iml" filepath="$PROJECT_DIR$/.idea/go-base.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/xs-cloudOps.iml" filepath="$PROJECT_DIR$/.idea/xs-cloudOps.iml" />
     </modules>
   </component>
 </project>

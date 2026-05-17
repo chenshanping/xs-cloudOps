@@ -7,7 +7,7 @@ mysql:
   port: 3306
   username: root
   password: 123456
-  dbname: go-base
+  dbname: xs-cloud-ops
   charset: utf8mb4
   max_idle_conns: 10
   max_open_conns: 100
@@ -19,7 +19,7 @@ redis:
   db: 1
 
 jwt:
-  secret: go-base-jwt-secret-key
+  secret: xs-cloud-ops-jwt-secret-key
   expires: 7200          # token过期时间(秒) 2小时
   refresh_window: 604800 # 过期后允许刷新的时间窗口(秒) 7天
   issuer: web
