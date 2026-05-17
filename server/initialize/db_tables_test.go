@@ -1241,7 +1241,7 @@ func TestEnsureBuiltInDataAddsRoleDataScopeResourceApiAndInheritsRoleAccess(t *t
 	}
 }
 
-func TestEnsureBuiltInDataCreatesDefaultAIProvidersOnlyWhenBothSourcesMissing(t *testing.T) {
+func TestEnsureBuiltInDataCreatesBuiltinAIProvidersOnlyWhenBothSourcesMissing(t *testing.T) {
 	db := setupInitializeTestDB(t)
 
 	ensureBuiltInData()
@@ -1295,7 +1295,7 @@ func TestEnsureBuiltInDataDoesNotOverwriteExistingAIProviders(t *testing.T) {
 	}
 }
 
-func TestEnsureBuiltInDataDoesNotCreateDefaultAIProvidersWhenLegacyConfigExists(t *testing.T) {
+func TestEnsureBuiltInDataDoesNotCreateBuiltinAIProvidersWhenLegacyConfigExists(t *testing.T) {
 	db := setupInitializeTestDB(t)
 
 	legacy := model.SysConfig{
