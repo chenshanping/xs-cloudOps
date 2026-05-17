@@ -92,6 +92,8 @@ Helpful optional inputs:
 - Because the live login page only shows 4 features, do not generate more than 4 feature items by default
 - If `enable_register = true`, remind the user to upload a register default avatar in the login/register tab
 - File/image settings in this project should be applied through admin upload components, which persist `*_file_id` config keys behind the scenes
+- When the user asks for both config content and image-generation prompts, output them in **one complete package** instead of splitting them into separate answers.
+- Image-generation prompts must live under a separate `三、图片生成提示词（用于 sys_logo / login_bg_image）` section. Do not mix image prompts into persisted config keys.
 
 ## Available Icons
 
@@ -203,10 +205,13 @@ Rules:
 
 ### Step 4: Generate optional image prompts
 
-If the user wants image generation help, output:
+If the user wants image generation help, output image prompts **together with** the config package:
 
-- 3 background prompts
-- 3 logo prompts
+- Put them after `二、登录与注册` and before `当前项目渲染提醒`
+- Use the section title `三、图片生成提示词（用于 sys_logo / login_bg_image）`
+- Generate one directly usable `login_bg_image 生图提示词`
+- Generate one directly usable `sys_logo 生图提示词`
+- Only generate multiple prompt variants if the user explicitly asks for alternatives
 
 #### Background Prompt Rules
 
@@ -229,6 +234,17 @@ Prompt template:
 Prompt template:
 
 > 设计一个现代[风格]Logo，[主体描述]，[配色描述]，扁平设计，透明背景，适合作为后台管理系统图标，1:1正方形，无文字，高清
+
+#### Combined Output Rule
+
+When the user gives a business/system description and also asks for image prompts, use this exact section order:
+
+1. `一、基础配置（系统配置 → 基础配置）`
+2. `二、登录与注册（系统配置 → 登录与注册）`
+3. `三、图片生成提示词（用于 sys_logo / login_bg_image）`
+4. `四、当前项目渲染提醒`
+
+Do not ask the user to choose whether to generate prompts if their request already implies image generation, visual direction, logo, background, or prompt output.
 
 ## Example Output Shape
 
@@ -272,7 +288,15 @@ login_features:
   {"icon":"SafetyOutlined","title":"权限清晰","desc":"管理操作边界明确"}
 ]
 
-三、当前项目渲染提醒
+三、图片生成提示词（用于 sys_logo / login_bg_image）
+
+login_bg_image 生图提示词:
+基金与股票数据分析后台登录页背景，深蓝与青绿色金融科技色调，K线图、数据流、抽象市场网格和仪表盘光效融合，适合作为后台管理系统登录页背景，16:9宽幅构图，右侧保留低干扰区域用于放置登录表单，无文字，无水印，高清
+
+sys_logo 生图提示词:
+设计一个现代金融科技风Logo，以折线图、数据节点和盾牌为核心意象，深蓝与青绿色配色，扁平设计，透明背景，适合作为后台管理系统图标，1:1正方形，无文字，高清
+
+四、当前项目渲染提醒
 
 - 当前真实显示字段：sys_name、sys_logo、login_title、login_slogan、login_desc、login_features、login_bg_image/login_bg_color、enable_register
 - login_subtitle 当前可配置，但当前登录页主表单未直接显示
