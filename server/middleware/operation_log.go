@@ -138,6 +138,7 @@ func shouldMaskLogField(key string) bool {
 	normalized := strings.NewReplacer("-", "", "_", "", " ", "").Replace(strings.ToLower(strings.TrimSpace(key)))
 	switch normalized {
 	case "password", "newpassword", "oldpassword", "confirmpassword",
+		"privatekey", "passphrase", "sshprivatekey", "sshkey",
 		"token", "accesstoken", "refreshtoken", "authorization",
 		"secret", "secretkey", "accesskey", "apikey", "appsecret",
 		"captcha", "captchacode", "emailcode", "smscode":

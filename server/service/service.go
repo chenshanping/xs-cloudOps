@@ -6,6 +6,8 @@ import (
 	"server/service/apisvc"
 	"server/service/auth"
 	"server/service/captcha"
+	"server/service/cmdbcredential"
+	"server/service/cmdbhost"
 	"server/service/configsvc"
 	"server/service/core"
 	"server/service/cronsvc"
@@ -25,25 +27,27 @@ import (
 
 // Service singletons
 var (
-	User          = user.Default
-	Dept          = dept.Default
-	Role          = role.Default
-	Menu          = menu.Default
-	Dict          = dict.Default
-	File          = file.Default
-	FileReference = filesvc.Reference
-	AI            = ai.Default
-	Config        = configsvc.Default
-	Storage       = storagesvc.Default
-	Log           = logsvc.Default
-	Monitor       = monitorsvc.Default
-	Cron          = cronsvc.Default
-	Email         = email.Default
-	Cache         = core.Default
-	Echart        = echart.Default
-	Api           = apisvc.Default
-	Captcha       = captcha.Default
-	PublicAuth    = auth.PublicGuard
+	User           = user.Default
+	Dept           = dept.Default
+	Role           = role.Default
+	Menu           = menu.Default
+	Dict           = dict.Default
+	File           = file.Default
+	FileReference  = filesvc.Reference
+	AI             = ai.Default
+	Config         = configsvc.Default
+	Storage        = storagesvc.Default
+	Log            = logsvc.Default
+	Monitor        = monitorsvc.Default
+	CmdbHost       = cmdbhost.Default
+	CmdbCredential = cmdbcredential.Default
+	Cron           = cronsvc.Default
+	Email          = email.Default
+	Cache          = core.Default
+	Echart         = echart.Default
+	Api            = apisvc.Default
+	Captcha        = captcha.Default
+	PublicAuth     = auth.PublicGuard
 )
 
 // Auth types

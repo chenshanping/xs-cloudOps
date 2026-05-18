@@ -32,6 +32,11 @@ func InitDBTables() {
 		&model.SysFile{},
 		&model.SysFileReference{},
 		&model.SysFileChunk{},
+		&model.CmdbHostGroup{},
+		&model.CmdbHostTag{},
+		&model.CmdbHostTagRel{},
+		&model.CmdbSshCredential{},
+		&model.CmdbHost{},
 		// 数据字典
 		&model.SysDictType{},
 		&model.SysDictData{},
@@ -328,6 +333,7 @@ func ensureBuiltInData() {
 	ensureLogAuditMenus()
 	ensureServerMonitorMenuApi()
 	ensureCronTaskMenuApi()
+	ensureCmdbMenuApi()
 	cleanupSlowLogBuiltInData()
 	cleanupStorageBuiltInData()
 
@@ -1930,6 +1936,220 @@ func cronTaskMenuApiBindings() []menuApiBinding {
 		{MenuPermission: "monitor:cron:runNow", APIPath: "/api/v1/monitor/cron-task/:id/run", APIMethod: "POST"},
 		{MenuPermission: "monitor:cron:logs:view", APIPath: "/api/v1/monitor/cron-log", APIMethod: "GET"},
 		{MenuPermission: "monitor:cron:logs:view", APIPath: "/api/v1/monitor/cron-log/:id", APIMethod: "GET"},
+	}
+}
+
+func ensureCmdbMenuApi() {
+	cmdbRoot := model.SysMenu{
+		ParentID:   0,
+		Name:       "CMDB管理",
+		Path:       "/cmdb",
+		Component:  "Layout",
+		Icon:       "ClusterOutlined",
+		Sort:       31,
+		Type:       1,
+		Permission: "cmdb",
+		Status:     1,
+		Hidden:     0,
+	}
+	result := global.DB.Where("permission = ?", cmdbRoot.Permission).Attrs(model.SysMenu{
+		ParentID:  cmdbRoot.ParentID,
+		Name:      cmdbRoot.Name,
+		Path:      cmdbRoot.Path,
+		Component: cmdbRoot.Component,
+		Icon:      cmdbRoot.Icon,
+		Sort:      cmdbRoot.Sort,
+		Type:      cmdbRoot.Type,
+		Status:    cmdbRoot.Status,
+		Hidden:    cmdbRoot.Hidden,
+	}).FirstOrCreate(&cmdbRoot)
+	if result.Error != nil {
+		global.Log.Errorf("补齐CMDB根目录失败: %v", result.Error)
+		return
+	}
+
+	type cmdbPageDefinition struct {
+		Menu    model.SysMenu
+		Buttons []model.SysMenu
+	}
+
+	definitions := []cmdbPageDefinition{
+		{
+			Menu: model.SysMenu{
+				ParentID:   cmdbRoot.ID,
+				Name:       "主机管理",
+				Path:       "/cmdb/host",
+				Component:  "cmdb/host/index",
+				Icon:       "DesktopOutlined",
+				Sort:       1,
+				Type:       2,
+				Permission: "cmdb:host:list",
+				Status:     1,
+				Hidden:     0,
+			},
+			Buttons: []model.SysMenu{
+				{ParentID: 0, Name: "查看", Sort: 1, Type: 3, Permission: "cmdb:host:view", Status: 1, Hidden: 0},
+				{ParentID: 0, Name: "新增", Sort: 2, Type: 3, Permission: "cmdb:host:create", Status: 1, Hidden: 0},
+				{ParentID: 0, Name: "编辑", Sort: 3, Type: 3, Permission: "cmdb:host:update", Status: 1, Hidden: 0},
+				{ParentID: 0, Name: "删除", Sort: 4, Type: 3, Permission: "cmdb:host:delete", Status: 1, Hidden: 0},
+				{ParentID: 0, Name: "导入", Sort: 5, Type: 3, Permission: "cmdb:host:import", Status: 1, Hidden: 0},
+				{ParentID: 0, Name: "校验", Sort: 6, Type: 3, Permission: "cmdb:host:verify", Status: 1, Hidden: 0},
+			},
+		},
+		{
+			Menu: model.SysMenu{
+				ParentID:   cmdbRoot.ID,
+				Name:       "主机分组",
+				Path:       "/cmdb/group",
+				Component:  "cmdb/group/index",
+				Icon:       "AppstoreOutlined",
+				Sort:       2,
+				Type:       2,
+				Permission: "cmdb:group:list",
+				Status:     1,
+				Hidden:     0,
+			},
+			Buttons: []model.SysMenu{
+				{ParentID: 0, Name: "新增", Sort: 1, Type: 3, Permission: "cmdb:group:create", Status: 1, Hidden: 0},
+				{ParentID: 0, Name: "编辑", Sort: 2, Type: 3, Permission: "cmdb:group:update", Status: 1, Hidden: 0},
+				{ParentID: 0, Name: "删除", Sort: 3, Type: 3, Permission: "cmdb:group:delete", Status: 1, Hidden: 0},
+			},
+		},
+		{
+			Menu: model.SysMenu{
+				ParentID:   cmdbRoot.ID,
+				Name:       "主机标签",
+				Path:       "/cmdb/tag",
+				Component:  "cmdb/tag/index",
+				Icon:       "TagsOutlined",
+				Sort:       3,
+				Type:       2,
+				Permission: "cmdb:tag:list",
+				Status:     1,
+				Hidden:     0,
+			},
+			Buttons: []model.SysMenu{
+				{ParentID: 0, Name: "新增", Sort: 1, Type: 3, Permission: "cmdb:tag:create", Status: 1, Hidden: 0},
+				{ParentID: 0, Name: "编辑", Sort: 2, Type: 3, Permission: "cmdb:tag:update", Status: 1, Hidden: 0},
+				{ParentID: 0, Name: "删除", Sort: 3, Type: 3, Permission: "cmdb:tag:delete", Status: 1, Hidden: 0},
+			},
+		},
+		{
+			Menu: model.SysMenu{
+				ParentID:   cmdbRoot.ID,
+				Name:       "SSH凭据",
+				Path:       "/cmdb/credential",
+				Component:  "cmdb/credential/index",
+				Icon:       "KeyOutlined",
+				Sort:       4,
+				Type:       2,
+				Permission: "cmdb:credential:list",
+				Status:     1,
+				Hidden:     0,
+			},
+			Buttons: []model.SysMenu{
+				{ParentID: 0, Name: "查看", Sort: 1, Type: 3, Permission: "cmdb:credential:view", Status: 1, Hidden: 0},
+				{ParentID: 0, Name: "新增", Sort: 2, Type: 3, Permission: "cmdb:credential:create", Status: 1, Hidden: 0},
+				{ParentID: 0, Name: "编辑", Sort: 3, Type: 3, Permission: "cmdb:credential:update", Status: 1, Hidden: 0},
+				{ParentID: 0, Name: "删除", Sort: 4, Type: 3, Permission: "cmdb:credential:delete", Status: 1, Hidden: 0},
+			},
+		},
+	}
+
+	menuIDs := []uint{cmdbRoot.ID}
+	for _, definition := range definitions {
+		pageMenu := definition.Menu
+		result := global.DB.Where("permission = ?", pageMenu.Permission).Attrs(model.SysMenu{
+			ParentID:  pageMenu.ParentID,
+			Name:      pageMenu.Name,
+			Path:      pageMenu.Path,
+			Component: pageMenu.Component,
+			Icon:      pageMenu.Icon,
+			Sort:      pageMenu.Sort,
+			Type:      pageMenu.Type,
+			Status:    pageMenu.Status,
+			Hidden:    pageMenu.Hidden,
+		}).FirstOrCreate(&pageMenu)
+		if result.Error != nil {
+			global.Log.Errorf("补齐CMDB页面菜单失败(%s): %v", definition.Menu.Permission, result.Error)
+			continue
+		}
+		menuIDs = append(menuIDs, pageMenu.ID)
+
+		for _, buttonDefinition := range definition.Buttons {
+			buttonMenu := buttonDefinition
+			buttonMenu.ParentID = pageMenu.ID
+			result := global.DB.Where("permission = ?", buttonMenu.Permission).Attrs(model.SysMenu{
+				ParentID: buttonMenu.ParentID,
+				Name:     buttonMenu.Name,
+				Sort:     buttonMenu.Sort,
+				Type:     buttonMenu.Type,
+				Status:   buttonMenu.Status,
+				Hidden:   buttonMenu.Hidden,
+			}).FirstOrCreate(&buttonMenu)
+			if result.Error != nil {
+				global.Log.Errorf("补齐CMDB按钮权限失败(%s): %v", buttonDefinition.Permission, result.Error)
+				continue
+			}
+			menuIDs = append(menuIDs, buttonMenu.ID)
+		}
+	}
+
+	apiDefinitions := []model.SysApi{
+		{Path: "/api/v1/cmdb/host-groups", Method: "GET", Group: "CMDB管理", Description: "主机分组列表", NeedAuth: true},
+		{Path: "/api/v1/cmdb/host-groups", Method: "POST", Group: "CMDB管理", Description: "创建主机分组", NeedAuth: true},
+		{Path: "/api/v1/cmdb/host-groups/:id", Method: "PUT", Group: "CMDB管理", Description: "更新主机分组", NeedAuth: true},
+		{Path: "/api/v1/cmdb/host-groups/:id", Method: "DELETE", Group: "CMDB管理", Description: "删除主机分组", NeedAuth: true},
+		{Path: "/api/v1/cmdb/host-tags", Method: "GET", Group: "CMDB管理", Description: "主机标签列表", NeedAuth: true},
+		{Path: "/api/v1/cmdb/host-tags", Method: "POST", Group: "CMDB管理", Description: "创建主机标签", NeedAuth: true},
+		{Path: "/api/v1/cmdb/host-tags/:id", Method: "PUT", Group: "CMDB管理", Description: "更新主机标签", NeedAuth: true},
+		{Path: "/api/v1/cmdb/host-tags/:id", Method: "DELETE", Group: "CMDB管理", Description: "删除主机标签", NeedAuth: true},
+		{Path: "/api/v1/cmdb/ssh-credentials", Method: "GET", Group: "CMDB管理", Description: "SSH凭据列表", NeedAuth: true},
+		{Path: "/api/v1/cmdb/ssh-credentials/options", Method: "GET", Group: "CMDB管理", Description: "SSH凭据选项", NeedAuth: true},
+		{Path: "/api/v1/cmdb/ssh-credentials/:id", Method: "GET", Group: "CMDB管理", Description: "SSH凭据详情", NeedAuth: true},
+		{Path: "/api/v1/cmdb/ssh-credentials", Method: "POST", Group: "CMDB管理", Description: "创建SSH凭据", NeedAuth: true},
+		{Path: "/api/v1/cmdb/ssh-credentials/:id", Method: "PUT", Group: "CMDB管理", Description: "更新SSH凭据", NeedAuth: true},
+		{Path: "/api/v1/cmdb/ssh-credentials/:id", Method: "DELETE", Group: "CMDB管理", Description: "删除SSH凭据", NeedAuth: true},
+		{Path: "/api/v1/cmdb/hosts", Method: "GET", Group: "CMDB管理", Description: "主机列表", NeedAuth: true},
+		{Path: "/api/v1/cmdb/hosts/:id", Method: "GET", Group: "CMDB管理", Description: "主机详情", NeedAuth: true},
+		{Path: "/api/v1/cmdb/hosts", Method: "POST", Group: "CMDB管理", Description: "创建主机", NeedAuth: true},
+		{Path: "/api/v1/cmdb/hosts/:id", Method: "PUT", Group: "CMDB管理", Description: "更新主机", NeedAuth: true},
+		{Path: "/api/v1/cmdb/hosts/:id", Method: "DELETE", Group: "CMDB管理", Description: "删除主机", NeedAuth: true},
+		{Path: "/api/v1/cmdb/hosts/:id/verify", Method: "POST", Group: "CMDB管理", Description: "校验主机", NeedAuth: true},
+		{Path: "/api/v1/cmdb/hosts/import", Method: "POST", Group: "CMDB管理", Description: "导入主机", NeedAuth: true},
+	}
+	for _, definition := range apiDefinitions {
+		ensureApiAccessForRoleCodes(definition, []string{"admin", "system_admin"})
+	}
+
+	grantMenusToRoleCodes(menuIDs, []string{"admin", "system_admin"})
+	ensureMenuApiBindings(cmdbMenuApiBindings())
+}
+
+func cmdbMenuApiBindings() []menuApiBinding {
+	return []menuApiBinding{
+		{MenuPermission: "cmdb:group:list", APIPath: "/api/v1/cmdb/host-groups", APIMethod: "GET"},
+		{MenuPermission: "cmdb:group:create", APIPath: "/api/v1/cmdb/host-groups", APIMethod: "POST"},
+		{MenuPermission: "cmdb:group:update", APIPath: "/api/v1/cmdb/host-groups/:id", APIMethod: "PUT"},
+		{MenuPermission: "cmdb:group:delete", APIPath: "/api/v1/cmdb/host-groups/:id", APIMethod: "DELETE"},
+		{MenuPermission: "cmdb:tag:list", APIPath: "/api/v1/cmdb/host-tags", APIMethod: "GET"},
+		{MenuPermission: "cmdb:tag:create", APIPath: "/api/v1/cmdb/host-tags", APIMethod: "POST"},
+		{MenuPermission: "cmdb:tag:update", APIPath: "/api/v1/cmdb/host-tags/:id", APIMethod: "PUT"},
+		{MenuPermission: "cmdb:tag:delete", APIPath: "/api/v1/cmdb/host-tags/:id", APIMethod: "DELETE"},
+		{MenuPermission: "cmdb:credential:list", APIPath: "/api/v1/cmdb/ssh-credentials", APIMethod: "GET"},
+		{MenuPermission: "cmdb:credential:list", APIPath: "/api/v1/cmdb/ssh-credentials/options", APIMethod: "GET"},
+		{MenuPermission: "cmdb:credential:view", APIPath: "/api/v1/cmdb/ssh-credentials/:id", APIMethod: "GET"},
+		{MenuPermission: "cmdb:credential:create", APIPath: "/api/v1/cmdb/ssh-credentials", APIMethod: "POST"},
+		{MenuPermission: "cmdb:credential:update", APIPath: "/api/v1/cmdb/ssh-credentials/:id", APIMethod: "PUT"},
+		{MenuPermission: "cmdb:credential:delete", APIPath: "/api/v1/cmdb/ssh-credentials/:id", APIMethod: "DELETE"},
+		{MenuPermission: "cmdb:host:list", APIPath: "/api/v1/cmdb/hosts", APIMethod: "GET"},
+		{MenuPermission: "cmdb:host:view", APIPath: "/api/v1/cmdb/hosts/:id", APIMethod: "GET"},
+		{MenuPermission: "cmdb:host:create", APIPath: "/api/v1/cmdb/hosts", APIMethod: "POST"},
+		{MenuPermission: "cmdb:host:update", APIPath: "/api/v1/cmdb/hosts/:id", APIMethod: "PUT"},
+		{MenuPermission: "cmdb:host:delete", APIPath: "/api/v1/cmdb/hosts/:id", APIMethod: "DELETE"},
+		{MenuPermission: "cmdb:host:verify", APIPath: "/api/v1/cmdb/hosts/:id/verify", APIMethod: "POST"},
+		{MenuPermission: "cmdb:host:import", APIPath: "/api/v1/cmdb/hosts/import-template", APIMethod: "GET"},
+		{MenuPermission: "cmdb:host:import", APIPath: "/api/v1/cmdb/hosts/import", APIMethod: "POST"},
 	}
 }
 
