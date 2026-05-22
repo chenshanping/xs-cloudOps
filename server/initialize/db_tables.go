@@ -37,6 +37,9 @@ func InitDBTables() {
 		&model.CmdbHostTagRel{},
 		&model.CmdbSshCredential{},
 		&model.CmdbHost{},
+		&model.CmdbTerminalSession{},
+		&model.CmdbTerminalLog{},
+		&model.CmdbHostSshFingerprint{},
 		// 数据字典
 		&model.SysDictType{},
 		&model.SysDictData{},
@@ -2054,25 +2057,62 @@ func ensureCmdbMenuApi() {
 				{ParentID: 0, Name: "删除", Sort: 4, Type: 3, Permission: "cmdb:credential:delete", Status: 1, Hidden: 0},
 			},
 		},
+		{
+			Menu: model.SysMenu{
+				ParentID:   cmdbRoot.ID,
+				Name:       "终端工作台",
+				Path:       "/cmdb/terminal/:hostId",
+				Component:  "cmdb/terminal/index",
+				Icon:       "CodeOutlined",
+				Sort:       5,
+				Type:       2,
+				Permission: "cmdb:terminal:list",
+				Status:     1,
+				Hidden:     1,
+				IsStandalone: 1,
+			},
+			Buttons: []model.SysMenu{
+				{ParentID: 0, Name: "连接", Sort: 1, Type: 3, Permission: "cmdb:terminal:connect", Status: 1, Hidden: 0},
+				{ParentID: 0, Name: "查看", Sort: 2, Type: 3, Permission: "cmdb:terminal:view", Status: 1, Hidden: 0},
+				{ParentID: 0, Name: "断开", Sort: 3, Type: 3, Permission: "cmdb:terminal:disconnect", Status: 1, Hidden: 0},
+				{ParentID: 0, Name: "强制断开", Sort: 4, Type: 3, Permission: "cmdb:terminal:force_disconnect", Status: 1, Hidden: 0},
+				{ParentID: 0, Name: "审计日志", Sort: 5, Type: 3, Permission: "cmdb:terminal:audit", Status: 1, Hidden: 0},
+			},
+		},
 	}
 
 	menuIDs := []uint{cmdbRoot.ID}
 	for _, definition := range definitions {
 		pageMenu := definition.Menu
 		result := global.DB.Where("permission = ?", pageMenu.Permission).Attrs(model.SysMenu{
-			ParentID:  pageMenu.ParentID,
-			Name:      pageMenu.Name,
-			Path:      pageMenu.Path,
-			Component: pageMenu.Component,
-			Icon:      pageMenu.Icon,
-			Sort:      pageMenu.Sort,
-			Type:      pageMenu.Type,
-			Status:    pageMenu.Status,
-			Hidden:    pageMenu.Hidden,
+			ParentID:     pageMenu.ParentID,
+			Name:         pageMenu.Name,
+			Path:         pageMenu.Path,
+			Component:    pageMenu.Component,
+			Icon:         pageMenu.Icon,
+			Sort:         pageMenu.Sort,
+			Type:         pageMenu.Type,
+			Status:       pageMenu.Status,
+			Hidden:       pageMenu.Hidden,
+			IsStandalone: pageMenu.IsStandalone,
 		}).FirstOrCreate(&pageMenu)
 		if result.Error != nil {
 			global.Log.Errorf("补齐CMDB页面菜单失败(%s): %v", definition.Menu.Permission, result.Error)
 			continue
+		}
+		if pageMenu.Permission == "cmdb:terminal:list" {
+			if err := global.DB.Model(&model.SysMenu{}).Where("id = ?", pageMenu.ID).Updates(map[string]interface{}{
+				"path":          pageMenu.Path,
+				"hidden":        pageMenu.Hidden,
+				"component":     pageMenu.Component,
+				"is_standalone": pageMenu.IsStandalone,
+				"updated_at":    gorm.Expr("CURRENT_TIMESTAMP(3)"),
+			}).Error; err != nil {
+				global.Log.Errorf("同步终端菜单路径失败: %v", err)
+			}
+			pageMenu.Path = "/cmdb/terminal/:hostId"
+			pageMenu.Hidden = 1
+			pageMenu.IsStandalone = 1
 		}
 		menuIDs = append(menuIDs, pageMenu.ID)
 
@@ -2116,6 +2156,13 @@ func ensureCmdbMenuApi() {
 		{Path: "/api/v1/cmdb/hosts/:id", Method: "PUT", Group: "CMDB管理", Description: "更新主机", NeedAuth: true},
 		{Path: "/api/v1/cmdb/hosts/:id", Method: "DELETE", Group: "CMDB管理", Description: "删除主机", NeedAuth: true},
 		{Path: "/api/v1/cmdb/hosts/:id/verify", Method: "POST", Group: "CMDB管理", Description: "校验主机", NeedAuth: true},
+		{Path: "/api/v1/cmdb/terminal/sessions", Method: "POST", Group: "CMDB管理", Description: "创建SSH终端会话", NeedAuth: true},
+		{Path: "/api/v1/cmdb/terminal/sessions", Method: "GET", Group: "CMDB管理", Description: "终端会话列表", NeedAuth: true},
+		{Path: "/api/v1/cmdb/terminal/sessions/:id", Method: "GET", Group: "CMDB管理", Description: "终端会话详情", NeedAuth: true},
+		{Path: "/api/v1/cmdb/terminal/sessions/:id/logs", Method: "GET", Group: "CMDB管理", Description: "终端会话日志", NeedAuth: true},
+		{Path: "/api/v1/cmdb/terminal/sessions/:id/disconnect", Method: "POST", Group: "CMDB管理", Description: "断开终端会话", NeedAuth: true},
+		{Path: "/api/v1/cmdb/terminal/sessions/:id/force-disconnect", Method: "POST", Group: "CMDB管理", Description: "强制断开终端会话", NeedAuth: true},
+		{Path: "/api/v1/cmdb/terminal/ws", Method: "GET", Group: "CMDB管理", Description: "SSH终端WebSocket接入", NeedAuth: false},
 		{Path: "/api/v1/cmdb/hosts/import", Method: "POST", Group: "CMDB管理", Description: "导入主机", NeedAuth: true},
 	}
 	for _, definition := range apiDefinitions {
@@ -2150,6 +2197,12 @@ func cmdbMenuApiBindings() []menuApiBinding {
 		{MenuPermission: "cmdb:host:verify", APIPath: "/api/v1/cmdb/hosts/:id/verify", APIMethod: "POST"},
 		{MenuPermission: "cmdb:host:import", APIPath: "/api/v1/cmdb/hosts/import-template", APIMethod: "GET"},
 		{MenuPermission: "cmdb:host:import", APIPath: "/api/v1/cmdb/hosts/import", APIMethod: "POST"},
+		{MenuPermission: "cmdb:terminal:connect", APIPath: "/api/v1/cmdb/terminal/sessions", APIMethod: "POST"},
+		{MenuPermission: "cmdb:terminal:list", APIPath: "/api/v1/cmdb/terminal/sessions", APIMethod: "GET"},
+		{MenuPermission: "cmdb:terminal:view", APIPath: "/api/v1/cmdb/terminal/sessions/:id", APIMethod: "GET"},
+		{MenuPermission: "cmdb:terminal:audit", APIPath: "/api/v1/cmdb/terminal/sessions/:id/logs", APIMethod: "GET"},
+		{MenuPermission: "cmdb:terminal:disconnect", APIPath: "/api/v1/cmdb/terminal/sessions/:id/disconnect", APIMethod: "POST"},
+		{MenuPermission: "cmdb:terminal:force_disconnect", APIPath: "/api/v1/cmdb/terminal/sessions/:id/force-disconnect", APIMethod: "POST"},
 	}
 }
 

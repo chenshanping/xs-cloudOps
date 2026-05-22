@@ -95,6 +95,12 @@
             </a-tooltip>
             <span v-else class="menu-empty-text">-</span>
           </template>
+          <template v-if="column.key === 'route_mode'">
+            <a-tag v-if="record.type === 2" :color="record.is_standalone === 1 ? 'purple' : 'default'">
+              {{ record.is_standalone === 1 ? '独立页' : 'Layout页' }}
+            </a-tag>
+            <span v-else class="menu-empty-text">-</span>
+          </template>
           <template v-if="column.key === 'permission'">
             <a-tooltip v-if="record.permission" :title="record.permission">
               <a-typography-text code class="menu-ellipsis-code">{{ record.permission }}</a-typography-text>
@@ -161,6 +167,12 @@
           </a-form-item>
           <a-form-item label="组件路径" v-if="formState.type === 2">
             <a-input v-model:value="formState.component" placeholder="例如 system/user/index" />
+          </a-form-item>
+          <a-form-item label="页面模式" v-if="formState.type === 2">
+            <a-radio-group v-model:value="formState.is_standalone" class="menu-type-switch">
+              <a-radio-button :value="0">使用 Layout</a-radio-button>
+              <a-radio-button :value="1">独立页面</a-radio-button>
+            </a-radio-group>
           </a-form-item>
           <a-form-item label="权限标识" v-if="formState.type !== 1">
             <a-input v-model:value="formState.permission" placeholder="例如 system:user:list" />
@@ -256,7 +268,8 @@ const formState = reactive({
   type: 2,
   permission: '',
   statusChecked: true,
-  hiddenChecked: false
+  hiddenChecked: false,
+  is_standalone: 0
 })
 
 // 使用工具函数动态生成列配置
@@ -267,6 +280,7 @@ const columns = useTableColumns(
     { title: '类型', key: 'type', width: 80 },
     { title: '路由路径', dataIndex: 'path', key: 'path', ellipsis: true },
     { title: '组件路径', dataIndex: 'component', key: 'component', ellipsis: true },
+    { title: '页面模式', key: 'route_mode', width: 110, align: 'center' },
     { title: '权限标识', dataIndex: 'permission', key: 'permission', ellipsis: true },
     { title: '排序', dataIndex: 'sort', key: 'sort', width: 60 },
     { title: '状态', key: 'status', width: 80 },
@@ -378,7 +392,8 @@ const handleAdd = (parentId?: number) => {
     type: 2,
     permission: '',
     statusChecked: true,
-    hiddenChecked: false
+    hiddenChecked: false,
+    is_standalone: 0
   })
   drawerVisible.value = true
 }
@@ -403,7 +418,8 @@ const handleEdit = (record: Menu) => {
     type: record.type,
     permission: record.permission,
     statusChecked: record.status === 1,
-    hiddenChecked: record.hidden === 1
+    hiddenChecked: record.hidden === 1,
+    is_standalone: record.is_standalone || 0
   })
   drawerVisible.value = true
 }
@@ -424,7 +440,8 @@ const handleModalOk = async () => {
     type: formState.type,
     permission: formState.permission,
     status: formState.statusChecked ? 1 : 0,
-    hidden: formState.hiddenChecked ? 1 : 0
+    hidden: formState.hiddenChecked ? 1 : 0,
+    is_standalone: formState.type === 2 ? formState.is_standalone : 0
   }
   if (isEdit.value) {
     await updateMenu(currentId.value, data)

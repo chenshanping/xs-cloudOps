@@ -5,6 +5,8 @@
 1. 测试环境：通过 1Panel 直接部署前后端（非 Docker）
 2. Docker + docker-compose 一键部署方案
 
+如果需要把项目接入 Gitea 并在 test 环境自动打包，参考 [Gitea + Test 环境 CI 打包方案](docs/gitea-cicd-deploy.md)。
+
 ---
 
 ## 一、测试环境通过 1Panel 部署（非 Docker）

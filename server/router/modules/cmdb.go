@@ -18,7 +18,9 @@ func (m *CmdbModule) Name() string {
 	return "CMDB管理"
 }
 
-func (m *CmdbModule) RegisterPublicRoutes(rg *gin.RouterGroup) {}
+func (m *CmdbModule) RegisterPublicRoutes(rg *gin.RouterGroup) {
+	R(rg, "GET", "/cmdb/terminal/ws", m.Name(), "SSH终端WebSocket接入", v1.CmdbTerminal.ServeWebSocket)
+}
 
 func (m *CmdbModule) RegisterPrivateRoutes(rg *gin.RouterGroup) {
 	R(rg, "GET", "/cmdb/host-groups", m.Name(), "主机分组列表", v1.Cmdb.GetHostGroups, registry.WithAuth())
@@ -46,4 +48,11 @@ func (m *CmdbModule) RegisterPrivateRoutes(rg *gin.RouterGroup) {
 	R(rg, "POST", "/cmdb/hosts/:id/verify", m.Name(), "校验主机", v1.Cmdb.VerifyHost, registry.WithAuth())
 	R(rg, "GET", "/cmdb/hosts/import-template", m.Name(), "下载主机导入模板", v1.Cmdb.GetHostImportTemplate, registry.WithAuth())
 	R(rg, "POST", "/cmdb/hosts/import", m.Name(), "导入主机", v1.Cmdb.ImportHosts, registry.WithAuth())
+
+	R(rg, "POST", "/cmdb/terminal/sessions", m.Name(), "创建SSH终端会话", v1.CmdbTerminal.CreateSession, registry.WithAuth(), registry.WithRequest(request.CreateCmdbTerminalSessionRequest{}))
+	R(rg, "GET", "/cmdb/terminal/sessions", m.Name(), "终端会话列表", v1.CmdbTerminal.GetSessions, registry.WithAuth())
+	R(rg, "GET", "/cmdb/terminal/sessions/:id", m.Name(), "终端会话详情", v1.CmdbTerminal.GetSession, registry.WithAuth())
+	R(rg, "GET", "/cmdb/terminal/sessions/:id/logs", m.Name(), "终端会话日志", v1.CmdbTerminal.GetSessionLogs, registry.WithAuth())
+	R(rg, "POST", "/cmdb/terminal/sessions/:id/disconnect", m.Name(), "断开终端会话", v1.CmdbTerminal.DisconnectSession, registry.WithAuth())
+	R(rg, "POST", "/cmdb/terminal/sessions/:id/force-disconnect", m.Name(), "强制断开终端会话", v1.CmdbTerminal.ForceDisconnectSession, registry.WithAuth())
 }

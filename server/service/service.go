@@ -8,6 +8,7 @@ import (
 	"server/service/captcha"
 	"server/service/cmdbcredential"
 	"server/service/cmdbhost"
+	"server/service/cmdbterminal"
 	"server/service/configsvc"
 	"server/service/core"
 	"server/service/cronsvc"
@@ -41,6 +42,7 @@ var (
 	Monitor        = monitorsvc.Default
 	CmdbHost       = cmdbhost.Default
 	CmdbCredential = cmdbcredential.Default
+	CmdbTerminal   = cmdbterminal.Default
 	Cron           = cronsvc.Default
 	Email          = email.Default
 	Cache          = core.Default

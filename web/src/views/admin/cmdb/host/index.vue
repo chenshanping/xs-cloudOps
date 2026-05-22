@@ -144,6 +144,7 @@
               <a-button type="link" size="small" v-permission="'cmdb:host:update'" @click="handleEdit(record)">编辑</a-button>
               <a-button type="link" size="small" v-permission="'cmdb:host:create'" @click="handleCopy(record)">复制</a-button>
               <a-button type="link" size="small" v-permission="'cmdb:host:verify'" @click="handleVerify(record)">校验</a-button>
+              <a-button type="link" size="small" v-permission="'cmdb:terminal:connect'" @click="handleTerminal(record)">终端</a-button>
               <a-button type="link" size="small" danger v-permission="'cmdb:host:delete'" @click="handleDelete(record)">删除</a-button>
             </a-space>
           </template>
@@ -283,8 +284,8 @@ const columns = useTableColumns(
     { title: '系统信息', key: 'system', width: 280 },
     { title: '更新时间', key: 'updated_at', width: 170, align: 'center' },
   ],
-  { title: '操作', key: 'action', width: 260, fixed: 'right', align: 'center' },
-  ['cmdb:host:view', 'cmdb:host:update', 'cmdb:host:create', 'cmdb:host:verify', 'cmdb:host:delete']
+  { title: '操作', key: 'action', width: 320, fixed: 'right', align: 'center' },
+  ['cmdb:host:view', 'cmdb:host:update', 'cmdb:host:create', 'cmdb:host:verify', 'cmdb:terminal:connect', 'cmdb:host:delete']
 )
 
 const canViewHost = computed(() => hasPermission('cmdb:host:view'))
@@ -459,6 +460,10 @@ const handleVerify = async (record: CmdbHostItem) => {
       detailVerifyLoading.value = false
     }
   }
+}
+
+const handleTerminal = (record: CmdbHostItem) => {
+  window.open(`/cmdb/terminal/${record.id}`, '_blank', 'noopener')
 }
 
 const handleDelete = (record: CmdbHostItem) => {

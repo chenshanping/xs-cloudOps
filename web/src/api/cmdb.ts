@@ -125,6 +125,45 @@ export interface CmdbHostPayload {
   remark: string
 }
 
+export type CmdbTerminalSessionStatus = 'prepared' | 'active' | 'closed' | 'failed'
+export type CmdbTerminalLogStreamType = 'input' | 'output' | 'system'
+
+export interface CmdbTerminalSessionItem {
+  id: number
+  host_id: number
+  host_name: string
+  user_id: number
+  username_snapshot: string
+  credential_id_snapshot: number
+  client_ip: string
+  status: CmdbTerminalSessionStatus
+  start_time?: string
+  end_time?: string
+  idle_timeout_seconds: number
+  disconnect_reason: string
+  forced_by_user_id: number
+  host_key_fingerprint: string
+  last_activity_at?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CmdbTerminalLogItem {
+  id: number
+  session_id: number
+  seq: number
+  stream_type: CmdbTerminalLogStreamType
+  content: string
+  created_at: string
+}
+
+export interface CmdbTerminalConnectPayload {
+  session_id: number
+  ws_token: string
+  ws_url: string
+  idle_timeout_seconds: number
+}
+
 export function getCmdbHostGroups(params?: { name?: string; status?: number }) {
   return request.get<any, ApiResponse<CmdbHostGroup[]>>('/cmdb/host-groups', { params })
 }
@@ -223,4 +262,41 @@ export function importCmdbHosts(file: File) {
 
 export function downloadCmdbHostImportTemplate() {
   return request.get('/cmdb/hosts/import-template', { responseType: 'blob' })
+}
+
+export function createCmdbTerminalSession(data: { host_id: number }) {
+  return request.post<any, ApiResponse<CmdbTerminalConnectPayload>>('/cmdb/terminal/sessions', data)
+}
+
+export function getCmdbTerminalSessions(params: {
+  page: number
+  page_size: number
+  host_id?: number
+  user_id?: number
+  status?: CmdbTerminalSessionStatus
+}) {
+  return request.get<any, ApiResponse<PageResponse<CmdbTerminalSessionItem>>>('/cmdb/terminal/sessions', { params })
+}
+
+export function getCmdbTerminalSession(id: number) {
+  return request.get<any, ApiResponse<CmdbTerminalSessionItem>>(`/cmdb/terminal/sessions/${id}`)
+}
+
+export function getCmdbTerminalSessionLogs(
+  id: number,
+  params: {
+    page: number
+    page_size: number
+    stream_type?: CmdbTerminalLogStreamType
+  }
+) {
+  return request.get<any, ApiResponse<PageResponse<CmdbTerminalLogItem>>>(`/cmdb/terminal/sessions/${id}/logs`, { params })
+}
+
+export function disconnectCmdbTerminalSession(id: number) {
+  return request.post<any, ApiResponse>(`/cmdb/terminal/sessions/${id}/disconnect`)
+}
+
+export function forceDisconnectCmdbTerminalSession(id: number) {
+  return request.post<any, ApiResponse>(`/cmdb/terminal/sessions/${id}/force-disconnect`)
 }

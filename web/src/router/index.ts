@@ -150,7 +150,8 @@ function generateRoutes(menus: Menu[]): RouteRecordRaw[] {
           meta: {
             title: menu.name,
             icon: menu.icon,
-            permission: menu.permission
+            permission: menu.permission,
+            isStandalone: menu.is_standalone === 1
           }
         })
       }
@@ -166,6 +167,17 @@ function generateRoutes(menus: Menu[]): RouteRecordRaw[] {
   return routes
 }
 
+function addDynamicRoute(route: RouteRecordRaw) {
+  if (route.meta?.isStandalone) {
+    router.addRoute({
+      ...route,
+      path: route.path.startsWith('/') ? route.path : `/${route.path}`,
+    })
+    return
+  }
+  router.addRoute('Layout', route)
+}
+
 // 添加动态路由
 export function addDynamicRoutes(menus: Menu[] | null) {
   if (dynamicRoutesAdded) return
@@ -177,7 +189,7 @@ export function addDynamicRoutes(menus: Menu[] | null) {
     dynamicRoutes.forEach(route => {
       // 检查路由是否已存在，避免重复添加
       if (!router.hasRoute(route.name as string)) {
-        router.addRoute('Layout', route)
+        addDynamicRoute(route)
       }
       addedDynamicRouteNames.add(String(route.name))
     })
@@ -212,7 +224,7 @@ export function refreshDynamicRoutes(menus: Menu[] | null) {
     }
     const route = routeMap.get(name)
     if (route) {
-      router.addRoute('Layout', route)
+      addDynamicRoute(route)
       addedDynamicRouteNames.add(name)
     }
   })
@@ -220,7 +232,7 @@ export function refreshDynamicRoutes(menus: Menu[] | null) {
   syncPlan.addNames.forEach((name) => {
     const route = routeMap.get(name)
     if (route) {
-      router.addRoute('Layout', route)
+      addDynamicRoute(route)
       addedDynamicRouteNames.add(name)
     }
   })

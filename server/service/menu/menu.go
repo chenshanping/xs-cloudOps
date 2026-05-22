@@ -54,16 +54,17 @@ func (s *MenuService) GetMenuApis(id uint) ([]model.SysApi, error) {
 // 创建菜单
 func (s *MenuService) CreateMenu(req *request.CreateMenuRequest) (*model.SysMenu, error) {
 	menu := model.SysMenu{
-		ParentID:   req.ParentID,
-		Name:       req.Name,
-		Path:       req.Path,
-		Component:  req.Component,
-		Icon:       req.Icon,
-		Sort:       req.Sort,
-		Type:       req.Type,
-		Permission: req.Permission,
-		Status:     req.Status,
-		Hidden:     req.Hidden,
+		ParentID:     req.ParentID,
+		Name:         req.Name,
+		Path:         req.Path,
+		Component:    req.Component,
+		Icon:         req.Icon,
+		Sort:         req.Sort,
+		Type:         req.Type,
+		Permission:   req.Permission,
+		Status:       req.Status,
+		Hidden:       req.Hidden,
+		IsStandalone: req.IsStandalone,
 	}
 	err := global.DB.Create(&menu).Error
 	if err == nil {
@@ -83,16 +84,17 @@ func (s *MenuService) UpdateMenu(id uint, req *request.UpdateMenuRequest) error 
 	}
 
 	updates := map[string]interface{}{
-		"parent_id":  req.ParentID,
-		"name":       req.Name,
-		"path":       req.Path,
-		"component":  req.Component,
-		"icon":       req.Icon,
-		"sort":       req.Sort,
-		"type":       req.Type,
-		"permission": req.Permission,
-		"status":     req.Status,
-		"hidden":     req.Hidden,
+		"parent_id":     req.ParentID,
+		"name":          req.Name,
+		"path":          req.Path,
+		"component":     req.Component,
+		"icon":          req.Icon,
+		"sort":          req.Sort,
+		"type":          req.Type,
+		"permission":    req.Permission,
+		"status":        req.Status,
+		"hidden":        req.Hidden,
+		"is_standalone": req.IsStandalone,
 	}
 
 	err := global.DB.Transaction(func(tx *gorm.DB) error {

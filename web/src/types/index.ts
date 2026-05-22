@@ -104,6 +104,7 @@ export interface Menu {
   permission: string
   status: number
   hidden: number
+  is_standalone: number
   apis?: Api[]
   children?: Menu[]
   created_at: string
